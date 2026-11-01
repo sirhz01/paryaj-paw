@@ -43,6 +43,8 @@ PP.ready.then(function () {
     const t = e.target.closest('button'); if (!t) return;
     [...$('tabs').children].forEach((b) => b.classList.toggle('on', b === t));
     document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('hidden', p.id !== 'tab-' + t.dataset.tab));
+    // Rafraîchit la liste et les caisses attribuables à l'ouverture de l'onglet Caissiers.
+    if (t.dataset.tab === 'cashiers' && canEdit()) loadCashiers();
   });
 
   /* ---------- Rapport ---------- */
