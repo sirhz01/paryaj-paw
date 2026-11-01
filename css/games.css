@@ -17,28 +17,63 @@ body.keno .stage { background: radial-gradient(110% 100% at 50% 20%, #1b3fd8 0%,
 .promo .count { font-size: 5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* ===== Lucky Six ===== */
-.ls-board { position: absolute; inset: 0; padding: .8rem 1.6rem; display: none; grid-template-rows: auto 1fr auto; gap: .6rem; }
+.ls-board { position: absolute; inset: 0; padding: .8rem 1.6rem; display: none; grid-template-rows: 1fr auto; gap: .6rem; }
 body.luckysix:not([data-phase='bet']) .ls-board { display: grid; }
-.ls-top { display: grid; grid-template-columns: 1fr 12rem 1fr; align-items: center; height: 12rem; }
-.ls-top .cap { font-size: .75rem; letter-spacing: .12em; color: #cfe6ff; margin-bottom: .4rem; }
-.ls-top .row { display: flex; flex-wrap: nowrap; gap: .5rem; }
-/* Les 5 pre-numbers : en ligne, collés au tambour (et non au bord gauche de l'écran). */
-.ls-top > div:first-child { justify-self: end; margin-right: .8rem; }
-.ls-top > div:first-child .ball { width: 3.4rem; height: 3.4rem; font-size: 1.5rem; }
-.drumbox { position: relative; width: 12rem; height: 12rem; }
+/* Tambour au centre en haut, échelle des gains en colonnes tout autour (comme sur les écrans de référence). */
+.ls-top { grid-area: 1 / 1; z-index: 1; align-self: start; justify-self: center; width: 60%; display: grid; grid-template-columns: 1fr 15rem 1fr; align-items: center; height: 15rem; }
+.ls-top .cap { display: none; }
+.ls-top .row { display: flex; gap: .35rem; }
+/* Les 5 pre-numbers : en colonne légèrement courbée, collés au tambour. */
+.ls-top > div:first-child { justify-self: end; margin-right: -.4rem; }
+.ls-top > div:first-child .row { flex-direction: column; align-items: center; }
+.ls-top > div:first-child .ball { width: 2.7rem; height: 2.7rem; font-size: 1.2rem; }
+.ls-top > div:first-child .ball:nth-child(1), .ls-top > div:first-child .ball:nth-child(5) { transform: translateX(.9rem); }
+.ls-top > div:first-child .ball:nth-child(2), .ls-top > div:first-child .ball:nth-child(4) { transform: translateX(.25rem); }
+.drumbox { position: relative; width: 15rem; height: 15rem; }
 .drumbox canvas { width: 100%; height: 100%; }
-.drumbox .cur { position: absolute; right: -4.6rem; top: 50%; transform: translateY(-50%); }
-.drumbox .cur .ball { width: 4.6rem; height: 4.6rem; font-size: 2rem; }
+.drumbox .cur { position: absolute; right: -3.1rem; top: 50%; transform: translateY(-50%); }
+.drumbox .cur .ball { width: 3.1rem; height: 3.1rem; font-size: 1.4rem; }
 .resbox { text-align: center; font-size: 1.9rem; font-weight: 800; letter-spacing: .06em; }
-.sum { justify-self: end; text-align: right; font-size: .85rem; line-height: 1.5; }
+.sum { justify-self: end; text-align: right; font-size: .75rem; line-height: 1.5; }
 .sum b { font-size: 2.2rem; display: block; line-height: 1; }
 .sum .oe { font-size: 1.3rem; font-weight: 800; color: var(--gold); }
 
-.ls-grid { display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(3, 1fr); gap: .3rem .6rem; align-content: center; }
-.slot { display: flex; align-items: center; gap: .55rem; font-size: 1rem; font-weight: 600; }
+/* 30 paliers : colonne de gauche (9), quatre colonnes de 3 en bas au centre (12), colonne de droite (9). */
+.ls-grid { grid-area: 1 / 1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(9, 1fr); gap: .2rem 1rem; align-items: center; }
+.slot { display: flex; align-items: center; gap: .55rem; font-size: 1.15rem; font-weight: 600; }
 .slot .ball { width: 2.7rem; height: 2.7rem; }
 .slot .pz { color: #e8f3ff; }
 .slot.hit .pz { color: var(--gold); }
+.ls-grid .slot:nth-child(1) { grid-column: 1; grid-row: 1; }
+.ls-grid .slot:nth-child(2) { grid-column: 1; grid-row: 2; }
+.ls-grid .slot:nth-child(3) { grid-column: 1; grid-row: 3; }
+.ls-grid .slot:nth-child(4) { grid-column: 1; grid-row: 4; }
+.ls-grid .slot:nth-child(5) { grid-column: 1; grid-row: 5; }
+.ls-grid .slot:nth-child(6) { grid-column: 1; grid-row: 6; }
+.ls-grid .slot:nth-child(7) { grid-column: 1; grid-row: 7; }
+.ls-grid .slot:nth-child(8) { grid-column: 1; grid-row: 8; }
+.ls-grid .slot:nth-child(9) { grid-column: 1; grid-row: 9; }
+.ls-grid .slot:nth-child(10) { grid-column: 2; grid-row: 7; }
+.ls-grid .slot:nth-child(11) { grid-column: 2; grid-row: 8; }
+.ls-grid .slot:nth-child(12) { grid-column: 2; grid-row: 9; }
+.ls-grid .slot:nth-child(13) { grid-column: 3; grid-row: 7; }
+.ls-grid .slot:nth-child(14) { grid-column: 3; grid-row: 8; }
+.ls-grid .slot:nth-child(15) { grid-column: 3; grid-row: 9; }
+.ls-grid .slot:nth-child(16) { grid-column: 4; grid-row: 7; }
+.ls-grid .slot:nth-child(17) { grid-column: 4; grid-row: 8; }
+.ls-grid .slot:nth-child(18) { grid-column: 4; grid-row: 9; }
+.ls-grid .slot:nth-child(19) { grid-column: 5; grid-row: 7; }
+.ls-grid .slot:nth-child(20) { grid-column: 5; grid-row: 8; }
+.ls-grid .slot:nth-child(21) { grid-column: 5; grid-row: 9; }
+.ls-grid .slot:nth-child(22) { grid-column: 6; grid-row: 1; }
+.ls-grid .slot:nth-child(23) { grid-column: 6; grid-row: 2; }
+.ls-grid .slot:nth-child(24) { grid-column: 6; grid-row: 3; }
+.ls-grid .slot:nth-child(25) { grid-column: 6; grid-row: 4; }
+.ls-grid .slot:nth-child(26) { grid-column: 6; grid-row: 5; }
+.ls-grid .slot:nth-child(27) { grid-column: 6; grid-row: 6; }
+.ls-grid .slot:nth-child(28) { grid-column: 6; grid-row: 7; }
+.ls-grid .slot:nth-child(29) { grid-column: 6; grid-row: 8; }
+.ls-grid .slot:nth-child(30) { grid-column: 6; grid-row: 9; }
 
 .colbet { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem 3rem; padding-top: .2rem; }
 .colbet .cap { grid-column: 1 / -1; text-align: center; font-size: .85rem; letter-spacing: .1em; color: #cfe6ff; }
