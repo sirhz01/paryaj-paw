@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
+import { MAX_MONEY_CENTS } from '../common/money';
 import { CurrentPlayer, PlayerGuard, PlayerPrincipal } from '../common/auth';
 import { IDEMPOTENCY_KEY, RotateSeedDto, VerifyDto } from '../fairness/dto';
 import { hashServerSeed } from '../fairness/provably-fair';
@@ -19,6 +20,7 @@ class BetDto {
 
   @IsInt()
   @Min(1)
+  @Max(MAX_MONEY_CENTS)
   stakeCents!: number;
 
   @Matches(IDEMPOTENCY_KEY)

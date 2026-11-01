@@ -191,6 +191,9 @@ describe('API (e2e)', () => {
       expect(low.body).toMatchObject({ code: 'STAKE_OUT_OF_RANGE', minStakeCents: 1000 });
       const poor = await bet(player.token, { picks: [1], stakeCents: 2000, idempotencyKey: 'trop-cher-01' }).expect(400);
       expect(poor.body.code).toBe('INSUFFICIENT_FUNDS');
+      // Montant absurde rejeté par la validation (plafond de sécurité), avant tout calcul.
+      const huge = await bet(player.token, { picks: [1], stakeCents: 100_000_000_001, idempotencyKey: 'enorme-001' }).expect(400);
+      expect(huge.body.code).toBe('VALIDATION_ERROR');
       expect(await balance(player.token)).toBe(1500);
     });
 

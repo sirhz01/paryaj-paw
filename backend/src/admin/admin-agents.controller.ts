@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { MAX_MONEY_CENTS } from '../common/money';
 import { AgentWalletService } from '../agents/agent-wallet.service';
 import { AgentsService } from '../agents/agents.service';
 import { CurrentStaff, Roles, StaffGuard, StaffPrincipal } from '../common/auth';
@@ -82,6 +83,7 @@ class FloatDto {
 
   @IsInt()
   @Min(1)
+  @Max(MAX_MONEY_CENTS)
   amountCents!: number;
 
   /** Reçu, référence du versement… */

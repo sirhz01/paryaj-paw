@@ -16,6 +16,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { MAX_MONEY_CENTS } from '../common/money';
 import { CurrentStaff, Roles, StaffGuard, StaffPrincipal } from '../common/auth';
 import { AppError } from '../common/errors';
 import { AppConfig, CONFIG } from '../config';
@@ -39,6 +40,7 @@ class LineDto {
 
   @IsInt()
   @Min(1)
+  @Max(MAX_MONEY_CENTS)
   stakeCents!: number;
 }
 

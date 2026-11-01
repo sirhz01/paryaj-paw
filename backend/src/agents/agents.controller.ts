@@ -15,6 +15,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { MAX_MONEY_CENTS } from '../common/money';
 import { AgentGuard, AgentPrincipal, CurrentAgent } from '../common/auth';
 import { AppError } from '../common/errors';
 import { IDEMPOTENCY_KEY } from '../fairness/dto';
@@ -60,6 +61,7 @@ class SaleDto {
 
   @IsInt()
   @Min(1)
+  @Max(MAX_MONEY_CENTS)
   stakeCents!: number;
 
   @IsInt()
@@ -82,6 +84,7 @@ class PlayerDepositDto {
   /** 1 HTG minimum. */
   @IsInt()
   @Min(100)
+  @Max(MAX_MONEY_CENTS)
   amountCents!: number;
 
   @Matches(IDEMPOTENCY_KEY)

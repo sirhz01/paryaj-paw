@@ -26,6 +26,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { MAX_MONEY_CENTS } from '../common/money';
 import { Observable } from 'rxjs';
 import { CurrentPlayer, PlayerGuard, PlayerPrincipal } from '../common/auth';
 import { CLOCK, Clock } from '../common/clock';
@@ -110,6 +111,7 @@ class TicketDto {
 
   @IsInt()
   @Min(1)
+  @Max(MAX_MONEY_CENTS)
   stakeCents!: number;
 
   @IsInt()

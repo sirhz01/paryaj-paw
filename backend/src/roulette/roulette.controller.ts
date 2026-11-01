@@ -12,6 +12,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { MAX_MONEY_CENTS } from '../common/money';
 import { CurrentPlayer, PlayerGuard, PlayerPrincipal } from '../common/auth';
 import { IDEMPOTENCY_KEY, RotateSeedDto, VerifyDto } from '../fairness/dto';
 import { hashServerSeed } from '../fairness/provably-fair';
@@ -46,6 +47,7 @@ class BetRequestDto {
 
   @IsInt()
   @Min(1)
+  @Max(MAX_MONEY_CENTS)
   amountCents!: number;
 }
 
