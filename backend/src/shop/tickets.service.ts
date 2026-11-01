@@ -268,17 +268,20 @@ export class TicketsService {
       );
       const startedAt = login.rows[0]?.at;
       if (!startedAt) return { closed: false };
+      // Compter depuis la fin du rapport précédent : les ventes d'une connexion jamais fermée ne sont pas perdues.
+      const prev = await tx.query<{ at: Date | null }>('SELECT max(ended_at) AS at FROM cashier_reports WHERE staff_id = $1', [staff.id]);
+      const countFrom = prev.rows[0]?.at && prev.rows[0].at < startedAt ? prev.rows[0].at : startedAt;
       const inserted = await tx.query(
         `INSERT INTO cashier_reports (staff_id, terminal, started_at, tickets, stakes_cents, payouts, payouts_cents)
          SELECT $1,
-                COALESCE($3, (SELECT terminal FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2 ORDER BY created_at DESC LIMIT 1)),
+                COALESCE($3, (SELECT terminal FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4 ORDER BY created_at DESC LIMIT 1)),
                 $2,
-                (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2),
-                (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2),
-                (SELECT count(*) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $2),
-                (SELECT COALESCE(sum(amount_cents), 0) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $2)
+                (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4),
+                (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4),
+                (SELECT count(*) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $4),
+                (SELECT COALESCE(sum(amount_cents), 0) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $4)
          ON CONFLICT (staff_id, started_at) DO NOTHING RETURNING id`,
-        [staff.id, startedAt, staff.terminal],
+        [staff.id, startedAt, staff.terminal, countFrom],
       );
       await tx.query('UPDATE staff SET token_version = token_version + 1 WHERE id = $1', [staff.id]);
       return { closed: inserted.rows.length === 1 };
