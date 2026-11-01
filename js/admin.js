@@ -36,7 +36,8 @@ PP.ready.then(function () {
       start();
     } catch (err) { $('lMsg').textContent = A.message(err); }
   });
-  $('logoutBtn').addEventListener('click', () => { A.logout(); showLogin(); });
+  /* Recharger efface rapports, réglages et caissiers restés dans la page. */
+  $('logoutBtn').addEventListener('click', () => { A.logout(); location.reload(); });
 
   /* ---------- Onglets ---------- */
   $('tabs').addEventListener('click', (e) => {
