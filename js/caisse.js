@@ -239,6 +239,7 @@ PP.ready.then(function () {
   }
   async function checkTicket(id) {
     $('payBtn').classList.add('hidden'); payTicket = null;
+    setPay('Vérification…');
     let r;
     try { r = await lookup(id || $('payId').value); } catch (e) { return setPay(errText(e), 'err'); }
     recent[r.t.id] = r.t;
@@ -250,7 +251,16 @@ PP.ready.then(function () {
     $('payBtn').classList.remove('hidden');
   }
   $('checkBtn').addEventListener('click', () => checkTicket());
-  $('payId').addEventListener('keydown', (e) => { if (e.key === 'Enter') checkTicket(); });
+  $('payId').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Tab') { if (e.key === 'Tab') e.preventDefault(); checkTicket(); } });
+  // Scanner sans touche Entrée : une rafale de caractères très rapprochés (< 60 ms) suivie d'une pause lance la vérification.
+  let burst = 0, lastKey = 0, scanTimer = null;
+  $('payId').addEventListener('input', () => {
+    const now = Date.now();
+    burst = now - lastKey < 60 ? burst + 1 : 1;
+    lastKey = now;
+    clearTimeout(scanTimer);
+    if (burst >= 4) scanTimer = setTimeout(() => { if ($('payId').value.trim().length >= 4) checkTicket(); }, 250);
+  });
   // Le scanner tape le code comme un clavier : s'il part ailleurs que dans un champ, on le redirige vers « ID de ticket ».
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || !/[A-Za-z0-9*]/.test(e.key)) return;
