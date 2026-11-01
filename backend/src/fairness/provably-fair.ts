@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 
 /** Jeux qui ont chacun leur paire de graines et leur suite de nonces par joueur. */
-export type Game = 'keno' | 'roulette';
+export type Game = 'keno' | 'roulette' | 'american_roulette';
 
 export function newServerSeed(): string {
   return randomBytes(32).toString('hex');
@@ -40,4 +40,17 @@ export function uniformInt(next: () => number, n: number): number {
   let value = next();
   while (value >= limit) value = next();
   return value % n;
+}
+
+/**
+ * `count` numéros distincts parmi 1…`size`, dans l'ordre de sortie : pour la position i,
+ * i + uniformInt(size − i) désigne le numéro échangé avec la position i (Fisher-Yates partiel).
+ */
+export function drawWithoutReplacement(next: () => number, size: number, count: number): number[] {
+  const pool = Array.from({ length: size }, (_, i) => i + 1);
+  for (let i = 0; i < count; i++) {
+    const j = i + uniformInt(next, size - i);
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
 }

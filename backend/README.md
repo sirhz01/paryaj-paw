@@ -1,6 +1,16 @@
-# Back-end Paryaj Paw — Keno et Roulette
+# Back-end Paryaj Paw — 5 jeux
 
-API NestJS + PostgreSQL pour le web, l'Android et l'application desktop. Les deux jeux partagent les comptes, le portefeuille, les paiements et le back-office. Tout le calcul (tirage, gains, solde) se fait ici ; les clients n'affichent que le résultat.
+API NestJS + PostgreSQL pour le web, l'Android et l'application desktop. Un seul compte, un seul portefeuille en HTG et un seul back-office pour :
+
+| Jeu | Type | Tirage |
+| --- | --- | --- |
+| Roulette européenne (0) | Roulette | Instantané, propre à chaque joueur |
+| Roulette américaine (0, 00) | Roulette | Instantané, propre à chaque joueur |
+| Keno 20/80 (jusqu'à 15 numéros) | Loterie de numéros | Instantané, propre à chaque joueur |
+| Lucky Six (35 sur 48) | Tirage programmé | Toutes les 5 min, commun à tous |
+| Lucky 10 (20 sur 80) | Tirage programmé | Toutes les 5 min, commun à tous |
+
+Tout le calcul (tirage, gains, solde) se fait ici ; les clients n'affichent que le résultat.
 
 ## Démarrer en local
 
@@ -22,18 +32,19 @@ npm run staff:create -- --email admin@paryajpaw.ht --role super_admin
 npm run dev                                 # http://localhost:3000/api/v1
 ```
 
-En développement, les codes SMS s'affichent dans la console et le fournisseur de paiement `fake` valide tout dépôt et tout retrait.
+En développement, les codes SMS s'affichent dans la console et le fournisseur de paiement `fake` valide tout dépôt et tout retrait. Le planificateur des tirages Lucky Six et Lucky 10 démarre avec le serveur.
 
 ## Tests et simulation
 
 ```bash
-npm test                                   # 92 tests, dont le parcours complet sur un PostgreSQL en mémoire
+npm test                                   # 146 tests, dont le parcours complet sur un PostgreSQL en mémoire
 npm run build
 npm run simulate:keno -- --rounds 10000000
-npm run simulate:roulette -- --spins 10000000
+npm run simulate:roulette -- --spins 10000000 --variant european   # ou american
+npm run simulate:draws -- --game lucky_six --draws 10000000         # ou lucky_ten
 ```
 
-Les simulations mesurent le RTP et l'uniformité des numéros (khi-deux), les deux premiers critères d'acceptation de chaque cahier des charges. Le moteur de règles de la roulette (`src/roulette/rules.ts`) est couvert à 100 % : chaque position du tapis est testée contre chacun des 37 numéros.
+Les simulations mesurent le RTP de chaque pari et l'uniformité des numéros (khi-deux), les deux premiers critères d'acceptation des cahiers des charges. Le moteur de règles de la roulette (`src/roulette/rules.ts`) est couvert à 100 % : chaque position du tapis est testée contre chaque case, en européenne et en américaine.
 
 ## Choix techniques
 
@@ -42,18 +53,22 @@ Les simulations mesurent le RTP et l'uniformité des numéros (khi-deux), les de
 | Montants | Entiers en centimes de gourde (`amountCents`, 100 = 1 HTG) |
 | Solde | Écrit uniquement par `WalletService` ; chaque mouvement ajoute une ligne au journal `ledger_entries`, qui est append-only |
 | Mise | Débit, tirage, gain et journal dans une seule transaction, sous verrou du portefeuille |
-| Coupure réseau | Chaque mise et chaque paiement porte une `idempotencyKey` : un renvoi rend le même résultat, jamais un double débit |
-| Tirage | HMAC-SHA256 (graine serveur, graine client, nonce), entiers tirés sans biais de modulo : Fisher-Yates pour le Keno, un numéro de 0 à 36 pour la roulette. Une paire de graines par joueur et par jeu ; le hash de la graine serveur est publié avant la mise |
-| Paramètres | Versionnés (`game_settings`, `roulette_settings`) ; Keno : refus si le RTP d'une ligne sort de 90–95 % ; roulette : jetons, limites par type de mise, plafonds, La Partage |
+| Coupure réseau | Chaque mise, ticket et paiement porte une `idempotencyKey` : un renvoi rend le même résultat, jamais un double débit |
+| Tirage instantané | HMAC-SHA256 (graine serveur, graine client, nonce), entiers tirés sans biais de modulo. Une paire de graines par joueur et par jeu ; le hash de la graine serveur est publié avant la mise |
+| Tirage programmé | Graine tirée à la création du tirage, hash publié avant l'ouverture des mises, graine révélée après le tirage. Résultat = HMAC-SHA256(graine, « jeu:numéro du tirage »). Graine, horaire et résultat sont figés par un déclencheur SQL |
+| Planificateur | Dans l'API, chaque seconde : crée les prochains créneaux, tire à l'heure, règle les tickets par lots. Plusieurs instances possibles (`FOR UPDATE SKIP LOCKED`). Un tirage en retard de plus de 60 s est annulé et remboursé |
+| Gros gains | Au-dessus de `reviewThresholdCents`, un gain de ticket attend la validation de la finance avant d'être crédité |
+| Paramètres | Versionnés par jeu ; un ticket est réglé avec la version en vigueur à son achat. RTP de chaque pari exigé entre 90 et 95 % (Keno, Lucky Six, Lucky 10) |
 | Jeu responsable | Compte bloqué, auto-exclusion et limite de perte du jour vérifiés avant chaque mise, tous jeux confondus |
 | Back-office | Comptes séparés, mot de passe + TOTP, rôles `super_admin`, `finance`, `support`, `auditor`, journal d'audit |
+| Direct | Server-Sent Events sur `/draws/stream` (résultats, annulations) pour l'écran TV et le lobby |
 | Dates | Journées comptées en heure d'Haïti (`America/Port-au-Prince`) |
 
 Les erreurs ont la forme `{ "code": "INSUFFICIENT_FUNDS", ... }` : les clients traduisent le code en kreyòl, français ou anglais.
 
 ## Routes
 
-Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️ = jeton back-office.
+Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️ = jeton back-office. `{roulette}` = `roulette` (européenne) ou `american-roulette`.
 
 | Méthode | Route | Rôle |
 | --- | --- | --- |
@@ -65,27 +80,36 @@ Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️
 | POST | `/me/self-exclusion` 🔒 | Auto-exclusion de 7 à 365 jours |
 | GET | `/wallet`, `/wallet/transactions` 🔒 | Solde et historique filtrable par date |
 | POST | `/payments/deposits`, `/payments/deposits/:id/check`, `/payments/withdrawals` 🔒 | Dépôts et retraits |
+| GET | `/lobby` | Les 5 jeux, prochain tirage et compte à rebours de Lucky Six et Lucky 10 (public) |
 | GET | `/keno/config` | Table de gains, mises, RTP (public) |
 | POST | `/keno/bets`, `/keno/autoplay` 🔒 | Mise unique, série de 5 à 100 mises |
 | GET | `/keno/bets`, `/keno/stats` 🔒 | 50 derniers tirages, numéros chauds et froids |
 | GET, POST | `/keno/seeds`, `/keno/seeds/rotate`, `/keno/seeds/revealed` 🔒 | Graines du tirage vérifiable |
 | POST | `/keno/verify` | Recalcule un tirage à partir des graines (public) |
-| GET | `/roulette/config` | Jetons, limites, table de paiement, RTP, roue, annonces de la piste (public) |
-| POST | `/roulette/spins`, `/roulette/autoplay` 🔒 | Un tour avec toutes ses mises, série de 5 à 100 tours |
-| GET | `/roulette/spins`, `/roulette/stats` 🔒 | 50 derniers tours, rouge/noir, douzaines, chauds et froids |
-| GET, POST | `/roulette/seeds`, `/roulette/seeds/rotate`, `/roulette/seeds/revealed` 🔒 | Graines de la roulette |
-| POST | `/roulette/verify` | Recalcule le numéro d'un tour (public) |
+| GET | `/{roulette}/config` | Jetons, limites, table de paiement, RTP, roue, annonces de la piste (public) |
+| POST | `/{roulette}/spins`, `/{roulette}/autoplay` 🔒 | Un tour avec toutes ses mises, série de 5 à 100 tours |
+| GET | `/{roulette}/spins`, `/{roulette}/stats` 🔒 | 50 derniers tours, rouge/noir, zéros, douzaines, chauds et froids |
+| GET, POST | `/{roulette}/seeds`, `…/seeds/rotate`, `…/seeds/revealed` 🔒 | Graines de la roulette |
+| POST | `/{roulette}/verify` | Recalcule le numéro d'un tour (public) |
+| GET | `/draws/{lucky_six,lucky_ten}/config` | Mises, coefficients, paris annexes et RTP de chacun (public) |
+| GET | `/draws/:game/upcoming`, `/draws/:game/results?date=&drawId=`, `/draws/:game/:id` | Prochains tirages (hash publié), résultats par jour ou par numéro (public) |
+| POST | `/draws/verify` | Recalcule les boules d'un tirage à partir de sa graine révélée (public) |
+| GET | `/draws/stream` | Direct des résultats (Server-Sent Events, public) |
+| POST | `/tickets` 🔒 | Achat d'un ticket sur 1 à N tirages consécutifs |
+| GET | `/tickets`, `/tickets/:code` 🔒 | Historique par jeu (en attente, gagnant, perdant, remboursé), détail par code |
 | POST | `/admin/auth/login` | Connexion back-office (mot de passe + TOTP) |
-| GET | `/admin/dashboard` 🛡️ | Mises, gains, GGR (total, Keno, roulette), joueurs actifs par jour |
-| GET, PUT | `/admin/keno/settings`, `/admin/roulette/settings` 🛡️ | Paramètres des jeux (modification : `super_admin`) |
-| GET | `/admin/roulette/alerts` 🛡️ | Tours dont les mises couvraient tout le tapis (anti-blanchiment) |
+| GET | `/admin/dashboard` 🛡️ | Mises, gains, GGR et joueurs actifs par jour, au total et par jeu |
+| GET, PUT | `/admin/keno/settings`, `/admin/roulette/{european,american}/settings`, `/admin/draws/:game/settings` 🛡️ | Paramètres des jeux (modification : `super_admin`) |
+| GET | `/admin/roulette/alerts` 🛡️ | Tours dont les mises couvraient toute la roue (anti-blanchiment) |
+| GET, POST | `/admin/draws/reviews`, `…/:entryId/approve`, `…/:entryId/reject` 🛡️ | Gros gains de tickets à valider |
+| POST | `/admin/draws/:drawId/cancel` 🛡️ | Annulation d'un tirage à venir, mises rendues (`super_admin`) |
 | GET, PATCH | `/admin/players` 🛡️ | Recherche, blocage, KYC, limites |
 | GET, POST | `/admin/withdrawals`, `…/:id/approve`, `…/:id/reject` 🛡️ | Validation des retraits au-dessus du seuil |
-| GET | `/admin/exports/{bets,spins,ledger,payments}` 🛡️ | Exports CSV |
+| GET | `/admin/exports/{bets,spins,tickets,draws,ledger,payments}` 🛡️ | Exports CSV |
 
 ## Mise de roulette
 
-Un tour envoie toutes ses mises d'un coup ; le serveur additionne les jetons posés sur une même position puis vérifie les limites.
+Un tour envoie toutes ses mises d'un coup ; le serveur additionne les jetons posés sur une même position puis vérifie les limites. En américaine, le 00 s'écrit **37**.
 
 ```json
 {
@@ -101,11 +125,25 @@ Un tour envoie toutes ses mises d'un coup ; le serveur additionne les jetons pos
 }
 ```
 
-Types : `straight`, `split`, `street`, `corner`, `line` (avec `numbers`), `dozen`, `column` (avec `index` 1 à 3), `red`, `black`, `even`, `odd`, `low`, `high`, et les annonces de la piste `voisins_du_zero`, `tiers`, `orphelins`, `neighbors` (montant = valeur d'un jeton). « Rejouer », « Doubler » et « Annuler dernier jeton » se font côté client.
+Types : `straight`, `split`, `street`, `corner`, `top_line` (américaine : 0, 00, 1, 2, 3), `line` (avec `numbers`), `dozen`, `column` (avec `index` 1 à 3), `red`, `black`, `even`, `odd`, `low`, `high`, et en européenne les annonces de la piste `voisins_du_zero`, `tiers`, `orphelins`, `neighbors` (montant = valeur d'un jeton). « Rejouer », « Doubler » et « Annuler dernier jeton » se font côté client.
+
+## Ticket Lucky Six / Lucky 10
+
+```json
+{ "game": "lucky_six", "bet": { "type": "six", "numbers": [3, 8, 15, 22, 40, 47] }, "stakeCents": 1000, "draws": 3, "idempotencyKey": "ticket-5d1e8a" }
+```
+
+| Jeu | Pari principal | Paris annexes |
+| --- | --- | --- |
+| Lucky Six | `six` : 6 numéros sur 48, payé selon la position (6 à 35) de la boule qui les complète | `first_even`, `first_odd`, `first_low`, `first_high`, `first_color` (+ `color`), `sum5_under`, `sum5_over`, `more_even5`, `more_odd5` |
+| Lucky 10 | `numbers` : 1 à 10 numéros sur 80, table de gains, bonus si le dernier numéro tiré est trouvé | `more_even`, `more_odd`, `more_low`, `more_high` (10/10 perd), `sum_under`, `sum_over` (seuil 810,5), `first_even`, `first_odd`, `first_color` |
+
+Couleurs : `red`, `green`, `blue`, `purple`, `brown`, `yellow`, `orange`, `black` ; le numéro n a la couleur (n − 1) mod 8.
 
 ## Reste à faire
 
 - Connecteurs MonCash et NatCash (interface prête dans `src/payments/providers/provider.ts`) et fournisseur SMS réel.
+- Points de vente : comptes agents, vente de tickets, commissions (F-05, F-15) ; le code de ticket est prêt pour le QR.
 - Envoi des pièces KYC (aujourd'hui le statut est changé par le support).
-- Dépôts et retraits en point de vente (F-07), notifications push (F-24), bonus (F-23).
-- WebSocket pour pousser le solde en temps réel ; Redis si plusieurs instances.
+- Notifications SMS et push (dépôt, retrait, ticket gagnant).
+- Relais Redis pour le direct et WebSocket du solde si plusieurs instances.

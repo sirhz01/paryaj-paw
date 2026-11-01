@@ -349,7 +349,7 @@ describe('Boutique (e2e)', () => {
       await api().put('/api/v1/admin/shop/settings').set(auth(cashier)).send({}).expect(403);
       await api().get('/api/v1/admin/dashboard?from=2026-11-01&to=2026-11-03').set(auth(cashier)).expect(403);
       await api().get('/api/v1/admin/keno/settings').set(auth(cashier)).expect(403);
-      await api().get('/api/v1/admin/exports/tickets?from=2026-11-01&to=2026-11-03').set(auth(cashier)).expect(403);
+      await api().get('/api/v1/admin/exports/shop_tickets?from=2026-11-01&to=2026-11-03').set(auth(cashier)).expect(403);
     });
 
     it('tableau de bord boutique par jour et par jeu', async () => {
@@ -398,7 +398,7 @@ describe('Boutique (e2e)', () => {
     });
 
     it('exports CSV des tickets et des tours, sans graine', async () => {
-      const tickets = await api().get(`/api/v1/admin/exports/tickets?from=${DAY}&to=${DAY}`).set(auth(admin)).expect(200);
+      const tickets = await api().get(`/api/v1/admin/exports/shop_tickets?from=${DAY}&to=${DAY}`).set(auth(admin)).expect(200);
       expect(tickets.text.split('\n')[0]).toContain('win_cents');
       expect(tickets.text).toContain('CAISSE #1');
       const roundsCsv = await api().get(`/api/v1/admin/exports/shop_rounds?from=${DAY}&to=${DAY}`).set(auth(admin)).expect(200);

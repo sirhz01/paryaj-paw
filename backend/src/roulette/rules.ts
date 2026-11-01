@@ -1,32 +1,54 @@
 import { uint32Stream, uniformInt } from '../fairness/provably-fair';
 
-/** Roulette européenne : 37 cases, de 0 à 36. */
+/** Européenne : 37 cases (0 à 36). Américaine : 38 cases, la case 37 représente le 00. */
+export type Variant = 'european' | 'american';
+export const VARIANTS: Variant[] = ['european', 'american'];
+export const DOUBLE_ZERO = 37;
+
+/** Nombre de cases de la roue européenne (conservé pour les appels sans variante). */
 export const POCKETS = 37;
 
+export function pocketCount(variant: Variant): number {
+  return variant === 'american' ? 38 : 37;
+}
+
 /** Ordre des cases sur la roue, dans le sens horaire à partir du zéro. */
-export const WHEEL_ORDER = [
-  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29,
-  7, 28, 12, 35, 3, 26,
-];
+export const WHEEL_ORDERS: Record<Variant, number[]> = {
+  european: [
+    0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29,
+    7, 28, 12, 35, 3, 26,
+  ],
+  american: [
+    0, 28, 9, 26, 30, 11, 7, 20, 32, 17, 5, 22, 34, 15, 3, 24, 36, 13, 1, DOUBLE_ZERO, 27, 10, 25, 29, 12, 8, 19, 31, 18,
+    6, 21, 33, 16, 4, 23, 35, 14, 2,
+  ],
+};
+export const WHEEL_ORDER = WHEEL_ORDERS.european;
 
 export const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
 
-export type InsideBetType = 'straight' | 'split' | 'street' | 'corner' | 'line';
+export type InsideBetType = 'straight' | 'split' | 'street' | 'corner' | 'top_line' | 'line';
 export type OutsideBetType = 'dozen' | 'column' | 'red' | 'black' | 'even' | 'odd' | 'low' | 'high';
 export type BetType = InsideBetType | OutsideBetType;
 export type RacetrackBetType = 'voisins_du_zero' | 'tiers' | 'orphelins' | 'neighbors';
 
-export const INSIDE_BET_TYPES: InsideBetType[] = ['straight', 'split', 'street', 'corner', 'line'];
+export const INSIDE_BET_TYPES: InsideBetType[] = ['straight', 'split', 'street', 'corner', 'top_line', 'line'];
 export const OUTSIDE_BET_TYPES: OutsideBetType[] = ['dozen', 'column', 'red', 'black', 'even', 'odd', 'low', 'high'];
 export const BET_TYPES: BetType[] = [...INSIDE_BET_TYPES, ...OUTSIDE_BET_TYPES];
 export const RACETRACK_BET_TYPES: RacetrackBetType[] = ['voisins_du_zero', 'tiers', 'orphelins', 'neighbors'];
 
-/** Gain net pour 1 misé (table européenne standard). */
+/** Types de mise qui existent sur le tapis de chaque variante (la top line n'existe qu'en américaine). */
+export function betTypesOf(variant: Variant): BetType[] {
+  return variant === 'american' ? BET_TYPES : BET_TYPES.filter((t) => t !== 'top_line');
+}
+
+/** Gain net pour 1 misé (tables européenne et américaine standard). */
 export const PAYOUTS: Record<BetType, number> = {
   straight: 35,
   split: 17,
   street: 11,
   corner: 8,
+  top_line: 6,
   line: 5,
   dozen: 2,
   column: 2,
@@ -44,7 +66,7 @@ export const EVEN_MONEY_BET_TYPES: BetType[] = ['red', 'black', 'even', 'odd', '
 /** Mise telle qu'envoyée par le client : une position du tapis ou une annonce de la piste. */
 export interface BetRequest {
   type: BetType | RacetrackBetType;
-  /** Numéros de la position (mises intérieures) ou numéro central (`neighbors`). */
+  /** Numéros de la position (mises intérieures, 37 = 00) ou numéro central (`neighbors`). */
   numbers?: number[];
   /** 1, 2 ou 3 pour une douzaine ou une colonne. */
   index?: number;
@@ -62,44 +84,51 @@ export interface Bet {
 export class InvalidBetError extends Error {}
 
 const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
-const isPocket = (n: number) => Number.isInteger(n) && n >= 0 && n < POCKETS;
 const RED = new Set(RED_NUMBERS);
 const EVEN_MONEY = new Set<BetType>(EVEN_MONEY_BET_TYPES);
 
-/** Deux cases voisines sur le tapis : côte à côte dans une rangée, l'une sous l'autre, ou le zéro avec 1, 2 ou 3. */
-function isSplit(low: number, high: number): boolean {
-  if (low === 0) return high >= 1 && high <= 3;
-  return isPocket(high) && (high === low + 3 || (high === low + 1 && low % 3 !== 0));
-}
-
-const SPLITS: number[][] = range(0, 35).flatMap((a) => range(a + 1, 36).filter((b) => isSplit(a, b)).map((b) => [a, b]));
-const STREETS: number[][] = [...range(0, 11).map((k) => range(3 * k + 1, 3 * k + 3)), [0, 1, 2], [0, 2, 3]];
-const CORNERS: number[][] = [
-  [0, 1, 2, 3],
-  ...range(1, 32)
-    .filter((n) => n % 3 !== 0)
-    .map((n) => [n, n + 1, n + 3, n + 4]),
-];
+/** Chevaux entre deux numéros de 1 à 36 : côte à côte dans une rangée ou l'un sous l'autre. */
+const TABLE_SPLITS: number[][] = range(1, 35).flatMap((a) =>
+  [a + 1, a + 3].filter((b) => b <= 36 && (b === a + 3 || a % 3 !== 0)).map((b) => [a, b]),
+);
+const TABLE_STREETS: number[][] = range(0, 11).map((k) => range(3 * k + 1, 3 * k + 3));
+const TABLE_CORNERS: number[][] = range(1, 32)
+  .filter((n) => n % 3 !== 0)
+  .map((n) => [n, n + 1, n + 3, n + 4]);
 const LINES: number[][] = range(0, 10).map((k) => range(3 * k + 1, 3 * k + 6));
 
+const POSITIONS: Record<Variant, Record<InsideBetType, number[][]>> = {
+  european: {
+    straight: range(0, 36).map((n) => [n]),
+    split: [[0, 1], [0, 2], [0, 3], ...TABLE_SPLITS],
+    street: [...TABLE_STREETS, [0, 1, 2], [0, 2, 3]],
+    corner: [[0, 1, 2, 3], ...TABLE_CORNERS],
+    top_line: [],
+    line: LINES,
+  },
+  american: {
+    straight: range(0, 37).map((n) => [n]),
+    // 0 touche 1 et 2, 00 touche 2 et 3, et 0-00 se jouent à cheval.
+    split: [[0, 1], [0, 2], [0, DOUBLE_ZERO], [2, DOUBLE_ZERO], [3, DOUBLE_ZERO], ...TABLE_SPLITS],
+    street: [...TABLE_STREETS, [0, 1, 2], [2, 3, DOUBLE_ZERO]],
+    corner: TABLE_CORNERS,
+    top_line: [[0, 1, 2, 3, DOUBLE_ZERO]],
+    line: LINES,
+  },
+};
+
 /** Toutes les positions possibles d'une mise intérieure. */
-export function insidePositions(type: InsideBetType): number[][] {
-  switch (type) {
-    case 'straight':
-      return range(0, 36).map((n) => [n]);
-    case 'split':
-      return SPLITS;
-    case 'street':
-      return STREETS;
-    case 'corner':
-      return CORNERS;
-    case 'line':
-      return LINES;
-  }
+export function insidePositions(type: InsideBetType, variant: Variant = 'european'): number[][] {
+  return POSITIONS[variant][type];
 }
 
-/** Numéros couverts par une mise du tapis ; null si la combinaison n'existe pas. */
-export function coverage(type: BetType, numbers: readonly number[] = [], index?: number): number[] | null {
+/** Numéros couverts par une mise du tapis ; null si la combinaison n'existe pas sur cette variante. */
+export function coverage(
+  type: BetType,
+  numbers: readonly number[] = [],
+  index?: number,
+  variant: Variant = 'european',
+): number[] | null {
   const isInside = (INSIDE_BET_TYPES as string[]).includes(type);
   const usesIndex = type === 'dozen' || type === 'column';
   if ((!isInside && numbers.length > 0) || (!usesIndex && index !== undefined)) return null;
@@ -107,7 +136,7 @@ export function coverage(type: BetType, numbers: readonly number[] = [], index?:
   if (isInside) {
     const sorted = [...numbers].sort((a, b) => a - b);
     const same = (position: number[]) => position.length === sorted.length && position.every((n, i) => n === sorted[i]);
-    return insidePositions(type as InsideBetType).some(same) ? sorted : null;
+    return insidePositions(type as InsideBetType, variant).some(same) ? sorted : null;
   }
   if (usesIndex && (index === undefined || ![1, 2, 3].includes(index))) return null;
 
@@ -132,7 +161,7 @@ export function coverage(type: BetType, numbers: readonly number[] = [], index?:
   }
 }
 
-/** Annonces de la piste : [type, numéros, nombre de jetons]. */
+/** Annonces de la piste européenne : [type, numéros, nombre de jetons]. */
 type Announce = [BetType, number[], number][];
 
 const VOISINS_DU_ZERO: Announce = [
@@ -160,10 +189,12 @@ const ORPHELINS: Announce = [
   ['split', [31, 34], 1],
 ];
 
-/** Déplie une annonce de la piste en mises du tapis ; `chipCents` est la valeur d'un jeton. */
+/** Déplie une annonce de la piste européenne en mises du tapis ; `chipCents` est la valeur d'un jeton. */
 export function expandRacetrack(type: RacetrackBetType, chipCents: number, center?: number): Bet[] {
   if (type === 'neighbors') {
-    if (center === undefined || !isPocket(center)) throw new InvalidBetError('neighbors');
+    if (center === undefined || !Number.isInteger(center) || center < 0 || center >= POCKETS) {
+      throw new InvalidBetError('neighbors');
+    }
     const at = WHEEL_ORDER.indexOf(center);
     return [-2, -1, 0, 1, 2].map((offset) => ({
       type: 'straight' as const,
@@ -180,7 +211,7 @@ function isRacetrack(type: string): type is RacetrackBetType {
 }
 
 /** Mises du tapis prêtes à jouer : annonces dépliées, positions identiques additionnées. */
-export function normalizeBets(requests: readonly BetRequest[]): Bet[] {
+export function normalizeBets(requests: readonly BetRequest[], variant: Variant = 'european'): Bet[] {
   const merged = new Map<string, Bet>();
   const add = (bet: Bet) => {
     const key = `${bet.type}:${bet.numbers.join('-')}`;
@@ -194,14 +225,17 @@ export function normalizeBets(requests: readonly BetRequest[]): Bet[] {
       throw new InvalidBetError(request.type);
     }
     if (isRacetrack(request.type)) {
+      // La piste suit l'ordre de la roue européenne : pas d'annonces en américaine.
       const numbers = request.numbers ?? [];
       const expected = request.type === 'neighbors' ? 1 : 0;
-      if (numbers.length !== expected || request.index !== undefined) throw new InvalidBetError(request.type);
+      if (variant !== 'european' || numbers.length !== expected || request.index !== undefined) {
+        throw new InvalidBetError(request.type);
+      }
       expandRacetrack(request.type, request.amountCents, numbers[0]).forEach(add);
       continue;
     }
     if (!(BET_TYPES as string[]).includes(request.type)) throw new InvalidBetError(request.type);
-    const numbers = coverage(request.type, request.numbers, request.index);
+    const numbers = coverage(request.type, request.numbers, request.index, variant);
     if (!numbers) throw new InvalidBetError(request.type);
     add({ type: request.type, numbers, amountCents: request.amountCents });
   }
@@ -215,19 +249,24 @@ export function betReturn(bet: Bet, number: number, laPartage: boolean): number 
   return 0;
 }
 
-/** Vrai si les mises couvrent les 37 cases (signal anti-blanchiment). */
-export function coversAllPockets(bets: readonly Bet[]): boolean {
-  return new Set(bets.flatMap((b) => b.numbers)).size === POCKETS;
+/** Vrai si les mises couvrent toutes les cases de la roue (signal anti-blanchiment). */
+export function coversAllPockets(bets: readonly Bet[], variant: Variant = 'european'): boolean {
+  return new Set(bets.flatMap((b) => b.numbers)).size === pocketCount(variant);
 }
 
 export function colorOf(number: number): 'green' | 'red' | 'black' {
-  if (number === 0) return 'green';
+  if (number === 0 || number === DOUBLE_ZERO) return 'green';
   return RED.has(number) ? 'red' : 'black';
 }
 
-/** Numéro tiré, uniforme sur 0–36, à partir des mêmes graines que le Keno (HMAC-SHA256). */
-export function spinNumber(serverSeed: string, clientSeed: string, nonce: number): number {
-  return uniformInt(uint32Stream(serverSeed, clientSeed, nonce), POCKETS);
+/** Libellé affiché : « 00 » pour la case 37 de la roulette américaine. */
+export function pocketLabel(number: number): string {
+  return number === DOUBLE_ZERO ? '00' : String(number);
+}
+
+/** Numéro tiré, uniforme sur toutes les cases de la variante, à partir des graines du joueur (HMAC-SHA256). */
+export function spinNumber(serverSeed: string, clientSeed: string, nonce: number, variant: Variant = 'european'): number {
+  return uniformInt(uint32Stream(serverSeed, clientSeed, nonce), pocketCount(variant));
 }
 
 const COVERAGE_SIZE: Record<BetType, number> = {
@@ -235,6 +274,7 @@ const COVERAGE_SIZE: Record<BetType, number> = {
   split: 2,
   street: 3,
   corner: 4,
+  top_line: 5,
   line: 6,
   dozen: 12,
   column: 12,
@@ -246,9 +286,13 @@ const COVERAGE_SIZE: Record<BetType, number> = {
   high: 18,
 };
 
-/** RTP théorique en % d'une mise de ce type : 97,30 %, 98,65 % pour une mise simple avec La Partage. */
-export function rtpPercent(type: BetType, laPartage: boolean): number {
-  const win = (COVERAGE_SIZE[type] / POCKETS) * (PAYOUTS[type] + 1);
-  const partage = laPartage && EVEN_MONEY.has(type) ? 0.5 / POCKETS : 0;
+/**
+ * RTP théorique en % d'une mise : 97,30 % en européenne (98,65 % pour une chance simple avec La Partage),
+ * 94,74 % en américaine, 92,11 % pour la top line.
+ */
+export function rtpPercent(type: BetType, laPartage: boolean, variant: Variant = 'european'): number {
+  const pockets = pocketCount(variant);
+  const win = (COVERAGE_SIZE[type] / pockets) * (PAYOUTS[type] + 1);
+  const partage = laPartage && EVEN_MONEY.has(type) ? 0.5 / pockets : 0;
   return 100 * (win + partage);
 }
