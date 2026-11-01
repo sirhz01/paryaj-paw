@@ -1,22 +1,22 @@
-/* Bannière cookies + analytics soumis au consentement (pages publiques).
-   Aucun traceur n'est chargé avant « Accepter ». Les écrans TV et la caisse n'utilisent que le stockage nécessaire à leur fonctionnement.
-   Analytics : renseigner src (et domain) ci-dessous, par exemple Plausible :
-   { src: 'https://plausible.io/js/script.js', domain: 'votre-domaine.ht' } ; vide = désactivé. */
+/* Bannière cookies + mesure d'audience anonyme (pages publiques).
+   Rien n'est envoyé avant « Accepter ». La mesure est interne : un compteur par page et par jour sur notre API (POST /site/pageview),
+   sans cookie, sans adresse IP, sans identifiant, sans service tiers. Les écrans TV et la caisse n'utilisent que le stockage nécessaire. */
 (function () {
-  const ANALYTICS = { src: '', domain: '' };
   const KEY = 'pp.consent';
 
   const read = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
   const write = (v) => { try { localStorage.setItem(KEY, v); } catch (e) { /* stockage bloqué */ } };
+  const seen = () => { try { return sessionStorage.getItem('pp.counted'); } catch (e) { return null; } };
 
-  function loadAnalytics() {
-    if (!ANALYTICS.src || document.querySelector('script[data-pp-analytics]')) return;
-    const s = document.createElement('script');
-    s.defer = true;
-    s.src = ANALYTICS.src;
-    if (ANALYTICS.domain) s.setAttribute('data-domain', ANALYTICS.domain);
-    s.setAttribute('data-pp-analytics', '');
-    document.head.appendChild(s);
+  function countView() {
+    if (seen() === location.pathname) return; // une seule mesure par page et par visite
+    let base = '/api/v1';
+    try { base = localStorage.getItem('pp.api') || base; } catch (e) { /* stockage bloqué */ }
+    if (base === 'off') base = '/api/v1';
+    const path = location.pathname.endsWith('/index.html') ? '/' : location.pathname;
+    fetch(base.replace(/\/$/, '') + '/site/pageview', {
+      method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }),
+    }).then(() => { try { sessionStorage.setItem('pp.counted', location.pathname); } catch (e) { /* stockage bloqué */ } }).catch(() => {});
   }
 
   function banner() {
@@ -29,10 +29,10 @@
     el.id = 'pp-consent';
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', 'Cookies');
-    el.innerHTML = '<p>Nous utilisons uniquement le stockage nécessaire au site. Avec votre accord, nous mesurons aussi l’audience de façon anonyme. '
+    el.innerHTML = '<p>Nous utilisons uniquement le stockage nécessaire au site. Avec votre accord, nous comptons aussi les visites de façon anonyme (sans cookie ni adresse IP). '
       + '<a href="rgpd.html">En savoir plus</a></p>'
       + '<span><button type="button" class="yes">Accepter</button> <button type="button" class="no">Refuser</button></span>';
-    const choose = (v) => { write(v); el.remove(); css.remove(); if (v === 'yes') loadAnalytics(); };
+    const choose = (v) => { write(v); el.remove(); css.remove(); if (v === 'yes') countView(); };
     el.querySelector('.yes').addEventListener('click', () => choose('yes'));
     el.querySelector('.no').addEventListener('click', () => choose('no'));
     document.head.appendChild(css);
@@ -42,6 +42,6 @@
 
   window.PPConsent = { reset() { try { localStorage.removeItem(KEY); } catch (e) { /* stockage bloqué */ } banner(); } };
   const saved = read();
-  if (saved === 'yes') loadAnalytics();
+  if (saved === 'yes') countView();
   else if (saved !== 'no') banner();
 })();

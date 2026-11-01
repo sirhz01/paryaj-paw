@@ -4,10 +4,10 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import { NextFunction, Request, Response } from 'express';
 
-const PAGES = ['index', 'caisse', 'roulette', 'keno', 'luckysix', 'luckyx', 'rgpd', 'cgu'];
+const PAGES = ['index', 'caisse', 'roulette', 'keno', 'luckysix', 'luckyx', 'rgpd', 'cgu', 'contact'];
 const ASSET_DIRS = ['css', 'js', 'assets'];
 /** Pages publiques référencées dans le sitemap ; la caisse et les écrans TV restent hors des moteurs de recherche. */
-const INDEXED = ['index', 'cgu', 'rgpd'];
+const INDEXED = ['index', 'cgu', 'rgpd', 'contact'];
 const ORIGIN_TOKEN = /%ORIGIN%/g;
 const ONE_DAY = 24 * 3600 * 1000;
 

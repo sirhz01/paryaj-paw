@@ -13,6 +13,7 @@ describe('référencement', () => {
     expect(xml).toContain('<loc>https://paryaj.ht/</loc>');
     expect(xml).toContain('<loc>https://paryaj.ht/cgu.html</loc>');
     expect(xml).toContain('<loc>https://paryaj.ht/rgpd.html</loc>');
+    expect(xml).toContain('<loc>https://paryaj.ht/contact.html</loc>');
     expect(xml).not.toContain('caisse');
   });
 });
