@@ -68,8 +68,9 @@ describe('Caissiers (e2e)', () => {
     const secret = created.body.totpSecret as string;
     expect(id).toBeGreaterThan(0);
 
-    // Bloqué à la création : impossible de se connecter.
-    await tryLogin('caissier1@paryajpaw.test', secret).expect(401);
+    // Bloqué à la création : identifiants corrects mais accès non autorisé (403, message clair).
+    const blocked = await tryLogin('caissier1@paryajpaw.test', secret).expect(403);
+    expect(blocked.body.code).toBe('ACCOUNT_NOT_AUTHORIZED');
 
     const list = await api().get('/api/v1/admin/cashiers').set(auth(admin)).expect(200);
     expect(list.body.find((c: { id: number }) => c.id === id)).toMatchObject({
@@ -84,9 +85,9 @@ describe('Caissiers (e2e)', () => {
     const ok = await tryLogin('caissier1@paryajpaw.test', secret).expect(200);
     expect(ok.body.accessToken).toBeTruthy();
 
-    // Re-bloqué : il ne peut plus se connecter.
+    // Re-bloqué : il ne peut plus se connecter (accès non autorisé).
     await api().patch(`/api/v1/admin/cashiers/${id}/access`).set(auth(admin)).send({ active: false }).expect(200);
-    await tryLogin('caissier1@paryajpaw.test', secret).expect(401);
+    await tryLogin('caissier1@paryajpaw.test', secret).expect(403);
   });
 
   it('refuse un mot de passe faible et un e-mail déjà pris', async () => {

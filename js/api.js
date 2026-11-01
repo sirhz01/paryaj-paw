@@ -127,6 +127,7 @@
     UNKNOWN_TERMINAL: 'Caisse inconnue.',
     TERMINAL_NOT_ALLOWED: 'Ce compte est lié à une autre caisse.',
     ACCOUNT_LOCKED: 'Trop d’échecs : compte bloqué quelques minutes.',
+    ACCOUNT_NOT_AUTHORIZED: 'Accès non autorisé : demandez au responsable de vous autoriser.',
     ROUND_CLOSED: 'Mises fermées pour ce tour.',
     TICKET_NOT_FOUND: 'Ticket introuvable.',
     ROUND_PENDING: 'Tour pas encore terminé.',

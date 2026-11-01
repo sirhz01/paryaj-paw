@@ -48,10 +48,13 @@ export class AdminAuthService {
     if (staff?.locked) throw new AppError('ACCOUNT_LOCKED', HttpStatus.TOO_MANY_REQUESTS, { minutes: LOCK_MINUTES });
     this.dummyHash ??= argon2.hash('dummy-password', { type: argon2.argon2id });
     const valid = await argon2.verify(staff?.password_hash ?? (await this.dummyHash), password);
-    if (!staff || !valid || !staff.active) {
+    if (!staff || !valid) {
       if (staff) await this.recordFailure(staff.id, 'password');
       throw new AppError('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
     }
+    // Identifiants corrects mais compte non autorisé : message clair (sans compter d'échec), pour que
+    // le caissier sache qu'il attend l'autorisation du responsable, et non qu'il s'est trompé.
+    if (!staff.active) throw new AppError('ACCOUNT_NOT_AUTHORIZED', HttpStatus.FORBIDDEN);
 
     if (this.config.staffTotpRequired) {
       const counter = code === undefined ? null : matchTotp(staff.totp_secret, code);
