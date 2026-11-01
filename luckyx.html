@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lucky X – Paryaj Paw</title>
+  <link rel="icon" href="assets/logo.jpg">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/games.css">
+</head>
+<body class="tv luckyx" data-phase="bet">
+  <header id="topbar"></header>
+  <main class="stage">
+    <section class="promo" id="promo">
+      <div class="slide on">
+        <div class="small" style="opacity:.7;font-size:1rem">Pick 1 to 10 numbers</div>
+        <div class="mid" style="font-weight:400;font-size:4rem;line-height:1">Lucky X</div>
+        <div class="big" style="color:#fff;font-size:2.6rem">Out of 50 numbers</div>
+        <div class="small" style="opacity:.7;font-size:1rem">Hit them in the 20 drawn balls</div>
+      </div>
+      <div class="slide">
+        <div class="small">Pick 2 to 10 numbers</div>
+        <div class="big" style="font-size:2.4rem">All of them in the 20 drawn balls</div>
+        <div class="legend" id="tiers" style="gap:1.6rem;margin-top:1rem"></div>
+        <div class="small" style="font-size:1rem;opacity:.7">Next round in <b id="left">0:00</b></div>
+      </div>
+    </section>
+
+    <section class="cy-board">
+      <div class="cy-side l" id="sl"></div>
+      <div class="cy-drum"><canvas id="drum"></canvas></div>
+      <div class="cy-done">ROUND <span id="doneRound"></span><br>COMPLETED</div>
+      <div class="cy-side r" id="sr"></div>
+      <div class="cy-strip" id="strip"></div>
+    </section>
+    <div class="fs-hint">F = plein écran</div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/roulette-core.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/drum.js"></script>
+  <script src="js/luckyx.js"></script>
+</body>
+</html>

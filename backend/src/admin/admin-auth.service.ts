@@ -9,6 +9,8 @@ import { DATABASE, Database } from '../database/db';
 import { matchTotp } from './totp';
 
 const STAFF_TOKEN_TTL_SECONDS = 3600;
+/** Un caissier garde sa session le temps d'un service. */
+const CASHIER_TOKEN_TTL_SECONDS = 12 * 3600;
 
 @Injectable()
 export class AdminAuthService {
@@ -51,10 +53,11 @@ export class AdminAuthService {
     if (!accepted) throw new AppError('INVALID_TOTP', HttpStatus.UNAUTHORIZED);
 
     await this.audit.log(staff.id, 'staff.login', { type: 'staff', id: staff.id });
+    const expiresIn = staff.role === 'cashier' ? CASHIER_TOKEN_TTL_SECONDS : STAFF_TOKEN_TTL_SECONDS;
     const accessToken = await this.jwt.signAsync(
       { sub: String(staff.id), typ: 'staff', role: staff.role },
-      { secret: this.config.staffJwtSecret, expiresIn: STAFF_TOKEN_TTL_SECONDS },
+      { secret: this.config.staffJwtSecret, expiresIn },
     );
-    return { accessToken, expiresIn: STAFF_TOKEN_TTL_SECONDS, role: staff.role };
+    return { accessToken, expiresIn, role: staff.role };
   }
 }

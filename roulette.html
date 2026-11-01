@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>American Roulette – Paryaj Paw</title>
+  <link rel="icon" href="assets/logo.jpg">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/roulette.css">
+</head>
+<body class="tv roulette">
+  <header id="topbar"></header>
+  <main class="stage" id="stage" data-phase="bet">
+    <section class="table-wrap" id="tableWrap">
+      <div id="table"></div>
+      <div class="info" id="info">
+        <div class="grp" id="infoGrp"></div>
+        <div class="name" id="infoName"></div><div class="code" id="infoCode"></div>
+        <div class="desc" id="infoDesc"></div><div class="wager" id="infoWager"></div>
+      </div>
+    </section>
+
+    <section class="result-panel" id="resultPanel">
+      <div class="done">ROUND COMPLETED</div>
+      <div class="lbl">WINNING<br>NUMBER</div>
+      <div class="num" id="resNum">–</div>
+    </section>
+
+    <div class="wheel-wrap" id="wheelWrap">
+      <svg id="wheel" viewBox="-100 -100 200 200" aria-label="Roue de roulette américaine"></svg>
+      <div class="hub" id="hub"></div>
+    </div>
+
+    <footer class="latest" id="latest"></footer>
+    <div class="fs-hint">F = plein écran</div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/roulette-core.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/roulette.js"></script>
+</body>
+</html>

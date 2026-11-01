@@ -29,6 +29,7 @@ import { DrawsModule } from './draws/draws.module';
 import { KenoModule } from './keno/keno.module';
 import { PaymentsModule } from './payments/payments.module';
 import { RouletteModule } from './roulette/roulette.module';
+import { ShopModule } from './shop/shop.module';
 import { WalletModule } from './wallet/wallet.module';
 
 @Global()
@@ -85,6 +86,7 @@ export class AppModule {
         KenoModule,
         RouletteModule,
         DrawsModule,
+        ShopModule,
         AgentsModule,
         AdminModule,
       ],

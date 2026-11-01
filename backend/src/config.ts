@@ -12,6 +12,8 @@ export interface AppConfig {
   refreshTokenTtlDays: number;
   corsOrigins: string[];
   trustProxy: boolean;
+  /** Dossier du front-end de la boutique à servir avec l'API ; vide = non servi. */
+  frontDir: string;
   withdrawalApprovalThresholdCents: number;
   fakePayments: boolean;
   /** Début de l'adresse encodée dans le QR des tickets (le code est ajouté) ; vide : le QR contient le code seul. */
@@ -55,6 +57,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     refreshTokenTtlDays: integer('REFRESH_TOKEN_TTL_DAYS', 30),
     corsOrigins: (env.CORS_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean),
     trustProxy: env.TRUST_PROXY === 'true',
+    frontDir: env.FRONT_DIR ?? '',
     withdrawalApprovalThresholdCents: integer('WITHDRAWAL_APPROVAL_THRESHOLD_CENTS', 1_000_000),
     fakePayments,
     ticketQrBaseUrl: env.TICKET_QR_BASE_URL ?? '',

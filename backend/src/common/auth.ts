@@ -13,8 +13,8 @@ import { Request } from 'express';
 import { AppConfig, CONFIG } from '../config';
 import { AppError } from './errors';
 
-export type StaffRole = 'super_admin' | 'finance' | 'support' | 'auditor';
-export const STAFF_ROLES: StaffRole[] = ['super_admin', 'finance', 'support', 'auditor'];
+export type StaffRole = 'super_admin' | 'finance' | 'support' | 'auditor' | 'cashier';
+export const STAFF_ROLES: StaffRole[] = ['super_admin', 'finance', 'support', 'auditor', 'cashier'];
 
 export interface PlayerPrincipal {
   id: number;
@@ -65,7 +65,7 @@ export class PlayerGuard implements CanActivate {
 
 const ROLES_KEY = 'staffRoles';
 
-/** Rôles autorisés sur une route du back-office ; sans décorateur, tout membre du staff passe. */
+/** Rôles autorisés sur une route du back-office ; sans décorateur, tout le staff passe sauf le caissier. */
 export const Roles = (...roles: StaffRole[]) => SetMetadata(ROLES_KEY, roles);
 
 @Injectable()
@@ -91,7 +91,7 @@ export class StaffGuard implements CanActivate {
       ctx.getHandler(),
       ctx.getClass(),
     ]);
-    if (allowed && !allowed.includes(payload.role)) throw new AppError('FORBIDDEN', HttpStatus.FORBIDDEN);
+    if (allowed ? !allowed.includes(payload.role) : payload.role === 'cashier') throw new AppError('FORBIDDEN', HttpStatus.FORBIDDEN);
 
     req.staff = { id: Number(payload.sub), role: payload.role };
     return true;

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lucky Six – Paryaj Paw</title>
+  <link rel="icon" href="assets/logo.jpg">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/games.css">
+</head>
+<body class="tv luckysix" data-phase="bet">
+  <header id="topbar"></header>
+  <main class="stage">
+    <section class="promo" id="promo">
+      <div class="slide on">
+        <div class="rule"></div>
+        <div class="small">Pick the colour of</div>
+        <div class="big">The first ball</div>
+        <div class="small" style="font-weight:400">Multiply your winnings</div>
+        <div class="rule"></div>
+      </div>
+      <div class="slide">
+        <div class="rule"></div>
+        <div class="small">Pick 6 numbers out of 48</div>
+        <div class="big">Up to 10 000 ×</div>
+        <div class="small" style="font-weight:400">Hit all 6 within the 35 balls</div>
+        <div class="rule"></div>
+      </div>
+      <div class="slide">
+        <div class="mid">Round <span id="nextRound"></span> starts in</div>
+        <div class="count" id="count">0:00</div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </section>
+
+    <section class="ls-board">
+      <div class="ls-top">
+        <div><div class="cap">PRE-NUMBERS</div><div class="row" id="pre"></div></div>
+        <div id="center">
+          <div class="drumbox" id="drumBox"><canvas id="drum"></canvas><div class="cur" id="cur"></div></div>
+          <div class="resbox hidden" id="resBox"></div>
+        </div>
+        <div class="sum" id="sum"></div>
+      </div>
+      <div class="ls-grid" id="grid"></div>
+      <div class="colbet"><div class="cap">COLOUR BETTING</div><div id="cbL"></div><div id="cbR"></div></div>
+    </section>
+    <div class="fs-hint">F = plein écran</div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/roulette-core.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/drum.js"></script>
+  <script src="js/luckysix.js"></script>
+</body>
+</html>

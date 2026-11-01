@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Caisse – Paryaj Paw</title>
+  <link rel="icon" href="assets/logo.jpg">
+  <link rel="stylesheet" href="css/caisse.css">
+</head>
+<body>
+  <header class="bar">
+    <a href="index.html"><img class="logo" src="assets/logo.jpg" alt="La Référence Paryaj Paw"></a>
+    <div class="shop"><b id="shopName"></b><span id="clock"></span></div>
+    <button class="ghost hidden" id="logoutBtn" title="Fermer la session">Déconnexion</button>
+    <label class="caisse">Caisse
+      <select id="caisseSel"><option>CAISSE #1</option><option>CAISSE #2</option><option>CAISSE #3</option></select>
+    </label>
+  </header>
+
+  <div class="banner hidden" id="demoBanner">MODE DÉMO : serveur injoignable. Tirages simulés, tickets gardés dans ce navigateur seulement, aucun paiement valable.</div>
+
+  <nav class="tabs" id="tabs">
+    <button data-g="roulette" class="on">Roulette</button>
+    <button data-g="keno">Keno</button>
+    <button data-g="luckysix">Lucky Six</button>
+    <button data-g="luckyx">Lucky X</button>
+  </nav>
+
+  <main class="grid">
+    <section class="card board">
+      <div class="roundinfo"><span id="roundTxt"></span><span id="roundLeft" class="pill"></span></div>
+      <div id="boardRoulette" class="hidden">
+        <div class="modes" id="modes">
+          <label><input type="radio" name="mode" value="n" checked> Pari simple</label>
+          <label><input type="radio" name="mode" value="st"> Street (3)</label>
+          <label><input type="radio" name="mode" value="six"> Six lignes (6)</label>
+        </div>
+        <div id="rtable"></div>
+        <p class="hint">Cliquer une case ajoute une mise ; recliquer l'augmente. Retirer avec ✕ dans le ticket.</p>
+      </div>
+      <div id="boardNumbers" class="hidden">
+        <div class="quick"><span id="needTxt"></span>
+          <label>Choix rapide <select id="quickN"></select></label>
+          <button class="ghost" id="quickBtn">🎲 Générer</button>
+          <button class="ghost" id="clearPicks">Effacer</button>
+        </div>
+        <div class="nums" id="nums"></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <h2>Ticket en cours</h2>
+        <div id="slip" class="slip"></div>
+        <div class="chips" id="chips"></div>
+        <label class="stake">Mise (HTG) <input id="stake" type="number" min="25" step="25" value="100"></label>
+        <div class="total"><span>Total</span><b id="total">0.00 HTG</b></div>
+        <div id="msg" class="msg"></div>
+        <div class="actions"><button class="primary" id="printBtn">🖨 Imprimer le ticket</button><button class="ghost" id="resetBtn">Vider</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Décaisser un ticket</h2>
+        <div class="payrow"><input id="payId" placeholder="ID de ticket" autocomplete="off" maxlength="12"><button id="checkBtn" class="primary">Vérifier</button></div>
+        <div id="payMsg" class="msg"></div>
+        <button id="payBtn" class="primary hidden">Payer et imprimer le décaissement</button>
+      </section>
+    </aside>
+
+    <section class="card preview">
+      <h2>Dernier ticket</h2>
+      <div class="paper" id="paper"><p class="hint">Le ticket imprimé apparaît ici.</p></div>
+    </section>
+
+    <section class="card history">
+      <h2>Tickets récents</h2>
+      <table><thead><tr><th>ID</th><th>Jeu</th><th>Tour</th><th>Mise</th><th>Statut</th></tr></thead><tbody id="hist"></tbody></table>
+    </section>
+  </main>
+
+  <div class="login hidden" id="login">
+    <form class="card" id="loginForm">
+      <img class="logo" src="assets/logo.jpg" alt="La Référence Paryaj Paw">
+      <h2>Connexion caissier</h2>
+      <label>E-mail<input id="lgEmail" type="email" autocomplete="username" required></label>
+      <label>Mot de passe<input id="lgPass" type="password" autocomplete="current-password" required></label>
+      <label>Code d'authentification (6 chiffres)<input id="lgCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label>
+      <div class="msg" id="lgMsg"></div>
+      <button class="primary" type="submit">Se connecter</button>
+    </form>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/roulette-core.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/bets.js"></script>
+  <script src="js/ticket.js"></script>
+  <script src="js/caisse.js"></script>
+</body>
+</html>

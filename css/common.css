@@ -1,0 +1,42 @@
+/* Écrans TV : 1rem suit la taille de l'écran, tout est en rem. */
+:root {
+  --bg: #07101f;
+  --ink: #f4f7fb;
+  --muted: #9bb0c9;
+  --gold: #ffd23f;
+  --line: rgba(255, 255, 255, .14);
+  --red: #c8261f;
+  --font: 'Bahnschrift', 'Segoe UI', system-ui, Arial, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+html { font-size: min(1.45vw, 2.6vh); background: #000; }
+body { min-height: 100vh; background: var(--bg); color: var(--ink); font-family: var(--font); }
+a { color: inherit; text-decoration: none; }
+
+body.tv { height: 100vh; display: grid; grid-template-rows: 4rem 1fr; overflow: hidden; user-select: none; }
+
+#topbar {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 1.2rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .55), rgba(0, 0, 0, .25));
+  border-bottom: .12rem solid rgba(255, 255, 255, .55); position: relative; z-index: 10;
+}
+#topbar .brand img { height: 2.9rem; display: block; background: #fff; border-radius: .5rem; padding: .1rem .5rem; }
+#topbar .title { font-weight: 700; letter-spacing: .12em; font-size: 1.3rem; text-transform: uppercase; }
+#topbar .meta { justify-self: end; display: flex; align-items: center; gap: .6rem; }
+#topbar .lbl { font-size: .55rem; line-height: 1.1; color: var(--muted); text-align: right; letter-spacing: .08em; }
+#topbar b { font-size: 1.7rem; font-variant-numeric: tabular-nums; }
+#topbar .status { font-size: .8rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; min-width: 9rem; text-align: right; }
+
+.stage { position: relative; overflow: hidden; }
+
+/* Boules */
+.ball {
+  display: inline-grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 50%;
+  font-weight: 700; font-size: 1.15rem; border: .22rem solid rgba(255, 255, 255, .85);
+  background: #1a2a44; box-shadow: inset 0 -.25rem .4rem rgba(0, 0, 0, .35), 0 .1rem .3rem rgba(0, 0, 0, .5);
+}
+.ball.empty { background: rgba(0, 0, 0, .35); border-color: rgba(255, 255, 255, .22); box-shadow: none; color: transparent; }
+.ball.pop { animation: pop .5s ease-out; }
+@keyframes pop { 0% { transform: scale(.2); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+.fs-hint { position: absolute; right: .8rem; bottom: .5rem; font-size: .55rem; color: rgba(255, 255, 255, .35); }

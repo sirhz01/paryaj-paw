@@ -4,8 +4,11 @@ import { AppError } from '../common/errors';
 import { HAITI_TIME_ZONE } from '../common/haiti';
 import { DATABASE, Database } from '../database/db';
 
-export type ExportKind = 'bets' | 'spins' | 'tickets' | 'draws' | 'ledger' | 'agent_ledger' | 'payments';
-export const EXPORT_KINDS: ExportKind[] = ['bets', 'spins', 'tickets', 'draws', 'ledger', 'agent_ledger', 'payments'];
+export type ExportKind =
+  | 'bets' | 'spins' | 'tickets' | 'draws' | 'ledger' | 'agent_ledger' | 'payments' | 'shop_tickets' | 'shop_rounds';
+export const EXPORT_KINDS: ExportKind[] = [
+  'bets', 'spins', 'tickets', 'draws', 'ledger', 'agent_ledger', 'payments', 'shop_tickets', 'shop_rounds',
+];
 
 /** Jeux suivis par le tableau de bord. */
 export const DASHBOARD_GAMES = ['keno', 'american_roulette', 'lucky_six', 'lucky_ten'] as const;
@@ -35,6 +38,15 @@ const EXPORT_QUERIES: Record<ExportKind, string> = {
                    FROM agent_ledger WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
   payments: `SELECT id, user_id, agent_id, created_at, updated_at, direction, provider, amount_cents, status, provider_ref, failure_reason, reviewed_by
                FROM payments WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
+  // Tickets de la boutique, avec leur gain et leur décaissement.
+  shop_tickets: `SELECT id, created_at, terminal, staff_id, game, day, round_no, lines::text AS lines, stake_cents, settings_version,
+                   (SELECT win_cents FROM shop_ticket_results r WHERE r.ticket_id = id) AS win_cents,
+                   (SELECT created_at FROM shop_payouts p WHERE p.ticket_id = id) AS paid_at
+              FROM shop_tickets WHERE ${IN_RANGE} ORDER BY created_at, id LIMIT ${MAX_EXPORT_ROWS + 1}`,
+  // Tours de la boutique : le résultat ne sort qu'une fois le tirage commencé, la graine jamais.
+  shop_rounds: `SELECT game, day, round_no, server_seed_hash, draw_starts_at, created_at,
+                       CASE WHEN draw_starts_at <= now() THEN result::text END AS result
+                  FROM shop_rounds WHERE ${IN_RANGE} ORDER BY created_at, game LIMIT ${MAX_EXPORT_ROWS + 1}`,
 };
 
 export interface PlayerUpdate {
