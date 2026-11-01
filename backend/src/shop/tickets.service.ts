@@ -68,6 +68,12 @@ const DAY_RANGE = (column: string, param: string) =>
 export interface Seller {
   id: number;
   role: StaffRole;
+  /** Caisse du compte : un caissier lié à une caisse ne peut vendre et payer que sur celle-là. */
+  terminal: string | null;
+}
+
+function checkTerminal(staff: Seller, terminal: string): void {
+  if (staff.terminal && staff.terminal !== terminal) throw new AppError('TERMINAL_NOT_ALLOWED', HttpStatus.FORBIDDEN, { terminal: staff.terminal });
 }
 
 @Injectable()
@@ -128,6 +134,7 @@ export class TicketsService {
 
     const s = await this.settings.current();
     if (!s.terminals.includes(input.terminal)) throw new AppError('UNKNOWN_TERMINAL', HttpStatus.BAD_REQUEST);
+    checkTerminal(staff, input.terminal);
     const lines = this.buildLines(input.game, input.lines, s);
 
     const { day, round } = this.rounds.targetRound(input.game);
@@ -219,6 +226,7 @@ export class TicketsService {
   async pay(staff: Seller, id: string, terminal: string): Promise<TicketView & { payoutCents: number }> {
     const s = await this.settings.current();
     if (!s.terminals.includes(terminal)) throw new AppError('UNKNOWN_TERMINAL', HttpStatus.BAD_REQUEST);
+    checkTerminal(staff, terminal);
 
     const ticket = await this.get(id);
     if (ticket.status === 'paid') {

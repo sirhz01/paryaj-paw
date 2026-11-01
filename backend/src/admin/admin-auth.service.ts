@@ -11,6 +11,9 @@ import { matchTotp } from './totp';
 const STAFF_TOKEN_TTL_SECONDS = 3600;
 /** Un caissier garde sa session le temps d'un service. */
 const CASHIER_TOKEN_TTL_SECONDS = 12 * 3600;
+/** Après autant d'échecs de suite sur un compte (mot de passe ou code), il est bloqué pendant LOCK_MINUTES. */
+const MAX_FAILED_LOGINS = 10;
+const LOCK_MINUTES = 15;
 
 @Injectable()
 export class AdminAuthService {
@@ -32,14 +35,23 @@ export class AdminAuthService {
       totp_secret: string;
       totp_last_counter: number;
       active: boolean;
+      token_version: number;
+      terminal: string | null;
+      locked: boolean;
     }>(
-      'SELECT id, password_hash, role, totp_secret, totp_last_counter, active FROM staff WHERE email = $1',
+      `SELECT id, password_hash, role, totp_secret, totp_last_counter, active, token_version, terminal,
+              (locked_until IS NOT NULL AND locked_until > now()) AS locked
+         FROM staff WHERE email = $1`,
       [email.trim().toLowerCase()],
     );
     const staff = rows[0];
+    if (staff?.locked) throw new AppError('ACCOUNT_LOCKED', HttpStatus.TOO_MANY_REQUESTS, { minutes: LOCK_MINUTES });
     this.dummyHash ??= argon2.hash('dummy-password', { type: argon2.argon2id });
     const valid = await argon2.verify(staff?.password_hash ?? (await this.dummyHash), password);
-    if (!staff || !valid || !staff.active) throw new AppError('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
+    if (!staff || !valid || !staff.active) {
+      if (staff) await this.recordFailure(staff.id, 'password');
+      throw new AppError('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
+    }
 
     if (this.config.staffTotpRequired) {
       const counter = code === undefined ? null : matchTotp(staff.totp_secret, code);
@@ -51,15 +63,31 @@ export class AdminAuthService {
             [staff.id, counter],
           )
         ).rows.length === 1;
-      if (!accepted) throw new AppError('INVALID_TOTP', HttpStatus.UNAUTHORIZED);
+      if (!accepted) {
+        await this.recordFailure(staff.id, 'totp');
+        throw new AppError('INVALID_TOTP', HttpStatus.UNAUTHORIZED);
+      }
     }
 
+    await this.db.query('UPDATE staff SET failed_logins = 0, locked_until = NULL WHERE id = $1', [staff.id]);
     await this.audit.log(staff.id, 'staff.login', { type: 'staff', id: staff.id }, { totp: this.config.staffTotpRequired });
     const expiresIn = staff.role === 'cashier' ? CASHIER_TOKEN_TTL_SECONDS : STAFF_TOKEN_TTL_SECONDS;
     const accessToken = await this.jwt.signAsync(
-      { sub: String(staff.id), typ: 'staff', role: staff.role },
+      { sub: String(staff.id), typ: 'staff', role: staff.role, tv: staff.token_version },
       { secret: this.config.staffJwtSecret, expiresIn, algorithm: 'HS256' },
     );
-    return { accessToken, expiresIn, role: staff.role };
+    return { accessToken, expiresIn, role: staff.role, terminal: staff.terminal };
+  }
+
+  /** Compte l'échec, bloque le compte au seuil, et le note dans le journal d'audit. */
+  private async recordFailure(staffId: number, reason: 'password' | 'totp'): Promise<void> {
+    const { rows } = await this.db.query<{ locked: boolean }>(
+      `UPDATE staff
+          SET failed_logins = CASE WHEN failed_logins + 1 >= $2 THEN 0 ELSE failed_logins + 1 END,
+              locked_until = CASE WHEN failed_logins + 1 >= $2 THEN now() + make_interval(mins => $3::int) ELSE locked_until END
+        WHERE id = $1 RETURNING (failed_logins = 0) AS locked`,
+      [staffId, MAX_FAILED_LOGINS, LOCK_MINUTES],
+    );
+    await this.audit.log(staffId, 'staff.login_failed', { type: 'staff', id: staffId }, { reason, locked: rows[0]?.locked === true });
   }
 }

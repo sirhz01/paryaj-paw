@@ -74,6 +74,7 @@ PP.ready.then(function () {
         + `<tr class="sum"><td colspan="2">Total</td><td>${sum.tickets}</td><td>${cents(sum.stakesCents)}</td><td>${cents(sum.winsCents)}</td><td>${cents(sum.paidCents)}</td><td class="${sum.ggrCents < 0 ? 'neg' : 'pos'}">${cents(sum.ggrCents)}</td></tr></tbody>`;
     } catch (e) { $('rngTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
   }
+  $('printBtn').addEventListener('click', () => window.print());
   $('repGo').addEventListener('click', loadReport);
   $('repDay').addEventListener('change', loadReport);
   $('rngGo').addEventListener('click', loadRange);

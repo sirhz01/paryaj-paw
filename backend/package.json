@@ -13,6 +13,7 @@
     "dev": "nest start --watch",
     "migrate": "node dist/scripts/migrate.js",
     "staff:create": "node dist/scripts/create-staff.js",
+    "staff:access": "node dist/scripts/staff-access.js",
     "demo": "node dist/scripts/demo.js",
     "simulate:keno": "node dist/scripts/simulate-keno.js",
     "simulate:roulette": "node dist/scripts/simulate-roulette.js",

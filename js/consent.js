@@ -41,6 +41,8 @@
   }
 
   window.PPConsent = { reset() { try { localStorage.removeItem(KEY); } catch (e) { /* stockage bloqué */ } banner(); } };
+  /* La CSP interdit les gestionnaires onclick en ligne : le bouton du pied de page est relié ici. */
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#cookiePrefs')) window.PPConsent.reset(); });
   const saved = read();
   if (saved === 'yes') countView();
   else if (saved !== 'no') banner();

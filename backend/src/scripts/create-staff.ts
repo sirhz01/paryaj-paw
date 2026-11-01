@@ -9,10 +9,11 @@ import { loadEnvFile } from './env';
 
 /**
  * npm run staff:create -- --email chef@exemple.ht --role super_admin
+ * Caissier lié à une caisse : --terminal "CAISSE #1" (il ne peut alors vendre et payer que sur celle-là).
  * Mot de passe : variable STAFF_PASSWORD, sinon généré et affiché une seule fois.
  */
 async function main() {
-  const { values } = parseArgs({ options: { email: { type: 'string' }, role: { type: 'string' } } });
+  const { values } = parseArgs({ options: { email: { type: 'string' }, role: { type: 'string' }, terminal: { type: 'string' } } });
   if (!values.email || !STAFF_ROLES.includes(values.role as StaffRole)) {
     throw new Error(`Usage : --email <adresse> --role <${STAFF_ROLES.join('|')}>`);
   }
@@ -24,6 +25,7 @@ async function main() {
       email: values.email,
       role: values.role as StaffRole,
       password,
+      terminal: values.terminal,
     });
     console.log(`Compte ${id} créé (${values.role})`);
     if (!process.env.STAFF_PASSWORD) console.log(`Mot de passe : ${password}`);

@@ -33,19 +33,28 @@ PP.ready.then(function () {
     $('lgCode').required = false;
     $('lgCode').closest('label').classList.add('hidden');
   }
+  /* Compte lié à une caisse : la liste est figée sur celle-là (le serveur refuse les autres). */
+  function lockTerminal(name) {
+    try { name ? sessionStorage.setItem('pp.terminal', name) : sessionStorage.removeItem('pp.terminal'); } catch (e) { /* stockage bloqué */ }
+    if (!name) { $('caisseSel').disabled = false; return; }
+    if (![...$('caisseSel').options].some((o) => o.value === name)) $('caisseSel').add(new Option(name, name));
+    $('caisseSel').value = name; $('caisseSel').disabled = true;
+  }
+  try { lockTerminal(online && PP.api.token ? sessionStorage.getItem('pp.terminal') : null); } catch (e) { /* stockage bloqué */ }
   if (online && !PP.api.token) needLogin();
   $('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     $('lgMsg').textContent = ''; $('lgMsg').className = 'msg';
     try {
-      await PP.api.login($('lgEmail').value, $('lgPass').value, $('lgCode').value);
+      const session = await PP.api.login($('lgEmail').value, $('lgPass').value, $('lgCode').value);
+      lockTerminal(session.terminal);
       $('lgPass').value = ''; $('lgCode').value = '';
       $('login').classList.add('hidden');
       renderHistory();
     } catch (err) { $('lgMsg').textContent = PP.api.message(err); $('lgMsg').className = 'msg err'; }
   });
   $('logoutBtn').classList.toggle('hidden', !online);
-  $('logoutBtn').addEventListener('click', () => { PP.api.logout(); needLogin(); });
+  $('logoutBtn').addEventListener('click', () => { PP.api.logout(); lockTerminal(null); needLogin(); });
 
   /* ---------- Onglets ---------- */
   document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
