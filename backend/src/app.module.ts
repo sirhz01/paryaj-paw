@@ -26,6 +26,7 @@ import { DATABASE, Database, PgDatabase } from './database/db';
 import { KenoModule } from './keno/keno.module';
 import { PaymentsModule } from './payments/payments.module';
 import { RouletteModule } from './roulette/roulette.module';
+import { ShopModule } from './shop/shop.module';
 import { WalletModule } from './wallet/wallet.module';
 
 @Global()
@@ -80,6 +81,7 @@ export class AppModule {
         PaymentsModule,
         KenoModule,
         RouletteModule,
+        ShopModule,
         AdminModule,
       ],
       controllers: [HealthController],

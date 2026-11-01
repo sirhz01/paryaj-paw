@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Keno 20/80 – Paryaj Paw</title>
+  <link rel="icon" href="assets/logo.jpg">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/games.css">
+</head>
+<body class="tv keno" data-phase="bet">
+  <header id="topbar"></header>
+  <main class="stage">
+    <section class="pay" id="pay">
+      <div class="sel">
+        <div class="ring"><div><span id="payN">1</span></div></div>
+        <div style="text-align:left;font-size:.9rem;letter-spacing:.1em;font-weight:700">TOTAL NUMBERS<br>SELECTED</div>
+      </div>
+      <div class="tbl" id="payTbl"></div>
+      <div class="note">NEXT ROUND IN <b id="payLeft">0:00</b> · 20 NUMBERS DRAWN OUT OF 80</div>
+    </section>
+
+    <section class="k-board">
+      <div class="k-grid" id="gl"></div>
+      <div class="k-center">
+        <div class="hd">KENO 20/80</div>
+        <div class="k-ball" id="kball">–</div>
+        <div class="k-seq"><div class="cap">DRAW <span style="font-weight:400">BY SEQUENCE</span></div><div class="dots" id="seq"></div></div>
+      </div>
+      <div class="k-grid" id="gr"></div>
+    </section>
+    <div class="fs-hint">F = plein écran</div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/roulette-core.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/keno.js"></script>
+</body>
+</html>
