@@ -25,6 +25,7 @@
     <button data-tab="settings">Réglages</button>
     <button data-tab="rates">Taux de gain</button>
     <button data-tab="cashiers" id="tabCashiers">Caissiers</button>
+    <button data-tab="shifts">Rapport caissier</button>
   </nav>
 
   <main class="wrap">
@@ -99,6 +100,15 @@
         <h2>Retour au joueur (RTP) par ligne</h2>
         <p class="hint">Cible du cahier des charges : 90 à 95 %. En rouge : au-dessus de 100 % (refusé). En orange : hors de la cible.</p>
         <table class="tbl" id="rtpTbl"></table>
+      </div>
+    </section>
+
+    <section id="tab-shifts" class="pane hidden">
+      <div class="card">
+        <h2>Rapport caissier</h2>
+        <p class="hint">Un rapport est ajouté chaque fois qu’un caissier se déconnecte : tickets vendus et gains payés pendant sa session.</p>
+        <div class="filters"><button class="ghost" id="shiftGo">Actualiser</button></div>
+        <table class="tbl" id="shiftTbl"></table>
       </div>
     </section>
 

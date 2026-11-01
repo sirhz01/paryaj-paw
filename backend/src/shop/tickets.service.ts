@@ -255,6 +255,48 @@ export class TicketsService {
     return { ...(await this.get(ticket.id)), payoutCents: amount };
   }
 
+  /**
+   * Déconnexion d'un caissier : enregistre le rapport de sa session (ventes et paiements depuis sa dernière connexion)
+   * et coupe ses jetons. Sans effet pour les autres rôles. Un second appel ne crée pas de doublon.
+   */
+  async closeShift(staff: Seller): Promise<{ closed: boolean }> {
+    if (staff.role !== 'cashier') return { closed: false };
+    return this.db.transaction(async (tx) => {
+      const login = await tx.query<{ at: Date }>(
+        "SELECT max(created_at) AS at FROM audit_log WHERE staff_id = $1 AND action = 'staff.login'",
+        [staff.id],
+      );
+      const startedAt = login.rows[0]?.at;
+      if (!startedAt) return { closed: false };
+      const inserted = await tx.query(
+        `INSERT INTO cashier_reports (staff_id, terminal, started_at, tickets, stakes_cents, payouts, payouts_cents)
+         SELECT $1,
+                COALESCE($3, (SELECT terminal FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2 ORDER BY created_at DESC LIMIT 1)),
+                $2,
+                (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2),
+                (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2),
+                (SELECT count(*) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $2),
+                (SELECT COALESCE(sum(amount_cents), 0) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $2)
+         ON CONFLICT (staff_id, started_at) DO NOTHING RETURNING id`,
+        [staff.id, startedAt, staff.terminal],
+      );
+      await tx.query('UPDATE staff SET token_version = token_version + 1 WHERE id = $1', [staff.id]);
+      return { closed: inserted.rows.length === 1 };
+    });
+  }
+
+  /** Derniers rapports de caissier, du plus récent au plus ancien. */
+  async cashierReports(limit: number) {
+    const { rows } = await this.db.query(
+      `SELECT r.id, s.email, r.terminal, r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
+              r.stakes_cents::bigint AS "stakesCents", r.payouts, r.payouts_cents::bigint AS "payoutsCents"
+         FROM cashier_reports r JOIN staff s ON s.id = r.staff_id
+        ORDER BY r.ended_at DESC LIMIT $1`,
+      [limit],
+    );
+    return rows;
+  }
+
   // Rapports ------------------------------------------------------------------
 
   /** Fin de journée d'une caisse : ventes et décaissements par caisse, gagnants non réclamés. */

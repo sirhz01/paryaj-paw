@@ -55,7 +55,7 @@ PP.ready.then(function () {
     } catch (err) { $('lgMsg').textContent = PP.api.message(err); $('lgMsg').className = 'msg err'; }
   });
   $('logoutBtn').classList.toggle('hidden', !online);
-  $('logoutBtn').addEventListener('click', () => { PP.api.logout(); lockTerminal(null); needLogin(); });
+  $('logoutBtn').addEventListener('click', async () => { await PP.api.endShift(); lockTerminal(null); needLogin(); });
 
   /* ---------- Onglets ---------- */
   document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {

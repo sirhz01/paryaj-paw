@@ -198,6 +198,20 @@ PP.ready.then(function () {
       + list.map((r) => `<tr><td>${GAMES[r.game] || esc(r.game)}</td><td>${esc(r.line)}</td><td class="${cls(r.rtpPercent)}">${r.rtpPercent.toFixed(2)} %</td></tr>`).join('') + '</tbody>';
   }
 
+  /* ---------- Rapport caissier (un par déconnexion) ---------- */
+  async function loadShifts() {
+    try {
+      const list = await A.call('GET', '/admin/shop/cashier-reports');
+      $('shiftTbl').innerHTML = '<thead><tr><th>Caissier</th><th>Caisse</th><th>Connexion</th><th>Déconnexion</th><th>Tickets vendus</th><th>Ventes</th><th>Gains payés (nb)</th><th>Gains payés</th><th>Net en caisse</th></tr></thead><tbody>'
+        + (list.length ? list.map((r) => {
+          const net = r.stakesCents - r.payoutsCents;
+          return `<tr><td>${esc(r.email)}</td><td>${esc(r.terminal || '—')}</td><td>${PP.dateTime(Date.parse(r.startedAt), false)}</td><td>${PP.dateTime(Date.parse(r.endedAt), false)}</td>`
+            + `<td>${r.tickets}</td><td>${cents(r.stakesCents)}</td><td>${r.payouts}</td><td>${cents(r.payoutsCents)}</td><td class="${net < 0 ? 'neg' : ''}">${cents(net)}</td></tr>`;
+        }).join('') : '<tr><td colspan="9">Aucun rapport : il apparaît quand un caissier se déconnecte.</td></tr>') + '</tbody>';
+    } catch (e) { $('shiftTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
+  }
+  $('shiftGo').addEventListener('click', loadShifts);
+
   /* ---------- Caissiers ---------- */
   function cashTermOptions() {
     return ['<option value="">— aucune —</option>'].concat(terminals.map((t) => `<option>${esc(t)}</option>`)).join('');
@@ -255,6 +269,7 @@ PP.ready.then(function () {
       $('shopName').textContent = settings.pointOfSale;
       fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
       if (canEdit()) loadCashiers();
+      loadShifts();
     } catch (e) {
       if (e.status !== 401) { A.logout(); showLogin(e.status === 403 ? 'Ce compte n’a pas accès à l’administration (compte propriétaire requis).' : A.message(e)); }
       return;

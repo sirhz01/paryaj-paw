@@ -259,6 +259,15 @@ export class ShopController {
     return this.tickets.pay(staff, id, dto.terminal);
   }
 
+  /** Déconnexion du caissier : enregistre son rapport de session et coupe son jeton. */
+  @Post('logout')
+  @HttpCode(200)
+  @UseGuards(StaffGuard)
+  @Roles('cashier', 'super_admin', 'finance', 'auditor')
+  logout(@CurrentStaff() staff: StaffPrincipal) {
+    return this.tickets.closeShift(staff);
+  }
+
   @Get('report')
   @UseGuards(StaffGuard)
   @Roles('cashier', 'super_admin', 'finance', 'auditor')
@@ -294,5 +303,12 @@ export class ShopAdminController {
   @Roles('super_admin', 'finance', 'auditor')
   dashboard(@Query() q: RangeQuery) {
     return this.tickets.dashboard(q.from, q.to);
+  }
+
+  /** Rapports de session des caissiers (un par déconnexion). */
+  @Get('cashier-reports')
+  @Roles('super_admin', 'finance', 'auditor')
+  cashierReports() {
+    return this.tickets.cashierReports(200);
   }
 }
