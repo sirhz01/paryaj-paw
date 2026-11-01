@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { usePageTitle } from '../seo';
 
 export default function Account() {
+  usePageTitle('Mon compte');
   const { profile } = useAuth();
   if (!profile) return <div className="center muted">Chargement…</div>;
   return (

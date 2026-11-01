@@ -1,7 +1,11 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Account from './pages/Account';
+import Contact from './pages/Contact';
+import Cgu from './pages/legal/Cgu';
+import Rgpd from './pages/legal/Rgpd';
+import NotFound from './pages/NotFound';
 import GamePlaceholder from './pages/GamePlaceholder';
 import Keno from './pages/games/Keno';
 import Lobby from './pages/Lobby';
@@ -16,6 +20,9 @@ export default function App() {
         <Route index element={<Lobby />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="contact" element={<Contact />} />
+        <Route path="rgpd" element={<Rgpd />} />
+        <Route path="cgu" element={<Cgu />} />
         <Route
           path="wallet"
           element={
@@ -48,7 +55,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   );

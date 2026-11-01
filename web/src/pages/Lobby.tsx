@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { usePageTitle } from '../seo';
 
 const GAMES = [
   { key: 'american-roulette', name: 'Roulette Américaine', tag: '0 et 00 · 38 cases', icon: '🎡' },
@@ -10,6 +11,7 @@ const GAMES = [
 
 export default function Lobby() {
   const { authed } = useAuth();
+  usePageTitle();
   return (
     <div className="page">
       <section className="hero">
@@ -22,9 +24,9 @@ export default function Lobby() {
             <Link to="/register" className="btn big">
               Créer un compte
             </Link>
-            <Link to="/login" className="btn ghost big">
-              J’ai déjà un compte
-            </Link>
+            <span className="muted">
+              Déjà un compte ? <Link to="/login">Connexion</Link>
+            </span>
           </div>
         )}
       </section>

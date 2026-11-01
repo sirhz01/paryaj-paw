@@ -2,8 +2,10 @@ import { FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { message } from '../api/messages';
 import { useAuth } from '../auth/AuthContext';
+import { usePageTitle } from '../seo';
 
 export default function Login() {
+  usePageTitle('Connexion');
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

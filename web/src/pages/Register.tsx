@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { message } from '../api/messages';
 import { useAuth } from '../auth/AuthContext';
+import { usePageTitle } from '../seo';
 
 export default function Register() {
+  usePageTitle('Créer un compte');
   const { register } = useAuth();
   const navigate = useNavigate();
 

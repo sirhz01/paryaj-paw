@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { usePageTitle } from '../seo';
 
 const NAMES: Record<string, string> = {
   'american-roulette': 'Roulette Américaine',
@@ -9,6 +10,7 @@ const NAMES: Record<string, string> = {
 
 /** Page de jeu temporaire : l'interface de jeu (mises, tirage, résultat) arrive à la prochaine étape. */
 export default function GamePlaceholder() {
+  usePageTitle('Bientôt disponible');
   const { game = '' } = useParams();
   const name = NAMES[game] || 'Jeu';
   return (

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { message } from '../api/messages';
 import type { Transaction } from '../api/types';
 import { htg, toCents } from '../money';
+import { usePageTitle } from '../seo';
 
 const PROVIDERS = [
   { value: 'moncash', label: 'MonCash' },
@@ -18,6 +19,7 @@ function newKey() {
 }
 
 export default function Wallet() {
+  usePageTitle('Portefeuille');
   const [balance, setBalance] = useState<number | null>(null);
   const [txns, setTxns] = useState<Transaction[]>([]);
   const [amount, setAmount] = useState('');

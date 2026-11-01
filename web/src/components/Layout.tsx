@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { WALLET_EVENT } from '../bus';
 import { htg } from '../money';
+import Consent, { openCookiePrefs } from './Consent';
 
 export default function Layout() {
   const { authed, logout } = useAuth();
@@ -33,6 +34,9 @@ export default function Layout() {
 
   return (
     <div className="app">
+      <a className="skip" href="#contenu">
+        Aller au contenu
+      </a>
       <header className="topbar">
         <Link to="/" className="brand">
           Paryaj<span>Paw</span>
@@ -68,13 +72,22 @@ export default function Layout() {
         )}
       </header>
 
-      <main className="content">
+      <main className="content" id="contenu" tabIndex={-1}>
         <Outlet />
       </main>
 
       <footer className="foot">
         <span>© {new Date().getFullYear()} Paryaj Paw — jouer comporte des risques. Interdit aux moins de 18 ans.</span>
+        <nav className="foot-links" aria-label="Informations légales">
+          <Link to="/cgu">Conditions d’utilisation</Link>
+          <Link to="/rgpd">Confidentialité</Link>
+          <Link to="/contact">Contact</Link>
+          <button type="button" className="link" onClick={openCookiePrefs}>
+            Cookies
+          </button>
+        </nav>
       </footer>
+      <Consent />
     </div>
   );
 }

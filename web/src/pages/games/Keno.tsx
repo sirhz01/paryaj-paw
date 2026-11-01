@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { message } from '../../api/messages';
 import { newIdempotencyKey, walletChanged } from '../../bus';
 import { htg, toCents } from '../../money';
+import { usePageTitle } from '../../seo';
 
 interface KenoConfig {
   minStakeCents: number;
@@ -27,6 +28,7 @@ const GRID = Array.from({ length: 80 }, (_, i) => i + 1);
 const STAKES = [25, 50, 100, 250, 500];
 
 export default function Keno() {
+  usePageTitle('Keno');
   const [config, setConfig] = useState<KenoConfig | null>(null);
   const [picks, setPicks] = useState<number[]>([]);
   const [stake, setStake] = useState('50');
