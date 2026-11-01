@@ -28,6 +28,11 @@ PP.ready.then(function () {
   const errText = (e) => (e && e.code === 'TICKET_NOT_FOUND') ? 'Ticket introuvable.' : PP.api.message(e);
   function needLogin() { $('login').classList.remove('hidden'); $('lgEmail').focus(); }
   PP.api.onExpire = needLogin;
+  // Code à 6 chiffres désactivé côté serveur (STAFF_TOTP=off, hors production) : champ caché.
+  if (online && PP.STAFF_TOTP === false) {
+    $('lgCode').required = false;
+    $('lgCode').closest('label').classList.add('hidden');
+  }
   if (online && !PP.api.token) needLogin();
   $('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();

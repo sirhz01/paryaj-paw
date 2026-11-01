@@ -49,8 +49,10 @@ class StaffLoginDto {
   @MaxLength(128)
   password!: string;
 
+  /** Facultatif seulement si STAFF_TOTP=off (développement). */
+  @IsOptional()
   @Matches(/^\d{6}$/)
-  totp!: string;
+  totp?: string;
 }
 
 class RangeQuery {

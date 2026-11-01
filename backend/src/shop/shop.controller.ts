@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -18,6 +18,7 @@ import {
 } from 'class-validator';
 import { CurrentStaff, Roles, StaffGuard, StaffPrincipal } from '../common/auth';
 import { AppError } from '../common/errors';
+import { AppConfig, CONFIG } from '../config';
 import { IDEMPOTENCY_KEY } from '../fairness/dto';
 import { CLOSE_MARGIN_SECONDS, NUMBER_GAMES, SHOP_GAMES, ShopGame, ShopPaytables, TIMINGS, WHEEL_ORDER } from './games';
 import { DAY_FORMAT, RoundsService } from './rounds.service';
@@ -177,6 +178,7 @@ export class ShopController {
     private readonly rounds: RoundsService,
     private readonly tickets: TicketsService,
     private readonly settings: ShopSettingsService,
+    @Inject(CONFIG) private readonly appConfig: AppConfig,
   ) {}
 
   /** Réglages d'affichage : durées, grilles, tables de gains, mises rapides, point de vente. */
@@ -199,6 +201,8 @@ export class ShopController {
       wheelOrder: WHEEL_ORDER,
       paytables: s.paytables,
       settingsVersion: s.version,
+      // La caisse cache le champ du code à 6 chiffres quand il n'est pas exigé (STAFF_TOTP=off).
+      staffTotpRequired: this.appConfig.staffTotpRequired,
     };
   }
 

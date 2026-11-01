@@ -18,6 +18,8 @@ export interface AppConfig {
   fakePayments: boolean;
   /** Début de l'adresse encodée dans le QR des tickets (le code est ajouté) ; vide : le QR contient le code seul. */
   ticketQrBaseUrl: string;
+  /** Code TOTP exigé à la connexion du back-office et de la caisse ; désactivable hors production seulement. */
+  staffTotpRequired: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -45,6 +47,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const fakePayments = env.PAYMENTS_FAKE === 'true';
   if (production && fakePayments) throw new Error('PAYMENTS_FAKE est interdit en production');
 
+  const staffTotp = env.STAFF_TOTP ?? 'on';
+  if (staffTotp !== 'on' && staffTotp !== 'off') throw new Error('STAFF_TOTP : on ou off');
+  if (production && staffTotp === 'off') throw new Error('STAFF_TOTP=off est interdit en production (2FA obligatoire)');
+
   return {
     env: nodeEnv,
     port: integer('PORT', 3000),
@@ -61,5 +67,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     withdrawalApprovalThresholdCents: integer('WITHDRAWAL_APPROVAL_THRESHOLD_CENTS', 1_000_000),
     fakePayments,
     ticketQrBaseUrl: env.TICKET_QR_BASE_URL ?? '',
+    staffTotpRequired: staffTotp === 'on',
   };
 }

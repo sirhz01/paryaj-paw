@@ -61,6 +61,10 @@ async function main() {
   for (const a of accounts) {
     logger.log(`${a.role} : ${a.email} / ${DEMO_PASSWORD} — application d'authentification : ${otpauthUrl(a.secret, a.email)}`);
   }
+  if (!config.staffTotpRequired) {
+    logger.warn('Code à 6 chiffres désactivé (STAFF_TOTP=off) : connexion avec e-mail et mot de passe seulement.');
+    return;
+  }
   // Chaque code ne sert qu'une fois : en démo, les codes du moment s'affichent à chaque nouvelle période de 30 s.
   let shown = -1;
   const showCodes = () => {

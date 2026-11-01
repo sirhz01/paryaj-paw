@@ -23,8 +23,8 @@ export class AdminAuthService {
     private readonly audit: AuditService,
   ) {}
 
-  /** Mot de passe + code TOTP ; un code déjà utilisé est refusé. */
-  async login(email: string, password: string, code: string) {
+  /** Mot de passe + code TOTP (sauf STAFF_TOTP=off, hors production) ; un code déjà utilisé est refusé. */
+  async login(email: string, password: string, code?: string) {
     const { rows } = await this.db.query<{
       id: number;
       password_hash: string;
@@ -41,18 +41,20 @@ export class AdminAuthService {
     const valid = await argon2.verify(staff?.password_hash ?? (await this.dummyHash), password);
     if (!staff || !valid || !staff.active) throw new AppError('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
 
-    const counter = matchTotp(staff.totp_secret, code);
-    const accepted =
-      counter !== null &&
-      (
-        await this.db.query(
-          'UPDATE staff SET totp_last_counter = $2 WHERE id = $1 AND totp_last_counter < $2 RETURNING id',
-          [staff.id, counter],
-        )
-      ).rows.length === 1;
-    if (!accepted) throw new AppError('INVALID_TOTP', HttpStatus.UNAUTHORIZED);
+    if (this.config.staffTotpRequired) {
+      const counter = code === undefined ? null : matchTotp(staff.totp_secret, code);
+      const accepted =
+        counter !== null &&
+        (
+          await this.db.query(
+            'UPDATE staff SET totp_last_counter = $2 WHERE id = $1 AND totp_last_counter < $2 RETURNING id',
+            [staff.id, counter],
+          )
+        ).rows.length === 1;
+      if (!accepted) throw new AppError('INVALID_TOTP', HttpStatus.UNAUTHORIZED);
+    }
 
-    await this.audit.log(staff.id, 'staff.login', { type: 'staff', id: staff.id });
+    await this.audit.log(staff.id, 'staff.login', { type: 'staff', id: staff.id }, { totp: this.config.staffTotpRequired });
     const expiresIn = staff.role === 'cashier' ? CASHIER_TOKEN_TTL_SECONDS : STAFF_TOKEN_TTL_SECONDS;
     const accessToken = await this.jwt.signAsync(
       { sub: String(staff.id), typ: 'staff', role: staff.role },

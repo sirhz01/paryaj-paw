@@ -900,8 +900,11 @@ describe('API (e2e)', () => {
       );
     });
 
-    it('refuse un code TOTP déjà utilisé', async () => {
+    it('refuse un code TOTP déjà utilisé ou absent', async () => {
       const staff = await staffLogin('auditor');
+      const missing = await api().post('/api/v1/admin/auth/login').send({ email: staff.email, password: PASSWORD }).expect(401);
+      expect(missing.body.code).toBe('INVALID_TOTP');
+      expect((await api().get('/api/v1/shop/config').expect(200)).body.staffTotpRequired).toBe(true);
       const replay = await api()
         .post('/api/v1/admin/auth/login')
         .send({ email: staff.email, password: PASSWORD, totp: staff.code })
