@@ -53,7 +53,7 @@ export class PlayerGuard implements CanActivate {
     const token = bearerToken(req);
     let payload: { sub: string; typ: string };
     try {
-      payload = this.jwt.verify(token, { secret: this.config.jwtSecret });
+      payload = this.jwt.verify(token, { secret: this.config.jwtSecret, algorithms: ['HS256'] });
     } catch {
       throw new AppError('UNAUTHORIZED', HttpStatus.UNAUTHORIZED);
     }
@@ -81,7 +81,7 @@ export class StaffGuard implements CanActivate {
     const token = bearerToken(req);
     let payload: { sub: string; typ: string; role: StaffRole };
     try {
-      payload = this.jwt.verify(token, { secret: this.config.staffJwtSecret });
+      payload = this.jwt.verify(token, { secret: this.config.staffJwtSecret, algorithms: ['HS256'] });
     } catch {
       throw new AppError('UNAUTHORIZED', HttpStatus.UNAUTHORIZED);
     }
@@ -111,7 +111,7 @@ export class AgentGuard implements CanActivate {
     const token = bearerToken(req);
     let payload: { sub: string; typ: string };
     try {
-      payload = this.jwt.verify(token, { secret: this.config.agentJwtSecret });
+      payload = this.jwt.verify(token, { secret: this.config.agentJwtSecret, algorithms: ['HS256'] });
     } catch {
       throw new AppError('UNAUTHORIZED', HttpStatus.UNAUTHORIZED);
     }

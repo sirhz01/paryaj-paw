@@ -1,0 +1,42 @@
+{
+  "name": "paryaj-paw-boutik",
+  "productName": "Paryaj Paw Boutik",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Terminal de la boutique Paryaj Paw (caisse et écrans TV) pour Windows",
+  "author": "Paryaj Paw",
+  "license": "UNLICENSED",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
+  },
+  "build": {
+    "appId": "ht.paryajpaw.boutik",
+    "productName": "Paryaj Paw Boutik",
+    "artifactName": "ParyajPawBoutik-${version}-setup.${ext}",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": ["main.js", "preload.js", "config.html", "build/icon.*"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Paryaj Paw Boutik"
+    },
+    "publish": [{ "provider": "github", "owner": "sirhz01", "repo": "paryaj-paw" }]
+  }
+}

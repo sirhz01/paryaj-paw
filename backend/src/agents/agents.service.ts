@@ -152,7 +152,7 @@ export class AgentsService {
     if (agent.status !== 'active') throw new AppError('AGENT_BLOCKED', HttpStatus.FORBIDDEN);
     const accessToken = await this.jwt.signAsync(
       { sub: String(agent.id), typ: 'agent' },
-      { secret: this.config.agentJwtSecret, expiresIn: AGENT_TOKEN_TTL_SECONDS },
+      { secret: this.config.agentJwtSecret, expiresIn: AGENT_TOKEN_TTL_SECONDS, algorithm: 'HS256' },
     );
     return { accessToken, expiresIn: AGENT_TOKEN_TTL_SECONDS };
   }
