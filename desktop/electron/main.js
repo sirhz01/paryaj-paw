@@ -66,6 +66,7 @@ function loadServerPage(page = '') {
  * Avec un seul écran, la fenêtre s'ouvre normalement (pas de plein écran qui cacherait la caisse).
  */
 let tvWin;
+const hasExternalDisplay = () => screen.getAllDisplays().length > 1;
 function openTvWindow(page) {
   const server = readConfig().server;
   if (!server) return win.loadFile('config.html');
@@ -121,10 +122,14 @@ function buildMenu() {
       submenu: TV_PAGES.map((t, i) => ({
         label: t.label,
         accelerator: `CmdOrCtrl+${i + 2}`,
-        click: () => { loadServerPage(t.page); setFullScreen(true); },
+        // Avec un 2e écran (TV en HDMI « Étendre »), l'écran TV s'ouvre directement dessus ; la caisse reste sur le portable.
+        click: () => {
+          if (hasExternalDisplay()) return openTvWindow(t.page);
+          loadServerPage(t.page);
+          setFullScreen(true);
+        },
       })).concat([
         { type: 'separator' },
-        ...TV_PAGES.map((t) => ({ label: `${t.label} sur le 2e écran`, click: () => openTvWindow(t.page) })),
         { label: 'Fermer l’écran TV', click: () => { if (tvWin && !tvWin.isDestroyed()) tvWin.close(); } },
       ]),
     },
