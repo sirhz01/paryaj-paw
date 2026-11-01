@@ -4,9 +4,9 @@ import { ShopPaytables, rtpReport, validatePaytables } from './games';
 
 /** Tables de gains réellement insérées par la migration, extraites du SQL pour verrouiller leurs valeurs. */
 function certifiedPaytables(): ShopPaytables {
-  const sql = readFileSync(join(__dirname, '..', '..', 'migrations', '008_shop_paytables_rtp.sql'), 'utf8');
+  const sql = readFileSync(join(__dirname, '..', '..', 'migrations', '009_shop_paytables_rtp.sql'), 'utf8');
   const match = sql.match(/'(\{[\s\S]*?\})'::jsonb/);
-  if (!match) throw new Error('paytables introuvables dans 008_shop_paytables_rtp.sql');
+  if (!match) throw new Error('paytables introuvables dans 009_shop_paytables_rtp.sql');
   return JSON.parse(match[1]) as ShopPaytables;
 }
 

@@ -41,6 +41,6 @@ Le logo (`assets/logo.jpg`) est en tête de chaque écran et de chaque ticket (`
 L'écran et le back-end utilisent tous deux la roulette américaine (0 et 00), avec le jeu de mises standard complet :
 pari simple, cheval (17:1), street, carré (8:1), six lignes, colonne, douzaine, chances simples et top line.
 
-Tables de gains au **format international, RTP ~92 %** (`migrations/008_shop_paytables_rtp.sql`, vérifiées par
+Tables de gains au **format international, RTP ~92 %** (`migrations/009_shop_paytables_rtp.sql`, vérifiées par
 `src/shop/certified-paytables.spec.ts`) : Keno 20/80 identique au moteur en ligne, Lucky Six 35/48 à l'échelle certifiée,
 Lucky X 50/20 recalculé. Taux de gain de chaque ligne : `GET /api/v1/admin/shop/settings`.
