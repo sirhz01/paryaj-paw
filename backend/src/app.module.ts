@@ -37,12 +37,12 @@ import { WalletModule } from './wallet/wallet.module';
 class CoreModule implements OnApplicationShutdown {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
-  static forRoot(config: AppConfig): DynamicModule {
+  static forRoot(config: AppConfig, database?: Database): DynamicModule {
     return {
       module: CoreModule,
       providers: [
         { provide: CONFIG, useValue: config },
-        { provide: DATABASE, useFactory: () => new PgDatabase(config.databaseUrl) },
+        { provide: DATABASE, useFactory: () => database ?? new PgDatabase(config.databaseUrl) },
         { provide: CLOCK, useValue: systemClock },
         AuditService,
         PlayRulesService,
@@ -69,11 +69,12 @@ class HealthController {
 
 @Module({})
 export class AppModule {
-  static forRoot(config: AppConfig): DynamicModule {
+  /** `database` remplace la connexion PostgreSQL (mode démo sur PGlite). */
+  static forRoot(config: AppConfig, database?: Database): DynamicModule {
     return {
       module: AppModule,
       imports: [
-        CoreModule.forRoot(config),
+        CoreModule.forRoot(config, database),
         JwtModule.register({ global: true }),
         ThrottlerModule.forRoot({
           throttlers: [{ ttl: 60_000, limit: 120 }],
@@ -100,7 +101,9 @@ export class AppModule {
 export function configureApp(app: INestApplication, config: AppConfig): void {
   const express = app as NestExpressApplication;
   if (config.trustProxy) express.set('trust proxy', 1);
-  express.use(helmet());
+  // Pas d'upgrade-insecure-requests : les écrans TV et la caisse de la boutique ouvrent le serveur en HTTP
+  // sur le réseau local (http://192.168.x.x:3000), et le navigateur chercherait alors css et js en HTTPS.
+  express.use(helmet({ contentSecurityPolicy: { directives: { upgradeInsecureRequests: null } } }));
   express.enableCors({ origin: config.corsOrigins, credentials: false });
   express.setGlobalPrefix('api/v1');
   express.useGlobalPipes(

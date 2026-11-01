@@ -14,7 +14,7 @@ import { SHOP_CLOCK } from '../src/shop/clock';
 import { dayStartMs, roundWindow } from '../src/shop/clock';
 import { lineWin, rouletteKeyNumbers, TicketLine, WHEEL_ORDER } from '../src/shop/games';
 import { RoundsService } from '../src/shop/rounds.service';
-import { createTestDatabase } from './pglite-database';
+import { createPgliteDatabase } from '../src/database/pglite';
 
 const PASSWORD = 'motdepasse-solide';
 const DAY = '2026-11-02';
@@ -31,7 +31,7 @@ describe('Boutique (e2e)', () => {
   const at = (round: number, seconds: number) => (now = roundWindow('roulette', DAY, round).startMs + seconds * 1000);
 
   beforeAll(async () => {
-    db = createTestDatabase();
+    db = createPgliteDatabase();
     await migrate(db);
     const config = loadConfig({ NODE_ENV: 'test' });
     const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(config)] })

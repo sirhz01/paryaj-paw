@@ -31,6 +31,17 @@ npm run staff:create -- --email admin@paryajpaw.ht --role super_admin
 npm run dev                                 # http://localhost:3000/api/v1
 ```
 
+### Démo sans PostgreSQL
+
+```bash
+npm install && npm run build
+npm run demo        # http://localhost:3000/ : API + front-end de la boutique
+```
+
+La base PGlite est gardée dans `backend/.demo-db` (`DEMO_DATA_DIR` pour la changer, supprimer le dossier pour repartir de zéro).
+La console affiche un caissier et un super-admin de démonstration, leur lien pour une application d'authentification, et les codes TOTP
+du moment toutes les 30 s. À ne pas utiliser en production.
+
 En développement, les codes SMS s'affichent dans la console et le fournisseur de paiement `fake` valide tout dépôt et tout retrait. Le planificateur des tirages Lucky Six et Lucky 10 démarre avec le serveur.
 
 ## Tests et simulation
@@ -98,6 +109,13 @@ Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️
 | GET | `/draws/stream` | Direct des résultats (Server-Sent Events, public) |
 | POST | `/tickets` 🔒 | Achat d'un ticket sur 1 à N tirages consécutifs |
 | GET | `/tickets`, `/tickets/:code` 🔒 | Historique par jeu (en attente, gagnant, perdant, remboursé), détail par code |
+| GET | `/shop/config`, `/shop/state` | Boutique : réglages d'affichage, horloge du serveur et tour en cours de chaque jeu (public) |
+| GET | `/shop/rounds/:game/latest`, `/shop/rounds/:game/:day/:round` | Résultats des tours de la boutique (public) |
+| POST | `/shop/verify` | Recalcule le résultat d'un tour de la boutique à partir de sa graine (public) |
+| POST, GET | `/shop/tickets`, `/shop/tickets/:id` 🛡️ | Vente et consultation d'un ticket en caisse (rôle `cashier`) |
+| POST | `/shop/tickets/:id/pay` 🛡️ | Décaissement d'un ticket gagnant |
+| GET | `/shop/tickets`, `/shop/report` 🛡️ | Tickets récents, rapport de caisse du jour |
+| GET, PUT | `/admin/shop/settings`, GET `/admin/shop/dashboard` 🛡️ | Réglages et tableau de bord de la boutique |
 | POST | `/admin/auth/login` | Connexion back-office (mot de passe + TOTP) |
 | GET | `/admin/dashboard` 🛡️ | Mises, gains, GGR et joueurs actifs par jour, au total et par jeu |
 | GET, PUT | `/admin/keno/settings`, `/admin/roulette/settings`, `/admin/draws/:game/settings` 🛡️ | Paramètres des jeux (modification : `super_admin`) |

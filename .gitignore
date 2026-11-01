@@ -3,3 +3,6 @@ dist/
 coverage/
 .env
 *.log
+
+# Base PGlite de npm run demo
+backend/.demo-db/

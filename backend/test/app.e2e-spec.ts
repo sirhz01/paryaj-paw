@@ -15,7 +15,7 @@ import { DEFAULT_LUCKY_SIX_CONFIG, DEFAULT_LUCKY_TEN_CONFIG } from '../src/draws
 import { DrawScheduler } from '../src/draws/scheduler.service';
 import { hashServerSeed } from '../src/fairness/provably-fair';
 import { DEFAULT_PAYTABLE, hitProbability } from '../src/keno/paytable';
-import { createTestDatabase } from './pglite-database';
+import { createPgliteDatabase } from '../src/database/pglite';
 
 class CapturingSms implements SmsSender {
   readonly codes = new Map<string, string>();
@@ -38,7 +38,7 @@ describe('API (e2e)', () => {
   let seq = 0;
 
   beforeAll(async () => {
-    db = createTestDatabase();
+    db = createPgliteDatabase();
     await migrate(db);
     const config = loadConfig({ NODE_ENV: 'test', PAYMENTS_FAKE: 'true', WITHDRAWAL_APPROVAL_THRESHOLD_CENTS: '1000000' });
     const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(config)] })
@@ -981,6 +981,14 @@ describe('API (e2e)', () => {
       await expect(db.query('UPDATE ledger_entries SET amount_cents = 1')).rejects.toThrow(/append-only/);
       await expect(db.query('DELETE FROM keno_bets')).rejects.toThrow(/append-only/);
       await expect(db.query('UPDATE game_settings SET min_stake_cents = 1')).rejects.toThrow(/append-only/);
+    });
+  });
+  describe('en-têtes HTTP', () => {
+    it("n'oblige pas le HTTPS : la boutique ouvre le serveur en HTTP sur le réseau local", async () => {
+      const res = await api().get('/api/v1/health').expect(200);
+      const csp = res.headers['content-security-policy'] as string;
+      expect(csp).toContain("script-src 'self'");
+      expect(csp).not.toContain('upgrade-insecure-requests');
     });
   });
 });
