@@ -7,3 +7,10 @@ coverage/
 # Base PGlite de npm run demo
 backend/.demo-db/
 backend/.demo-db-secrets.json
+
+# Application desktop (fichiers de build)
+desktop/electron/node_modules/
+desktop/electron/release/
+desktop/tauri/node_modules/
+desktop/tauri/src-tauri/target/
+desktop/tauri/src-tauri/gen/

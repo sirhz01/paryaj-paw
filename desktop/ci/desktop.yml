@@ -1,0 +1,53 @@
+name: Application desktop (Windows)
+
+# Construit les installateurs Windows de la boutique (Electron et Tauri) sur un runner Windows,
+# car un .exe ne peut pas être produit de façon fiable depuis Linux.
+# Lancement : manuel (onglet Actions → Run workflow) ou en poussant un tag « desktop-v1.0.0 ».
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+
+jobs:
+  electron:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop/electron
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boutik-electron-windows
+          path: desktop/electron/release/*.exe
+
+  tauri:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop/tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop/tauri/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('desktop/tauri/src-tauri/Cargo.toml') }}
+      - run: npm install
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boutik-tauri-windows
+          path: desktop/tauri/src-tauri/target/release/bundle/nsis/*.exe
