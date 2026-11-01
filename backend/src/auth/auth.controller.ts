@@ -11,7 +11,7 @@ export class AuthController {
   @HttpCode(204)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   requestOtp(@Body() dto: RequestOtpDto) {
-    return this.auth.requestOtp(dto.phone, dto.purpose);
+    return this.auth.requestOtp(dto.email, dto.purpose);
   }
 
   @Post('register')

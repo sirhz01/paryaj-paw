@@ -127,13 +127,13 @@ export const api = {
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
 
   // Authentification
-  requestOtp: (phone: string, purpose: 'register' | 'reset_password') =>
-    request<void>('POST', '/auth/otp', { phone, purpose }, false),
+  requestOtp: (email: string, purpose: 'register' | 'reset_password') =>
+    request<void>('POST', '/auth/otp', { email, purpose }, false),
   async register(input: RegisterInput) {
     setTokens(await request<TokenPair>('POST', '/auth/register', input, false));
   },
-  async login(phone: string, password: string) {
-    setTokens(await request<TokenPair>('POST', '/auth/login', { phone, password }, false));
+  async login(email: string, password: string) {
+    setTokens(await request<TokenPair>('POST', '/auth/login', { email, password }, false));
   },
   async logout() {
     try {

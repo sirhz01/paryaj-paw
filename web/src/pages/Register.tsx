@@ -9,11 +9,12 @@ export default function Register() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2>(1);
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,8 +25,8 @@ export default function Register() {
     setInfo('');
     setBusy(true);
     try {
-      await api.requestOtp(phone.trim(), 'register');
-      setInfo('Un code à 6 chiffres a été envoyé par SMS.');
+      await api.requestOtp(email.trim(), 'register');
+      setInfo('Un code à 6 chiffres a été envoyé par e-mail.');
       setStep(2);
     } catch (err) {
       setError(message(err));
@@ -39,7 +40,15 @@ export default function Register() {
     setError('');
     setBusy(true);
     try {
-      await register({ phone: phone.trim(), otp, password, birthDate, fullName: fullName.trim() || undefined, language: 'ht' });
+      await register({
+        email: email.trim(),
+        otp,
+        password,
+        birthDate,
+        fullName: fullName.trim() || undefined,
+        phone: phone.trim() || undefined,
+        language: 'ht',
+      });
       navigate('/', { replace: true });
     } catch (err) {
       setError(message(err));
@@ -54,13 +63,14 @@ export default function Register() {
         <form className="card form" onSubmit={sendOtp}>
           <h1>Créer un compte</h1>
           <label>
-            Téléphone
+            E-mail
             <input
-              type="tel"
-              inputMode="tel"
-              placeholder="+509 ..."
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              placeholder="vous@exemple.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </label>
@@ -85,6 +95,10 @@ export default function Register() {
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={100} />
           </label>
           <label>
+            Téléphone (facultatif — pour les dépôts / retraits MonCash / NatCash)
+            <input type="tel" inputMode="tel" placeholder="+509 ..." value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </label>
+          <label>
             Date de naissance
             <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required />
           </label>
@@ -105,7 +119,7 @@ export default function Register() {
             {busy ? 'Création…' : 'Créer mon compte'}
           </button>
           <button type="button" className="btn ghost" onClick={() => setStep(1)}>
-            ← Changer de numéro
+            ← Changer d’adresse
           </button>
         </form>
       )}

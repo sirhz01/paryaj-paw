@@ -5,7 +5,8 @@ import { DATABASE, Database } from '../database/db';
 
 export interface Profile {
   id: number;
-  phone: string;
+  email: string | null;
+  phone: string | null;
   fullName: string | null;
   birthDate: string;
   language: Language;
@@ -22,7 +23,7 @@ export class AccountService {
 
   async profile(userId: number): Promise<Profile> {
     const { rows } = await this.db.query<Profile>(
-      `SELECT id, phone, full_name AS "fullName", to_char(birth_date, 'YYYY-MM-DD') AS "birthDate", language,
+      `SELECT id, email, phone, full_name AS "fullName", to_char(birth_date, 'YYYY-MM-DD') AS "birthDate", language,
               status, kyc_status AS "kycStatus", self_excluded_until AS "selfExcludedUntil",
               daily_loss_limit_cents AS "dailyLossLimitCents", daily_deposit_limit_cents AS "dailyDepositLimitCents"
          FROM users WHERE id = $1`,

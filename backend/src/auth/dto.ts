@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { StrongPassword } from '../common/password';
 import { OtpPurpose } from './otp.service';
 
@@ -6,16 +6,16 @@ export type Language = 'ht' | 'fr' | 'en';
 export const LANGUAGES: Language[] = ['ht', 'fr', 'en'];
 
 export class RequestOtpDto {
-  @IsString()
-  phone!: string;
+  @IsEmail()
+  email!: string;
 
   @IsIn(['register', 'reset_password'])
   purpose!: OtpPurpose;
 }
 
 export class RegisterDto {
-  @IsString()
-  phone!: string;
+  @IsEmail()
+  email!: string;
 
   @Matches(/^\d{6}$/)
   otp!: string;
@@ -32,14 +32,19 @@ export class RegisterDto {
   @MaxLength(100)
   fullName?: string;
 
+  /** Téléphone facultatif (utile pour les retraits MonCash / NatCash). */
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
   @IsOptional()
   @IsIn(LANGUAGES)
   language?: Language;
 }
 
 export class LoginDto {
-  @IsString()
-  phone!: string;
+  @IsEmail()
+  email!: string;
 
   @IsString()
   @MaxLength(128)
@@ -52,8 +57,8 @@ export class RefreshDto {
 }
 
 export class ResetPasswordDto {
-  @IsString()
-  phone!: string;
+  @IsEmail()
+  email!: string;
 
   @Matches(/^\d{6}$/)
   otp!: string;

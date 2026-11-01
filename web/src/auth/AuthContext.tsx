@@ -6,7 +6,7 @@ interface AuthState {
   authed: boolean;
   loading: boolean;
   profile: Profile | null;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [authed, reload]);
 
   const login = useCallback(
-    async (phone: string, password: string) => {
-      await api.login(phone, password);
+    async (email: string, password: string) => {
+      await api.login(email, password);
       await reload();
     },
     [reload],

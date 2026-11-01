@@ -4,7 +4,7 @@ import request from 'supertest';
 import { createStaff } from '../src/admin/staff';
 import { totpAt, totpCounter } from '../src/admin/totp';
 import { AppModule, configureApp } from '../src/app.module';
-import { SMS_SENDER, SmsSender } from '../src/auth/sms';
+import { EMAIL_SENDER, EmailSender } from '../src/auth/email';
 import { StaffRole } from '../src/common/auth';
 import { CLOCK } from '../src/common/clock';
 import { loadConfig } from '../src/config';
@@ -17,11 +17,11 @@ import { hashServerSeed } from '../src/fairness/provably-fair';
 import { DEFAULT_PAYTABLE, hitProbability } from '../src/keno/paytable';
 import { createPgliteDatabase } from '../src/database/pglite';
 
-class CapturingSms implements SmsSender {
+class CapturingEmail implements EmailSender {
   readonly codes = new Map<string, string>();
 
-  async send(phone: string, message: string): Promise<void> {
-    this.codes.set(phone, /\d{6}/.exec(message)![0]);
+  async send(to: string, _subject: string, text: string): Promise<void> {
+    this.codes.set(to, /\d{6}/.exec(text)![0]);
   }
 }
 
@@ -34,7 +34,7 @@ const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 describe('API (e2e)', () => {
   let app: INestApplication;
   let db: Database;
-  const sms = new CapturingSms();
+  const mail = new CapturingEmail();
   let seq = 0;
 
   beforeAll(async () => {
@@ -44,8 +44,8 @@ describe('API (e2e)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(config)] })
       .overrideProvider(DATABASE)
       .useValue(db)
-      .overrideProvider(SMS_SENDER)
-      .useValue(sms)
+      .overrideProvider(EMAIL_SENDER)
+      .useValue(mail)
       .overrideProvider(CLOCK)
       .useValue(clock)
       .compile();
@@ -61,14 +61,21 @@ describe('API (e2e)', () => {
   const api = () => request(app.getHttpServer());
 
   async function registerPlayer() {
-    const phone = `+5093${7_000_000 + ++seq}`;
-    await api().post('/api/v1/auth/otp').send({ phone, purpose: 'register' }).expect(204);
+    const email = `joueur-${++seq}@paryajpaw.test`;
+    const phone = `+5093${7_000_000 + seq}`; // téléphone facultatif, utilisé par les opérations d'agent
+    await api().post('/api/v1/auth/otp').send({ email, purpose: 'register' }).expect(204);
     const res = await api()
       .post('/api/v1/auth/register')
-      .send({ phone, otp: sms.codes.get(phone), password: PASSWORD, birthDate: '1990-05-12' })
+      .send({ email, phone, otp: mail.codes.get(email), password: PASSWORD, birthDate: '1990-05-12' })
       .expect(201);
     const me = await api().get('/api/v1/me').set(auth(res.body.accessToken)).expect(200);
-    return { id: me.body.id as number, phone, token: res.body.accessToken as string, refreshToken: res.body.refreshToken as string };
+    return {
+      id: me.body.id as number,
+      email,
+      phone,
+      token: res.body.accessToken as string,
+      refreshToken: res.body.refreshToken as string,
+    };
   }
 
   async function deposit(token: string, amountCents: number) {
@@ -95,20 +102,20 @@ describe('API (e2e)', () => {
 
   describe('comptes', () => {
     it('refuse un joueur de moins de 18 ans et un code OTP faux', async () => {
-      const phone = '+50948000001';
-      await api().post('/api/v1/auth/otp').send({ phone, purpose: 'register' }).expect(204);
+      const email = 'mineur@paryajpaw.test';
+      await api().post('/api/v1/auth/otp').send({ email, purpose: 'register' }).expect(204);
       const young = new Date();
       young.setFullYear(young.getFullYear() - 17);
       const underage = await api()
         .post('/api/v1/auth/register')
-        .send({ phone, otp: sms.codes.get(phone), password: PASSWORD, birthDate: young.toISOString().slice(0, 10) })
+        .send({ email, otp: mail.codes.get(email), password: PASSWORD, birthDate: young.toISOString().slice(0, 10) })
         .expect(403);
       expect(underage.body.code).toBe('UNDERAGE');
 
-      const wrong = sms.codes.get(phone) === '000000' ? '111111' : '000000';
+      const wrong = mail.codes.get(email) === '000000' ? '111111' : '000000';
       const invalid = await api()
         .post('/api/v1/auth/register')
-        .send({ phone, otp: wrong, password: PASSWORD, birthDate: '1990-01-01' })
+        .send({ email, otp: wrong, password: PASSWORD, birthDate: '1990-01-01' })
         .expect(400);
       expect(invalid.body.code).toBe('OTP_INVALID');
     });
@@ -116,10 +123,10 @@ describe('API (e2e)', () => {
     it('inscrit, connecte et fait tourner le jeton de rafraîchissement', async () => {
       const player = await registerPlayer();
       const me = await api().get('/api/v1/me').set(auth(player.token)).expect(200);
-      expect(me.body).toMatchObject({ phone: player.phone, kycStatus: 'none', language: 'ht', status: 'active' });
+      expect(me.body).toMatchObject({ email: player.email, kycStatus: 'none', language: 'ht', status: 'active' });
 
-      await api().post('/api/v1/auth/login').send({ phone: player.phone, password: PASSWORD }).expect(200);
-      const bad = await api().post('/api/v1/auth/login').send({ phone: player.phone, password: 'mauvais-mdp' }).expect(401);
+      await api().post('/api/v1/auth/login').send({ email: player.email, password: PASSWORD }).expect(200);
+      const bad = await api().post('/api/v1/auth/login').send({ email: player.email, password: 'mauvais-mdp' }).expect(401);
       expect(bad.body.code).toBe('INVALID_CREDENTIALS');
 
       const refreshed = await api().post('/api/v1/auth/refresh').send({ refreshToken: player.refreshToken }).expect(200);
@@ -127,10 +134,10 @@ describe('API (e2e)', () => {
       await api().post('/api/v1/auth/refresh').send({ refreshToken: player.refreshToken }).expect(401);
     });
 
-    it('refuse un deuxième compte sur le même numéro', async () => {
+    it('refuse un deuxième compte sur la même adresse e-mail', async () => {
       const player = await registerPlayer();
-      const res = await api().post('/api/v1/auth/otp').send({ phone: player.phone, purpose: 'register' }).expect(409);
-      expect(res.body.code).toBe('PHONE_ALREADY_REGISTERED');
+      const res = await api().post('/api/v1/auth/otp').send({ email: player.email, purpose: 'register' }).expect(409);
+      expect(res.body.code).toBe('EMAIL_ALREADY_REGISTERED');
     });
   });
 

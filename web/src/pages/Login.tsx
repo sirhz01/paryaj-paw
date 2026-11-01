@@ -9,7 +9,7 @@ export default function Login() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from || '/';
 
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -19,7 +19,7 @@ export default function Login() {
     setError('');
     setBusy(true);
     try {
-      await login(phone.trim(), password);
+      await login(email.trim(), password);
       navigate(from, { replace: true });
     } catch (err) {
       setError(message(err));
@@ -33,14 +33,14 @@ export default function Login() {
       <form className="card form" onSubmit={onSubmit}>
         <h1>Connexion</h1>
         <label>
-          Téléphone
+          E-mail
           <input
-            type="tel"
+            type="email"
             autoComplete="username"
-            inputMode="tel"
-            placeholder="+509 ..."
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            inputMode="email"
+            placeholder="vous@exemple.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </label>

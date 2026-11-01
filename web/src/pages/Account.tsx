@@ -9,8 +9,14 @@ export default function Account() {
       <h1>Mon compte</h1>
       <div className="card">
         <dl className="details">
-          <dt>Téléphone</dt>
-          <dd>{profile.phone}</dd>
+          <dt>E-mail</dt>
+          <dd>{profile.email}</dd>
+          {profile.phone && (
+            <>
+              <dt>Téléphone</dt>
+              <dd>{profile.phone}</dd>
+            </>
+          )}
           {profile.fullName && (
             <>
               <dt>Nom</dt>

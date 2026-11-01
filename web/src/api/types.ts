@@ -9,17 +9,19 @@ export interface TokenPair {
 export type Language = 'ht' | 'fr' | 'en';
 
 export interface RegisterInput {
-  phone: string;
+  email: string;
   otp: string;
   password: string;
   birthDate: string; // AAAA-MM-JJ
   fullName?: string;
+  phone?: string;
   language?: Language;
 }
 
 export interface Profile {
   id: number;
-  phone: string;
+  email?: string | null;
+  phone?: string | null;
   fullName?: string | null;
   language?: Language;
   status?: string;

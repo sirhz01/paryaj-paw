@@ -31,6 +31,10 @@ export interface AppConfig {
   ticketQrBaseUrl: string;
   /** Code TOTP exigé à la connexion du back-office et de la caisse ; désactivable hors production seulement. */
   staffTotpRequired: boolean;
+  /** Clé d'API Resend pour envoyer les codes de vérification par e-mail ; vide = écrit le code dans les journaux. */
+  resendApiKey: string;
+  /** Expéditeur des e-mails (« Nom <adresse> »). */
+  emailFrom: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -85,5 +89,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     fakePayments,
     ticketQrBaseUrl: env.TICKET_QR_BASE_URL ?? '',
     staffTotpRequired: staffTotp === 'on',
+    resendApiKey: env.RESEND_API_KEY ?? '',
+    emailFrom: env.EMAIL_FROM ?? 'Paryaj Paw <onboarding@resend.dev>',
   };
 }
