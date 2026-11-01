@@ -16,6 +16,7 @@
     "simulate:keno": "node dist/scripts/simulate-keno.js",
     "simulate:roulette": "node dist/scripts/simulate-roulette.js",
     "simulate:draws": "node dist/scripts/simulate-draws.js",
+    "dev:local": "tsc -p tsconfig.build.json && node dist/scripts/dev-local.js",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --runInBand"
   },

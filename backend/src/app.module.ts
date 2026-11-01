@@ -37,12 +37,12 @@ import { WalletModule } from './wallet/wallet.module';
 class CoreModule implements OnApplicationShutdown {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
-  static forRoot(config: AppConfig): DynamicModule {
+  static forRoot(config: AppConfig, database?: Database): DynamicModule {
     return {
       module: CoreModule,
       providers: [
         { provide: CONFIG, useValue: config },
-        { provide: DATABASE, useFactory: () => new PgDatabase(config.databaseUrl) },
+        { provide: DATABASE, useFactory: () => database ?? new PgDatabase(config.databaseUrl) },
         { provide: CLOCK, useValue: systemClock },
         AuditService,
         PlayRulesService,
@@ -69,11 +69,11 @@ class HealthController {
 
 @Module({})
 export class AppModule {
-  static forRoot(config: AppConfig): DynamicModule {
+  static forRoot(config: AppConfig, database?: Database): DynamicModule {
     return {
       module: AppModule,
       imports: [
-        CoreModule.forRoot(config),
+        CoreModule.forRoot(config, database),
         JwtModule.register({ global: true }),
         ThrottlerModule.forRoot({
           throttlers: [{ ttl: 60_000, limit: 120 }],
