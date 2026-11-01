@@ -133,10 +133,47 @@ PP.ready.then(function () {
 
   /* ---------- Taux de gain ---------- */
   const rateBox = (label, name, value) => `<label class="rate">${label}<input type="number" min="0" step="any" name="${name}" value="${value === undefined ? '' : value}" ${canEdit() ? '' : 'disabled'}></label>`;
+  /* Keno 20/80 : probabilité exacte de trouver h numéros sur n choisis (loi hypergéométrique). */
+  const choose = (n, k) => { if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; };
+  const kenoP = (n, h) => choose(20, h) * choose(60, n - h) / choose(80, n);
+  /** Premier nombre de numéros trouvés qui gagne, selon le nombre de numéros choisis (usage des tables internationales). */
+  const KENO_FROM = { 1: 1, 2: 2, 3: 2, 4: 2, 5: 3, 6: 3, 7: 3, 8: 4, 9: 4, 10: 5 };
+  const KENO_DECAY = 0.55;
+  const floorTo = (c) => { const step = c < 10 ? 0.1 : c < 100 ? 0.5 : c < 1000 ? 1 : 5; return Math.round(Math.floor(c / step) * step * 100) / 100; };
+
+  /** Coefficients d'une ligne : le retour visé est réparti sur les niveaux gagnants (les plus fréquents en reçoivent le plus), arrondis vers le bas. */
+  function kenoRow(n, rtp) {
+    const from = KENO_FROM[n], weights = {};
+    let total = 0;
+    for (let h = from; h <= n; h++) { weights[h] = Math.pow(KENO_DECAY, h - from); total += weights[h]; }
+    const row = {};
+    for (let h = from; h <= n; h++) { const c = floorTo(rtp * (weights[h] / total) / kenoP(n, h)); if (c > 0) row[h] = c; }
+    return row;
+  }
+  const kenoRtpOf = (n, row) => Object.entries(row).reduce((s, [h, c]) => s + kenoP(n, +h) * c, 0) * 100;
+  function showKenoRtp(n) {
+    const row = {};
+    for (let h = 0; h <= n; h++) { const v = Number($('rateForm').elements[`k:${n}:${h}`].value); if (v > 0) row[h] = v; }
+    const r = kenoRtpOf(n, row), el = document.getElementById('kr' + n);
+    el.textContent = 'RTP ' + r.toFixed(1) + ' %'; el.className = 'krtp ' + (r > 100 ? 'rtp-bad' : r < 90 || r > 95 ? 'rtp-warn' : 'rtp-ok');
+  }
+  $('kenoAuto').addEventListener('click', () => {
+    const rtp = Number($('kenoRtp').value) / 100;
+    if (!(rtp > 0.5 && rtp < 1)) return flash($('rateMsg'), 'RTP visé : entre 50 et 99 %.', false);
+    for (let n = 1; n <= 10; n++) {
+      const row = kenoRow(n, rtp);
+      for (let h = 0; h <= n; h++) $('rateForm').elements[`k:${n}:${h}`].value = row[h] === undefined ? '' : row[h];
+      showKenoRtp(n);
+    }
+    flash($('rateMsg'), 'Taux calculés pour un RTP visé de ' + $('kenoRtp').value + ' %. Cliquer sur « Enregistrer les taux » pour les appliquer.', true);
+  });
+  $('kenoRates').addEventListener('input', (e) => { const m = /^k:(d+):/.exec(e.target.name || ''); if (m) showKenoRtp(+m[1]); });
+
   function fillRates(s) {
     const p = s.paytables;
-    $('kenoRates').innerHTML = Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<div class="krow"><b>${n} numéro${n > 1 ? 's' : ''}</b><div class="rates">${
+    $('kenoRates').innerHTML = Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<div class="krow"><b>${n} numéro${n > 1 ? 's' : ''}<span class="krtp" id="kr${n}"></span></b><div class="rates">${
       Array.from({ length: n + 1 }, (_, h) => rateBox(h + ' trouvé' + (h > 1 ? 's' : ''), `k:${n}:${h}`, p.keno[n] && p.keno[n][h])).join('')}</div></div>`).join('');
+    for (let n = 1; n <= 10; n++) showKenoRtp(n);
     $('ls6Rates').innerHTML = p.luckysix.map((v, i) => rateBox('boule ' + (i + 6), 'l:' + i, v)).join('');
     $('lxRates').innerHTML = rateBox('1 numéro (6 premières boules)', 'x:single', p.luckyx.single)
       + Array.from({ length: 9 }, (_, i) => i + 2).map((n) => rateBox(n + ' boules', 'x:' + n, p.luckyx.tiers[n])).join('');

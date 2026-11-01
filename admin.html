@@ -81,6 +81,11 @@
         <h2>Taux de gain (coefficient × la mise)</h2>
         <p class="hint">Un coefficient de 19 veut dire : mise de 100 HTG → gain de 1 900 HTG. Laisser vide ou 0 = pas de gain. Le serveur refuse tout taux qui rend plus de 100 % aux joueurs.</p>
         <h3>Keno : numéros choisis × numéros trouvés</h3>
+        <div class="filters">
+          <label>RTP visé (%) <input type="number" id="kenoRtp" min="50" max="99" step="0.1" value="94"></label>
+          <button type="button" class="ghost" id="kenoAuto">Calculer les taux standard automatiquement</button>
+        </div>
+        <p class="hint">Les taux sont calculés d’après la probabilité exacte de chaque résultat (20 numéros tirés sur 80), comme pour la roulette. Vérifier, puis enregistrer.</p>
         <div id="kenoRates"></div>
         <h3>Lucky Six : boule n° 6 à 35 qui complète les 6 numéros</h3>
         <div class="grid6" id="ls6Rates"></div>

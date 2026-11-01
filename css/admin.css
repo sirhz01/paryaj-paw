@@ -31,3 +31,4 @@
 .admin :disabled { background: #f0f2f7; }
 @media print { .bar, .tabs, .filters, .save, .ghost { display: none !important; } .pane.hidden { display: none; } body { background: #fff; } }
 @media (max-width: 600px) { .krow { grid-template-columns: 1fr; } }
+.krtp { display: block; font-size: .72rem; font-weight: 700; margin-top: .2rem; }
