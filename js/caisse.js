@@ -222,7 +222,10 @@ PP.ready.then(function () {
   function setPay(text, cls) { const m = $('payMsg'); m.textContent = text; m.className = 'msg ' + (cls || ''); }
 
   /** { t, state: 'pending' | 'lost' | 'won' | 'paid', win } depuis le serveur, ou depuis le stockage local en démo. */
-  async function lookup(id) {
+  async function lookup(raw) {
+    // Un scanner peut envoyer l'adresse du QR (…/t/CODE) ou des espaces : on garde le code seul ; vide = introuvable.
+    const id = String(raw || '').trim().split(/[/?#]/).filter(Boolean).pop() || '';
+    if (!id) throw { code: 'TICKET_NOT_FOUND', body: {} };
     if (online) {
       const t = PP.fromServerTicket(await PP.api.ticket(id));
       return { t, state: t.serverStatus, win: t.win || 0 };
