@@ -111,6 +111,27 @@
     </form>
   </div>
 
+  <div class="login hidden" id="cashOpen">
+    <form class="card" id="cashOpenForm">
+      <h2>Début de service</h2>
+      <p class="hint">Comptez l’argent que vous avez dans la caisse maintenant.</p>
+      <label>Argent en caisse au début (HTG)<input id="coAmount" type="number" min="0" step="any" inputmode="decimal" required></label>
+      <div class="msg" id="coMsg"></div>
+      <button class="primary" type="submit">Commencer</button>
+    </form>
+  </div>
+
+  <div class="login hidden" id="cashClose">
+    <form class="card" id="cashCloseForm">
+      <h2>Fin de service</h2>
+      <p class="hint">Comptez l’argent qui reste dans la caisse avant de vous déconnecter.</p>
+      <label>Argent laissé en caisse (HTG)<input id="ccAmount" type="number" min="0" step="any" inputmode="decimal" required></label>
+      <div class="msg" id="ccMsg"></div>
+      <button class="primary" type="submit">Se déconnecter</button>
+      <button class="ghost" type="button" id="ccCancel">Annuler</button>
+    </form>
+  </div>
+
   <script src="js/config.js"></script>
   <script src="js/roulette-core.js"></script>
   <script src="js/common.js"></script>

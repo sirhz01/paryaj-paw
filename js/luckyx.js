@@ -1,6 +1,7 @@
-/* Écran TV : Lucky X. 20 boules sur 50 ; paliers N boules en bas, numéro de séquence au centre. */
+/* Écran TV : Lucky X. 36 boules sur 80, annoncées dans l'ordre croissant : 18 de chaque côté du tambour (3 rangées de 6) ;
+   paliers N boules en bas, numéro de séquence au centre. */
 PP.ready.then(function () {
-  const $ = (id) => document.getElementById(id), body = document.body, STEP = 1.1;
+  const $ = (id) => document.getElementById(id), body = document.body, STEP = 0.62, DRAWN = 36, PER_SIDE = 18;
   const setTop = PP.topbar('LUCKY X');
   const drum = PP.drum($('drum'), 28);
 
@@ -8,13 +9,13 @@ PP.ready.then(function () {
   const empty = '<span class="ball empty">0</span>';
   const tiers = Object.entries(PP.LUCKYX_TIERS);
 
-  $('sl').innerHTML = $('sr').innerHTML = empty.repeat(10);
+  $('sl').innerHTML = $('sr').innerHTML = empty.repeat(PER_SIDE);
   $('tiers').innerHTML = tiers.map(([n, v]) => `<div class="t" style="opacity:1"><small>${n} BALLS</small><b>${PP.short(v)}</b></div>`).join('');
   $('strip').innerHTML = tiers.slice(0, 4).map(([n, v]) => `<div class="t" data-n="${n}"><small>${n} BALLS</small><b>${PP.short(v)}</b></div>`).join('')
     + '<div class="seq"><b id="seqN">–</b><small>DRAW SEQUENCE</small></div>'
     + tiers.slice(4).map(([n, v]) => `<div class="t" data-n="${n}"><small>${n} BALLS</small><b>${PP.short(v)}</b></div>`).join('');
 
-  const slotOf = (i) => (i < 10 ? $('sl') : $('sr')).children[i % 10];
+  const slotOf = (i) => (i < PER_SIDE ? $('sl') : $('sr')).children[i % PER_SIDE];
   let shown = 0, res = null, cur = '';
 
   function reveal(n) {
@@ -30,7 +31,7 @@ PP.ready.then(function () {
   }
   function reset() {
     shown = 0; $('seqN').textContent = '–';
-    $('sl').innerHTML = $('sr').innerHTML = empty.repeat(10);
+    $('sl').innerHTML = $('sr').innerHTML = empty.repeat(PER_SIDE);
     document.querySelectorAll('.cy-strip .t').forEach((t) => t.classList.remove('on'));
   }
 
@@ -50,8 +51,8 @@ PP.ready.then(function () {
         const slides = document.querySelectorAll('.promo .slide'), k = Math.floor(s.t / 5) % slides.length;
         slides.forEach((el, i) => el.classList.toggle('on', i === k));
         $('left').textContent = PP.clock(s.left);
-      } else if (s.phase === 'draw') reveal(Math.min(20, Math.floor(s.t / STEP) + 1));
-      else reveal(20);
+      } else if (s.phase === 'draw') reveal(Math.min(DRAWN, Math.floor(s.t / STEP) + 1));
+      else reveal(DRAWN);
     },
   });
 });

@@ -4,7 +4,8 @@ import { NUMBER_GAMES, NumberGame, ShopGame, ShopResult, WHEEL_ORDER } from './g
 /**
  * Tirage d'un tour, vérifiable : même flux HMAC que les jeux en ligne, avec
  * graine client = « jeu:jour » et nonce = numéro du tour.
- * Roulette : une case parmi 38. Autres jeux : Fisher-Yates partiel, boules dans l'ordre de sortie.
+ * Roulette : une case parmi 38. Autres jeux : Fisher-Yates partiel, boules dans l'ordre de sortie ;
+ * Lucky X : les mêmes boules, annoncées dans l'ordre croissant.
  */
 export function drawRound(game: ShopGame, serverSeed: string, day: string, round: number): ShopResult {
   const next = uint32Stream(serverSeed, `${game}:${day}`, round);
@@ -16,5 +17,6 @@ export function drawRound(game: ShopGame, serverSeed: string, day: string, round
     const j = i + uniformInt(next, max - i);
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return { draw: pool.slice(0, drawn) };
+  const draw = pool.slice(0, drawn);
+  return { draw: game === 'luckyx' ? draw.sort((a, b) => a - b) : draw };
 }

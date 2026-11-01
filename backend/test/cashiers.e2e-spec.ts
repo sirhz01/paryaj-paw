@@ -12,6 +12,8 @@ import { migrate } from '../src/database/migrate';
 import { SHOP_CLOCK } from '../src/shop/clock';
 import { createPgliteDatabase } from '../src/database/pglite';
 
+jest.setTimeout(120_000); // la base de test applique toutes les migrations avant chaque suite
+
 const PASSWORD = 'motdepasse-solide';
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 

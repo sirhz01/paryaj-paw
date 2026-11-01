@@ -25,10 +25,10 @@ PP.COLOR_NAMES = ['Noir', 'Rouge', 'Vert', 'Bleu clair', 'Bleu', 'Marron', 'Jaun
 PP.LUCKY_LADDER = [10000, 7500, 5000, 2500, 905, 455, 270, 180, 135, 91,
   82, 73, 63, 54, 45, 36, 27, 23, 18, 14, 9.1, 8.2, 7.3, 6.3, 5.4, 4.5, 3.6, 2.7, 1.8, 0.9];
 
-/* Lucky X : 20 boules sur 50. 1 numéro dans les 6 premières = cote 7,67 ;
-   N numéros (2..10) tous tirés = LUCKYX_TIERS[N] × la mise. Chaque pari ~92 % de RTP. */
-PP.LUCKYX_TIERS = { 2: 5.93, 3: 15.82, 4: 43.73, 5: 126, 6: 377, 7: 1185, 8: 3921, 9: 13723, 10: 51151 };
-PP.LUCKYX_SINGLE_ODDS = 7.67;
+/* Lucky X : 36 boules sur 80, annoncées dans l'ordre croissant. 1 numéro parmi les 36 tirées = cote 2,04 ;
+   N numéros (2..10) tous tirés = LUCKYX_TIERS[N] × la mise. Chaque pari ~92 % de RTP (même valeur côté serveur). */
+PP.LUCKYX_TIERS = { 2: 4.61, 3: 10.6, 4: 24.7, 5: 58.7, 6: 142, 7: 350, 8: 881, 9: 2266, 10: 5959 };
+PP.LUCKYX_SINGLE_ODDS = 2.04;
 
 /* Keno : KENO_PAY[numéros choisis][numéros trouvés] = coefficient × la mise.
    Table certifiée, identique au moteur en ligne ; chaque ligne 91,6-93 % de RTP. */

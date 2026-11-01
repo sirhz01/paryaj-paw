@@ -159,10 +159,12 @@
     },
     logout() { A.token = null; },
     /** Fin de service du caissier : le serveur enregistre son rapport de session, puis le jeton est effacé. */
-    async endShift() {
-      try { await http('POST', '/shop/logout', null, A.token); } catch (e) { /* hors ligne ou session déjà expirée */ }
+    async endShift(closingCents) {
+      try { await http('POST', '/shop/logout', closingCents === undefined ? {} : { closingCents }, A.token); } catch (e) { /* hors ligne ou session déjà expirée */ }
       A.token = null;
     },
+    /** Début de service : argent que le caissier a en caisse (centimes). */
+    openShift: (cents) => A.call('POST', '/shop/shift/open', { cents }),
     /** Un 401 efface la session : l'écran de connexion revient. */
     async call(method, path, body) {
       try { return await http(method, path, body, A.token); } catch (e) { if (e.status === 401) { A.token = null; if (A.onExpire) A.onExpire(); } throw e; }

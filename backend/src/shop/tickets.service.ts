@@ -259,7 +259,13 @@ export class TicketsService {
    * Déconnexion d'un caissier : enregistre le rapport de sa session (ventes et paiements depuis sa dernière connexion)
    * et coupe ses jetons. Sans effet pour les autres rôles. Un second appel ne crée pas de doublon.
    */
-  async closeShift(staff: Seller): Promise<{ closed: boolean }> {
+  /** Début de service : le caissier déclare l'argent qu'il a en caisse. Gardé dans le journal d'audit. */
+  async openShift(staff: Seller, openingCents: number): Promise<{ openingCents: number }> {
+    await this.audit.log(staff.id, 'shift.open', { type: 'staff', id: staff.id }, { openingCents });
+    return { openingCents };
+  }
+
+  async closeShift(staff: Seller, closingCents?: number): Promise<{ closed: boolean }> {
     if (staff.role !== 'cashier') return { closed: false };
     return this.db.transaction(async (tx) => {
       const login = await tx.query<{ at: Date }>(
@@ -272,16 +278,18 @@ export class TicketsService {
       const prev = await tx.query<{ at: Date | null }>('SELECT max(ended_at) AS at FROM cashier_reports WHERE staff_id = $1', [staff.id]);
       const countFrom = prev.rows[0]?.at && prev.rows[0].at < startedAt ? prev.rows[0].at : startedAt;
       const inserted = await tx.query(
-        `INSERT INTO cashier_reports (staff_id, terminal, started_at, tickets, stakes_cents, payouts, payouts_cents)
+        `INSERT INTO cashier_reports (staff_id, terminal, started_at, tickets, stakes_cents, payouts, payouts_cents, opening_cents, closing_cents)
          SELECT $1,
                 COALESCE($3, (SELECT terminal FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4 ORDER BY created_at DESC LIMIT 1)),
                 $2,
                 (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4),
                 (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4),
                 (SELECT count(*) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $4),
-                (SELECT COALESCE(sum(amount_cents), 0) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $4)
+                (SELECT COALESCE(sum(amount_cents), 0) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $4),
+                (SELECT (details->>'openingCents')::bigint FROM audit_log WHERE staff_id = $1 AND action = 'shift.open' AND created_at >= $2 ORDER BY id DESC LIMIT 1),
+                $5::bigint
          ON CONFLICT (staff_id, started_at) DO NOTHING RETURNING id`,
-        [staff.id, startedAt, staff.terminal, countFrom],
+        [staff.id, startedAt, staff.terminal, countFrom, closingCents ?? null],
       );
       await tx.query('UPDATE staff SET token_version = token_version + 1 WHERE id = $1', [staff.id]);
       return { closed: inserted.rows.length === 1 };
@@ -292,7 +300,8 @@ export class TicketsService {
   async cashierReports(limit: number) {
     const { rows } = await this.db.query(
       `SELECT r.id, s.email, r.terminal, r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
-              r.stakes_cents::bigint AS "stakesCents", r.payouts, r.payouts_cents::bigint AS "payoutsCents"
+              r.stakes_cents::bigint AS "stakesCents", r.payouts, r.payouts_cents::bigint AS "payoutsCents",
+              r.opening_cents::bigint AS "openingCents", r.closing_cents::bigint AS "closingCents"
          FROM cashier_reports r JOIN staff s ON s.id = r.staff_id
         ORDER BY r.ended_at DESC LIMIT $1`,
       [limit],

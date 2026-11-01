@@ -224,12 +224,16 @@ PP.ready.then(function () {
   async function loadShifts() {
     try {
       const list = await A.call('GET', '/admin/shop/cashier-reports');
-      $('shiftTbl').innerHTML = '<thead><tr><th>Caissier</th><th>Caisse</th><th>Connexion</th><th>Déconnexion</th><th>Tickets vendus</th><th>Ventes</th><th>Gains payés (nb)</th><th>Gains payés</th><th>Net en caisse</th></tr></thead><tbody>'
+      $('shiftTbl').innerHTML = '<thead><tr><th>Caissier</th><th>Caisse</th><th>Connexion</th><th>Déconnexion</th><th>Tickets vendus</th><th>Ventes</th><th>Gains payés (nb)</th><th>Gains payés</th><th>Net en caisse</th><th>Début</th><th>Attendu</th><th>Fin déclarée</th><th>Écart</th></tr></thead><tbody>'
         + (list.length ? list.map((r) => {
           const net = r.stakesCents - r.payoutsCents;
+          const known = r.openingCents !== null && r.closingCents !== null;
+          const expected = known ? r.openingCents + net : null, gap = known ? r.closingCents - expected : null;
           return `<tr><td>${esc(r.email)}</td><td>${esc(r.terminal || '—')}</td><td>${PP.dateTime(Date.parse(r.startedAt), false)}</td><td>${PP.dateTime(Date.parse(r.endedAt), false)}</td>`
-            + `<td>${r.tickets}</td><td>${cents(r.stakesCents)}</td><td>${r.payouts}</td><td>${cents(r.payoutsCents)}</td><td class="${net < 0 ? 'neg' : ''}">${cents(net)}</td></tr>`;
-        }).join('') : '<tr><td colspan="9">Aucun rapport : il apparaît quand un caissier se déconnecte.</td></tr>') + '</tbody>';
+            + `<td>${r.tickets}</td><td>${cents(r.stakesCents)}</td><td>${r.payouts}</td><td>${cents(r.payoutsCents)}</td><td class="${net < 0 ? 'neg' : ''}">${cents(net)}</td>`
+            + `<td>${r.openingCents === null ? '—' : cents(r.openingCents)}</td><td>${known ? cents(expected) : '—'}</td><td>${r.closingCents === null ? '—' : cents(r.closingCents)}</td>`
+            + `<td class="${gap === null ? '' : gap < 0 ? 'neg' : gap > 0 ? 'pos' : ''}">${gap === null ? '—' : (gap > 0 ? '+' : '') + cents(gap)}</td></tr>`;
+        }).join('') : '<tr><td colspan="13">Aucun rapport : il apparaît quand un caissier se déconnecte.</td></tr>') + '</tbody>';
     } catch (e) { $('shiftTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
   }
   $('shiftGo').addEventListener('click', loadShifts);

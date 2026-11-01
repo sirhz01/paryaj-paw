@@ -25,7 +25,7 @@ export type NumberGame = 'keno' | 'luckysix' | 'luckyx';
 export const NUMBER_GAMES: Record<NumberGame, { max: number; min: number; maxPick: number; drawn: number }> = {
   keno: { max: 80, min: 1, maxPick: 10, drawn: 20 },
   luckysix: { max: 48, min: 6, maxPick: 6, drawn: 35 },
-  luckyx: { max: 50, min: 1, maxPick: 10, drawn: 20 },
+  luckyx: { max: 80, min: 1, maxPick: 10, drawn: 36 },
 };
 
 export interface ShopPaytables {
@@ -37,8 +37,6 @@ export interface ShopPaytables {
 }
 
 export const LUCKYSIX_LADDER_SIZE = 30;
-/** Lucky X : un seul numéro gagne s'il sort dans les 6 premières boules. */
-export const LUCKYX_SINGLE_WINDOW = 6;
 
 // Roulette américaine ---------------------------------------------------------
 
@@ -180,7 +178,7 @@ export function numbersLine(
   const label = {
     keno: `Keno ${n} numéros`,
     luckysix: '6 numéros',
-    luckyx: n === 1 ? 'Pari simple (6 premières)' : `${n} boules`,
+    luckyx: n === 1 ? 'Pari simple' : `${n} boules`,
   }[game];
   return newLine({ label, picks: [...picks].sort((a, b) => a - b), odds, stakeCents });
 }
@@ -222,9 +220,7 @@ export function lineWin(game: ShopGame, line: TicketLine, result: ShopResult, pa
     return 0;
   }
   if (picks.length === 1) {
-    return draw.slice(0, LUCKYX_SINGLE_WINDOW).includes(picks[0])
-      ? Math.round(line.stakeCents * paytables.luckyx.single)
-      : 0;
+    return draw.includes(picks[0]) ? Math.round(line.stakeCents * paytables.luckyx.single) : 0;
   }
   return picks.every((p) => draw.includes(p))
     ? Math.round(line.stakeCents * (paytables.luckyx.tiers[String(picks.length)] ?? 0))
@@ -284,9 +280,9 @@ export function rtpReport(paytables: ShopPaytables, topLineEnabled: boolean): Rt
     six += ((paytables.luckysix[position - 6] ?? 0) * choose(position - 1, 5)) / choose(48, 6);
   }
   add('luckysix', '6 numéros', six);
-  add('luckyx', '1 numéro', (paytables.luckyx.single * LUCKYX_SINGLE_WINDOW) / 50);
+  add('luckyx', '1 numéro', (paytables.luckyx.single * NUMBER_GAMES.luckyx.drawn) / NUMBER_GAMES.luckyx.max);
   for (const [n, coefficient] of Object.entries(paytables.luckyx.tiers)) {
-    add('luckyx', `${n} boules`, (coefficient * choose(20, Number(n))) / choose(50, Number(n)));
+    add('luckyx', `${n} boules`, (coefficient * choose(NUMBER_GAMES.luckyx.drawn, Number(n))) / choose(NUMBER_GAMES.luckyx.max, Number(n)));
   }
   return out;
 }

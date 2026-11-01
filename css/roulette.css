@@ -39,8 +39,8 @@ body.roulette {
 
 /* ---- Roue ---- */
 .wheel-wrap {
-  position: absolute; z-index: 3; width: 27rem; aspect-ratio: 1; transform: translate(-50%, -50%);
-  left: 88%; top: 55%; transition: left 1.3s cubic-bezier(.5, 0, .2, 1), top 1.3s cubic-bezier(.5, 0, .2, 1),
+  position: absolute; z-index: 3; width: 22rem; aspect-ratio: 1; transform: translate(-50%, -50%);
+  left: 84%; top: 56%; transition: left 1.3s cubic-bezier(.5, 0, .2, 1), top 1.3s cubic-bezier(.5, 0, .2, 1),
     width 1.3s cubic-bezier(.5, 0, .2, 1), opacity 1s, filter 1s;
   filter: drop-shadow(0 .6rem 1.2rem rgba(0, 0, 0, .55));
 }
@@ -63,8 +63,9 @@ body.roulette {
 .result-panel .num.green { background: #19a653; }
 .win-title { position: absolute; z-index: 4; left: 22rem; top: 0; display: none; }
 
-.latest { position: absolute; left: 1.5rem; bottom: .8rem; z-index: 4; display: flex; align-items: center; gap: .3rem; font-size: .6rem; letter-spacing: .1em; color: #bfe8cf; }
-.latest .chip { min-width: 1.6rem; height: 1.4rem; display: grid; place-items: center; font-size: .75rem; font-weight: 700; color: #fff; border-radius: .15rem; padding: 0 .2rem; }
+/* Derniers résultats : remontés et agrandis (ils étaient collés au bord bas de l'écran, illisibles sur une TV). */
+.latest { position: absolute; left: 1.5rem; bottom: 4.6rem; z-index: 4; display: flex; align-items: center; gap: .45rem; font-size: .9rem; letter-spacing: .1em; color: #d4f3e2; }
+.latest .chip { min-width: 2.5rem; height: 2.3rem; display: grid; place-items: center; font-size: 1.25rem; font-weight: 700; color: #fff; border-radius: .25rem; padding: 0 .3rem; }
 .latest .chip.red { background: #c8261f; } .latest .chip.black { background: #1b2220; } .latest .chip.green { background: #19a653; }
 
 /* ---- Phases ---- */

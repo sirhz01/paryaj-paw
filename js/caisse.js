@@ -12,7 +12,7 @@ PP.ready.then(function () {
   const NUM = {   // paramètres des grilles de numéros
     keno:     { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80' },
     luckysix: { max: 48, min: 6, maxPick: 6,  text: 'Choisir exactement 6 numéros sur 48' },
-    luckyx:   { max: 50, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 50 (Normal mrc N)' },
+    luckyx:   { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80 (36 boules tirées, en ordre croissant)' },
   };
 
   /* ---------- En-tête ---------- */
@@ -42,7 +42,31 @@ PP.ready.then(function () {
     $('caisseSel').value = name; $('caisseSel').disabled = true;
   }
   try { lockTerminal(online && PP.api.token ? sessionStorage.getItem('pp.terminal') : null); } catch (e) { /* stockage bloqué */ }
-  if (online && !PP.api.token) needLogin();
+  /* ---------- Argent en caisse : déclaré au début et à la fin du service ---------- */
+  const shiftOpened = () => { try { return sessionStorage.getItem('pp.shiftOpen') === PP.api.token; } catch (e) { return true; } };
+  const askOpeningCash = () => { $('coAmount').value = ''; $('coMsg').textContent = ''; $('cashOpen').classList.remove('hidden'); $('coAmount').focus(); };
+  if (online && PP.api.token && !shiftOpened()) askOpeningCash();
+  else if (online && !PP.api.token) needLogin();
+  $('cashOpenForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const cents = Math.round(Number($('coAmount').value) * 100);
+    if (!Number.isFinite(cents) || cents < 0) { $('coMsg').textContent = 'Montant invalide.'; $('coMsg').className = 'msg err'; return; }
+    try {
+      await PP.api.openShift(cents);
+      try { sessionStorage.setItem('pp.shiftOpen', PP.api.token); } catch (err) { /* stockage bloqué */ }
+      $('cashOpen').classList.add('hidden');
+    } catch (err) { $('coMsg').textContent = PP.api.message(err); $('coMsg').className = 'msg err'; }
+  });
+  $('cashCloseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const cents = Math.round(Number($('ccAmount').value) * 100);
+    if (!Number.isFinite(cents) || cents < 0) { $('ccMsg').textContent = 'Montant invalide.'; $('ccMsg').className = 'msg err'; return; }
+    await PP.api.endShift(cents);
+    try { sessionStorage.removeItem('pp.shiftOpen'); } catch (err) { /* stockage bloqué */ }
+    $('cashClose').classList.add('hidden');
+    lockTerminal(null); needLogin();
+  });
+  $('ccCancel').addEventListener('click', () => $('cashClose').classList.add('hidden'));
   $('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     $('lgMsg').textContent = ''; $('lgMsg').className = 'msg';
@@ -52,10 +76,11 @@ PP.ready.then(function () {
       $('lgPass').value = ''; $('lgCode').value = '';
       $('login').classList.add('hidden');
       renderHistory();
+      askOpeningCash();
     } catch (err) { $('lgMsg').textContent = PP.api.message(err); $('lgMsg').className = 'msg err'; }
   });
   $('logoutBtn').classList.toggle('hidden', !online);
-  $('logoutBtn').addEventListener('click', async () => { await PP.api.endShift(); lockTerminal(null); needLogin(); });
+  $('logoutBtn').addEventListener('click', () => { $('ccAmount').value = ''; $('ccMsg').textContent = ''; $('cashClose').classList.remove('hidden'); $('ccAmount').focus(); });
 
   /* ---------- Onglets ---------- */
   document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {

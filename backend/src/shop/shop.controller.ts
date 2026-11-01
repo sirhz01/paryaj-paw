@@ -63,6 +63,22 @@ class SellDto {
   lines!: LineDto[];
 }
 
+/** Argent déclaré par le caissier (centimes) à l'ouverture et à la fermeture de sa caisse. */
+class CashDto {
+  @IsInt()
+  @Min(0)
+  @Max(MAX_MONEY_CENTS)
+  cents!: number;
+}
+
+class LogoutDto {
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(MAX_MONEY_CENTS)
+  closingCents?: number;
+}
+
 class PayDto {
   @IsString()
   @MaxLength(32)
@@ -270,8 +286,17 @@ export class ShopController {
   @HttpCode(200)
   @UseGuards(StaffGuard)
   @Roles('cashier', 'super_admin', 'finance', 'auditor')
-  logout(@CurrentStaff() staff: StaffPrincipal) {
-    return this.tickets.closeShift(staff);
+  logout(@CurrentStaff() staff: StaffPrincipal, @Body() dto: LogoutDto) {
+    return this.tickets.closeShift(staff, dto.closingCents);
+  }
+
+  /** Début de service : le caissier déclare l'argent qu'il a en caisse. */
+  @Post('shift/open')
+  @HttpCode(200)
+  @UseGuards(StaffGuard)
+  @Roles('cashier')
+  openShift(@CurrentStaff() staff: StaffPrincipal, @Body() dto: CashDto) {
+    return this.tickets.openShift(staff, dto.cents);
   }
 
   @Get('report')

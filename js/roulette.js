@@ -39,6 +39,23 @@ PP.ready.then(function () {
   let rotorAngle = 0;   // angle visuel (mod 360) après le dernier tirage
   const setT = (el, dur, ease) => { el.style.transition = dur ? `transform ${dur}s ${ease}` : 'none'; };
 
+  /* Pendant les mises la roue, rangée sur le côté droit, tourne doucement (6° par seconde) ; le tirage repart de cet angle. */
+  let idleOn = false, idleLast = 0;
+  function idleFrame(ts) {
+    if (!idleOn) return;
+    if (idleLast) {
+      rotorAngle += ((ts - idleLast) / 1000) * 6;
+      wheel.rotor.style.transform = `rotate(${rotorAngle}deg)`;
+    }
+    idleLast = ts;
+    requestAnimationFrame(idleFrame);
+  }
+  function setIdle(on) {
+    if (on === idleOn) return;
+    idleOn = on; idleLast = 0;
+    if (on) { setT(wheel.rotor, 0); setT(wheel.ball, 0); wheel.ball.style.transform = 'rotate(0deg)'; requestAnimationFrame(idleFrame); }
+  }
+
   function spin(s, n, resume) {
     const k = R.ORDER.indexOf(n), remaining = s.dur - s.t;
     const rotor = wheel.rotor, ball = wheel.ball;
@@ -82,6 +99,7 @@ PP.ready.then(function () {
     onPhase(s, first) {
       stage.dataset.phase = s.phase;
       renderLatest(s);
+      setIdle(s.phase === 'bet');
       if (s.phase === 'bet') { clearFocus(); wheel.ballDot.classList.remove('in'); return; }
       const key = (cur = s.day + ':' + s.round);
       PP.load('roulette', s.day, s.round).then((res) => { if (res && cur === key) show(res, first); });

@@ -7,7 +7,11 @@ function certifiedPaytables(): ShopPaytables {
   const sql = readFileSync(join(__dirname, '..', '..', 'migrations', '009_shop_paytables_rtp.sql'), 'utf8');
   const match = sql.match(/'(\{[\s\S]*?\})'::jsonb/);
   if (!match) throw new Error('paytables introuvables dans 009_shop_paytables_rtp.sql');
-  return JSON.parse(match[1]) as ShopPaytables;
+  const base = JSON.parse(match[1]) as ShopPaytables;
+  // Lucky X (36 boules sur 80) : table de la migration 013, qui remplace celle de 009.
+  const luckyx = readFileSync(join(__dirname, '..', '..', 'migrations', '013_luckyx_36_of_80.sql'), 'utf8').match(/'(\{\s*"single"[\s\S]*?\})'::jsonb/);
+  if (!luckyx) throw new Error('table Lucky X introuvable dans 013_luckyx_36_of_80.sql');
+  return { ...base, luckyx: JSON.parse(luckyx[1]) as ShopPaytables['luckyx'] };
 }
 
 describe('tables de gains certifiées (migration 008)', () => {
