@@ -5,6 +5,7 @@ describe('référencement', () => {
     const txt = robotsTxt('https://paryaj.ht');
     expect(txt).toContain('Disallow: /api/');
     expect(txt).toContain('Disallow: /caisse.html');
+    expect(txt).toContain('Disallow: /admin.html');
     expect(txt).toContain('Sitemap: https://paryaj.ht/sitemap.xml');
   });
 

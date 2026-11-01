@@ -1,0 +1,33 @@
+/* Administration : rapports, réglages et taux (réutilise caisse.css). */
+.admin .wrap { max-width: 70rem; margin: 0 auto; padding: 0 1.2rem 2rem; display: grid; gap: 1rem; }
+.admin .pane { display: grid; gap: 1rem; }
+.admin .card { border-radius: 0 10px 10px 10px; }
+.admin h3 { font-size: .9rem; margin: 1.2rem 0 .5rem; color: var(--navy); }
+.admin a.ghost { text-decoration: none; }
+.filters { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: end; margin-bottom: .8rem; }
+.filters label, .fields label { display: grid; gap: .2rem; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.admin input[type=date], .admin .fields input, .admin .terms input, .admin .rate input { padding: .45rem .5rem; border: 1px solid var(--line); border-radius: 6px; font: inherit; color: var(--ink); background: #fff; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .8rem 1rem; }
+.chk { display: flex; gap: .5rem; align-items: center; margin-top: .8rem; font-size: .9rem; }
+.terms { display: grid; gap: .4rem; margin-bottom: .6rem; max-width: 28rem; }
+.terms .t { display: flex; gap: .4rem; }
+.terms input { flex: 1; text-transform: uppercase; }
+.terms button { border: 1px solid var(--line); background: #fff; color: var(--red); border-radius: 6px; padding: 0 .7rem; }
+.count { font-weight: 400; color: var(--muted); text-transform: none; letter-spacing: 0; }
+.save { width: auto; margin-top: .8rem; min-width: 14rem; }
+.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: .4rem .5rem; border-bottom: 2px solid var(--line); }
+.tbl td { padding: .4rem .5rem; border-bottom: 1px solid #eef1f7; }
+.tbl th:not(:first-child), .tbl td:not(:first-child) { text-align: right; }
+.tbl tr.sum td { font-weight: 700; border-top: 2px solid var(--navy); background: #f4f7fc; }
+.neg { color: var(--red); } .pos { color: #12803f; }
+.rtp-bad { color: var(--red); font-weight: 700; } .rtp-warn { color: #b45f06; font-weight: 700; } .rtp-ok { color: #12803f; font-weight: 700; }
+.krow { display: grid; grid-template-columns: 5.5rem 1fr; gap: .5rem; align-items: start; padding: .4rem 0; border-bottom: 1px solid #eef1f7; }
+.krow > b { padding-top: .5rem; font-size: .85rem; }
+.rates { display: flex; flex-wrap: wrap; gap: .4rem; }
+.rate { display: grid; gap: .1rem; font-size: .68rem; color: var(--muted); text-align: center; }
+.rate input { width: 4.8rem; text-align: right; }
+.grid6 { display: flex; flex-wrap: wrap; gap: .5rem; }
+.admin :disabled { background: #f0f2f7; }
+@media print { .bar, .tabs, .filters, .save, .ghost { display: none !important; } .pane.hidden { display: none; } body { background: #fff; } }
+@media (max-width: 600px) { .krow { grid-template-columns: 1fr; } }

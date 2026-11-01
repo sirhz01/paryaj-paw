@@ -34,6 +34,8 @@ En production, `npm start` avec `FRONT_DIR=..` sert les mêmes pages. La caisse 
 **Sans serveur** : ouvrir `index.html` directement ; les pages passent en mode démo (tirages simulés dans le navigateur, tickets dans
 `localStorage`, bandeau « démo » sur la caisse). Ouvertes ainsi pendant que `npm run demo` tourne, elles se connectent quand même au serveur.
 
+Page **Administration** ([admin.html](admin.html)) : rapport de fin de journée par caisse, rapport par période (export CSV), réglages (nom, caisses, mises, limites) et taux de gain avec RTP. Connexion avec un compte du back-office ; seul le `super_admin` modifie (`finance` et `auditor` consultent).
+
 Touche **F** = plein écran sur les écrans TV, `?shift=30` décale l'horloge (démo), `?api=…` choisit une autre adresse d'API.
 Le logo (`assets/logo.jpg`) est en tête de chaque écran et de chaque ticket (`js/ticket.js`).
 L'écran et le back-end utilisent tous deux la roulette américaine (0 et 00).

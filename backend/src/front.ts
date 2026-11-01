@@ -4,7 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import { NextFunction, Request, Response } from 'express';
 
-const PAGES = ['index', 'caisse', 'roulette', 'keno', 'luckysix', 'luckyx', 'rgpd', 'cgu', 'contact'];
+const PAGES = ['index', 'caisse', 'admin', 'roulette', 'keno', 'luckysix', 'luckyx', 'rgpd', 'cgu', 'contact'];
 const ASSET_DIRS = ['css', 'js', 'assets'];
 /** Pages publiques référencées dans le sitemap ; la caisse et les écrans TV restent hors des moteurs de recherche. */
 const INDEXED = ['index', 'cgu', 'rgpd', 'contact'];
@@ -15,7 +15,7 @@ const ONE_DAY = 24 * 3600 * 1000;
 export const originOf = (req: Request): string => `${req.protocol}://${req.get('host')}`;
 
 export function robotsTxt(origin: string): string {
-  return ['User-agent: *', 'Disallow: /api/', 'Disallow: /caisse.html', `Sitemap: ${origin}/sitemap.xml`, ''].join('\n');
+  return ['User-agent: *', 'Disallow: /api/', 'Disallow: /caisse.html', 'Disallow: /admin.html', `Sitemap: ${origin}/sitemap.xml`, ''].join('\n');
 }
 
 export function sitemapXml(origin: string): string {

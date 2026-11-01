@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration – La Référence Paryaj Paw</title>
+  <meta name="description" content="Espace du propriétaire : rapports de ventes, caisses, limites et taux de gain.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/icon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <meta name="theme-color" content="#14285f">
+  <link rel="stylesheet" href="css/caisse.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin">
+  <header class="bar">
+    <a href="index.html"><img class="logo" src="assets/logo.jpg" alt="La Référence Paryaj Paw"></a>
+    <div class="shop"><b id="shopName">Administration</b><span id="who"></span></div>
+    <a class="ghost" href="caisse.html">Caisse</a>
+    <button class="ghost hidden" id="logoutBtn">Déconnexion</button>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="report" class="on">Rapport</button>
+    <button data-tab="settings">Réglages</button>
+    <button data-tab="rates">Taux de gain</button>
+  </nav>
+
+  <main class="wrap">
+    <section id="tab-report" class="pane">
+      <div class="card">
+        <h2>Fin de journée par caisse</h2>
+        <div class="filters">
+          <label>Jour <input type="date" id="repDay"></label>
+          <button class="ghost" id="repGo">Actualiser</button>
+          <button class="ghost" onclick="window.print()">Imprimer</button>
+        </div>
+        <table class="tbl" id="repTbl"></table>
+        <p class="hint" id="repUnclaimed"></p>
+      </div>
+      <div class="card">
+        <h2>Période : ventes, gains et bénéfice par jeu</h2>
+        <div class="filters">
+          <label>Du <input type="date" id="rngFrom"></label>
+          <label>Au <input type="date" id="rngTo"></label>
+          <button class="ghost" id="rngGo">Afficher</button>
+          <button class="ghost" id="rngCsv">Exporter CSV</button>
+        </div>
+        <table class="tbl" id="rngTbl"></table>
+        <p class="hint">Bénéfice = mises − gains dus. « Payé » = gains déjà remis aux clients.</p>
+      </div>
+    </section>
+
+    <section id="tab-settings" class="pane hidden">
+      <form class="card" id="setForm">
+        <h2>Point de vente</h2>
+        <div class="fields">
+          <label>Nom du point de vente <input id="fPos" maxlength="120" required></label>
+          <label>Émetteur (imprimé sur le ticket) <input id="fIssuer" maxlength="120" required></label>
+        </div>
+        <h2>Caisses <span class="count" id="termCount"></span></h2>
+        <div class="terms" id="terms"></div>
+        <button type="button" class="ghost" id="termAdd">+ Ajouter une caisse</button>
+        <h2>Mises et limites (HTG)</h2>
+        <div class="fields">
+          <label>Mises rapides (séparées par des virgules) <input id="fStakes" required></label>
+          <label>Mise minimum <input id="fMin" type="number" min="1" step="any" required></label>
+          <label>Mise maximum <input id="fMax" type="number" min="1" step="any" required></label>
+          <label>Total maximum d’un ticket <input id="fTicket" type="number" min="1" step="any" required></label>
+          <label>Gain maximum par ticket <input id="fPayout" type="number" min="1" step="any" required></label>
+          <label>Gain à faire valider par un responsable (seuil) <input id="fApproval" type="number" min="1" step="any" required></label>
+        </div>
+        <label class="chk"><input type="checkbox" id="fTop"> Roulette : activer le pari « Top line » (0, 00, 1, 2, 3)</label>
+        <div class="msg" id="setMsg"></div>
+        <button class="primary save" type="submit">Enregistrer les réglages</button>
+      </form>
+    </section>
+
+    <section id="tab-rates" class="pane hidden">
+      <form class="card" id="rateForm">
+        <h2>Taux de gain (coefficient × la mise)</h2>
+        <p class="hint">Un coefficient de 19 veut dire : mise de 100 HTG → gain de 1 900 HTG. Laisser vide ou 0 = pas de gain. Le serveur refuse tout taux qui rend plus de 100 % aux joueurs.</p>
+        <h3>Keno : numéros choisis × numéros trouvés</h3>
+        <div id="kenoRates"></div>
+        <h3>Lucky Six : boule n° 6 à 35 qui complète les 6 numéros</h3>
+        <div class="grid6" id="ls6Rates"></div>
+        <h3>Lucky X</h3>
+        <div class="grid6" id="lxRates"></div>
+        <div class="msg" id="rateMsg"></div>
+        <button class="primary save" type="submit">Enregistrer les taux</button>
+      </form>
+      <div class="card">
+        <h2>Retour au joueur (RTP) par ligne</h2>
+        <p class="hint">Cible du cahier des charges : 90 à 95 %. En rouge : au-dessus de 100 % (refusé). En orange : hors de la cible.</p>
+        <table class="tbl" id="rtpTbl"></table>
+      </div>
+    </section>
+  </main>
+
+  <div class="login hidden" id="login">
+    <form class="card" id="loginForm">
+      <img class="logo" src="assets/logo.jpg" alt="">
+      <h2>Connexion propriétaire</h2>
+      <label>E-mail <input type="email" id="lEmail" autocomplete="username" required></label>
+      <label>Mot de passe <input type="password" id="lPass" autocomplete="current-password" required></label>
+      <label id="lTotpRow">Code d’authentification (6 chiffres) <input id="lTotp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
+      <div class="msg err" id="lMsg"></div>
+      <button class="primary" type="submit">Se connecter</button>
+    </form>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/roulette-core.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
