@@ -12,12 +12,7 @@ Plateforme de jeux en ligne en HTG (roulette américaine, Keno 20/80, Lucky Six,
 
 ## Front-end boutique
 
-Ouvrir `index.html` (aucun build). Touche **F** = plein écran sur les écrans TV, `?shift=30` décale l'horloge (démo).
-Le logo (`assets/logo.jpg`) est en tête de chaque écran et de chaque ticket (`js/ticket.js`).
-
-À remplacer avant la production : `PP.result()` (`js/common.js`) simule les tirages dans le navigateur, à brancher sur le back-end ;
-les tickets sont dans `localStorage` ; tables de gains Keno 6/7/8/10 et règles Lucky X = valeurs DEMO (`js/config.js`).
-L'écran et le back-end utilisent tous deux la roulette américaine (0 et 00) ; la roulette européenne a été retirée.
+**Avec le back-end** (tirages, tickets et paiements viennent du serveur) :
 
 ## Site public, SEO et HTTPS
 
@@ -26,4 +21,22 @@ L'écran et le back-end utilisent tous deux la roulette américaine (0 et 00) ; 
 - L'API tourne seule par défaut ; `FRONT_DIR` (voir `backend/.env.example`) lui fait servir aussi le front. Les URL absolues (image de partage, canonical, sitemap) viennent de l'hôte de la requête.
 - Le serveur génère `/robots.txt` et `/sitemap.xml`, sert `404.html` pour toute page inconnue, compresse (gzip) et met en cache les css/js/images.
 - HTTPS : en production, tout HTTP est redirigé en 308 vers HTTPS et HSTS est envoyé (`FORCE_HTTPS`, et `TRUST_PROXY=true` derrière un proxy TLS).
-- Développement local sans PostgreSQL : `cd backend && npm run dev:local` (comptes dans `backend/.dev-data/credentials.txt`).
+
+```bash
+cd backend && npm install && npm run build
+npm run demo        # sans PostgreSQL : base PGlite locale, comptes de démo affichés dans la console
+```
+
+Puis ouvrir http://localhost:3000/ — ou http://<adresse IP de la machine>:3000/ sur les écrans TV et les caisses du réseau local.
+En production, `npm start` avec `FRONT_DIR=..` sert les mêmes pages. La caisse se connecte avec un compte du back-office de rôle
+`cashier` (`npm run staff:create -- --email … --role cashier`) : mot de passe + code TOTP.
+
+**Sans serveur** : ouvrir `index.html` directement ; les pages passent en mode démo (tirages simulés dans le navigateur, tickets dans
+`localStorage`, bandeau « démo » sur la caisse). Ouvertes ainsi pendant que `npm run demo` tourne, elles se connectent quand même au serveur.
+
+Touche **F** = plein écran sur les écrans TV, `?shift=30` décale l'horloge (démo), `?api=…` choisit une autre adresse d'API.
+Le logo (`assets/logo.jpg`) est en tête de chaque écran et de chaque ticket (`js/ticket.js`).
+L'écran et le back-end utilisent tous deux la roulette américaine (0 et 00).
+
+À remplacer avant la production : tables de gains Keno 6/7/8/10 et règles Lucky X = valeurs DEMO, dont le RTP s'éloigne de 90–95 %
+(voir `GET /api/v1/admin/shop/settings`).

@@ -5,6 +5,8 @@
       "label": "Auto-pull origin/main",
       "type": "shell",
       "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/auto-pull.ps1",
+      "linux": { "command": "bash scripts/auto-pull.sh" },
+      "osx": { "command": "bash scripts/auto-pull.sh" },
       "isBackground": true,
       "problemMatcher": [],
       "presentation": { "reveal": "silent", "panel": "dedicated" },

@@ -1,6 +1,8 @@
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
+import { MAX_MONEY_CENTS } from '../common/money';
 import { CurrentPlayer, PlayerGuard, PlayerPrincipal } from '../common/auth';
 import { PaymentsService } from './payments.service';
 import { PROVIDER_NAMES, ProviderName } from './providers/provider';
@@ -12,6 +14,7 @@ class PaymentDto {
   /** 1 HTG minimum. */
   @IsInt()
   @Min(100)
+  @Max(MAX_MONEY_CENTS)
   amountCents!: number;
 
   @Matches(/^[A-Za-z0-9_-]{8,64}$/)
@@ -57,12 +60,14 @@ export class PaymentsController {
   /** Retrait au guichet : code à donner à l'agent avec son numéro de téléphone (valable 24 h). */
   @Post('withdrawals/:id/pickup-code')
   @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   pickupCode(@CurrentPlayer() player: PlayerPrincipal, @Param('id', ParseIntPipe) id: number) {
     return this.payments.issuePickupCode(player.id, id);
   }
 
   @Post('withdrawals/:id/cancel')
   @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   cancel(@CurrentPlayer() player: PlayerPrincipal, @Param('id', ParseIntPipe) id: number) {
     return this.payments.cancelWithdrawal(player.id, id);
   }

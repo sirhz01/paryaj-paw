@@ -53,6 +53,7 @@
     PP.LUCKYX_SINGLE_ODDS = cfg.paytables.luckyx.single;
     PP.R.ORDER = cfg.wheelOrder;
     PP.CLOSE_MARGIN = cfg.closeMarginSeconds;
+    PP.STAFF_TOTP = cfg.staffTotpRequired !== false;
   }
 
   /* Les scripts des pages démarrent après PP.ready : réglages et horloge du serveur déjà en place. */
@@ -147,7 +148,7 @@
       return MESSAGES[e.code] || 'Erreur ' + (e.code || e.message);
     },
     async login(email, password, totp) {
-      const r = await http('POST', '/admin/auth/login', { email, password, totp });
+      const r = await http('POST', '/admin/auth/login', { email, password, ...(totp ? { totp } : {}) });
       A.token = r.accessToken;
       return r;
     },

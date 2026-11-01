@@ -4,3 +4,7 @@ coverage/
 .env
 *.log
 .dev-data/
+
+# Base PGlite de npm run demo
+backend/.demo-db/
+backend/.demo-db-secrets.json

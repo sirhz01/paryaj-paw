@@ -70,6 +70,7 @@ class HealthController {
 
 @Module({})
 export class AppModule {
+  /** `database` remplace la connexion PostgreSQL (mode démo sur PGlite). */
   static forRoot(config: AppConfig, database?: Database): DynamicModule {
     return {
       module: AppModule,
@@ -102,7 +103,14 @@ export function configureApp(app: INestApplication, config: AppConfig): void {
   const express = app as NestExpressApplication;
   if (config.trustProxy) express.set('trust proxy', 1);
   if (config.forceHttps) express.use(forceHttps);
-  express.use(helmet({ hsts: config.forceHttps ? { maxAge: 31_536_000, includeSubDomains: true } : false }));
+  // Pas d'upgrade-insecure-requests : les écrans TV et la caisse de la boutique ouvrent le serveur en HTTP
+  // sur le réseau local (http://192.168.x.x:3000), et le navigateur chercherait alors css et js en HTTPS.
+  express.use(
+    helmet({
+      contentSecurityPolicy: { directives: { upgradeInsecureRequests: null } },
+      hsts: config.forceHttps ? { maxAge: 31_536_000, includeSubDomains: true } : false,
+    }),
+  );
   express.enableCors({ origin: config.corsOrigins, credentials: false });
   express.setGlobalPrefix('api/v1');
   express.useGlobalPipes(
