@@ -40,9 +40,18 @@ export function serveFront(app: NestExpressApplication, dir: string): void {
     app.useStaticAssets(join(root, sub), { prefix: `/${sub}`, dotfiles: 'deny', index: false, maxAge });
   }
 
+  // Change à chaque démarrage : suffixe ?v=… ajouté à chaque js/css des pages, pour que le navigateur
+  // charge toujours la dernière version après une mise à jour (jamais un ancien script en cache).
+  const version = Date.now().toString(36);
   const html = (name: string, req: Request): string =>
-    readFileSync(join(root, `${name}.html`), 'utf8').replace(ORIGIN_TOKEN, originOf(req));
+    readFileSync(join(root, `${name}.html`), 'utf8')
+      .replace(ORIGIN_TOKEN, originOf(req))
+      .replace(/\b(src|href)="((?:js|css)\/[^"?]+)"/g, `$1="$2?v=${version}"`);
   const pages = new Map<string, string>([['/', 'index'], ...PAGES.map((p): [string, string] => [`/${p}.html`, p])]);
+
+  // Les pages HTML sont toujours revalidées (no-cache) ; seuls les js/css/images sont mis en cache.
+  const sendPage = (res: Response, name: string, req: Request, status = 200): void =>
+    void res.status(status).type('html').set('Cache-Control', 'no-cache').send(html(name, req));
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.method !== 'GET') return next();
@@ -50,10 +59,10 @@ export function serveFront(app: NestExpressApplication, dir: string): void {
     if (req.path === '/sitemap.xml') return void res.type('application/xml').send(sitemapXml(originOf(req)));
     if (req.path === '/favicon.ico') return void res.redirect(301, '/assets/icon-32.png');
     const page = pages.get(req.path);
-    if (page) return void res.type('html').send(html(page, req));
+    if (page) return sendPage(res, page, req);
     // Tout le reste hors de l'API est une page introuvable (l'API, sous /api/, garde ses réponses JSON).
     if (!req.path.startsWith('/api/') && existsSync(join(root, '404.html'))) {
-      return void res.status(404).type('html').send(html('404', req));
+      return sendPage(res, '404', req, 404);
     }
     next();
   });
