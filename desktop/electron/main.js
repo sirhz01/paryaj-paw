@@ -2,8 +2,8 @@
 /*
  * Terminal de la boutique Paryaj Paw pour Windows (Electron).
  * C'est un client léger : il charge le front-end servi par le serveur (caisse et écrans TV),
- * il ne contient ni jeu ni base de données. L'adresse du serveur est demandée au premier lancement
- * et gardée localement. Tout le calcul reste sur le serveur.
+ * il ne contient ni jeu ni base de données. Par défaut il ouvre le serveur local (localhost:3000) ;
+ * l'adresse peut être changée via le menu « Boutique → Changer de serveur… ». Tout le calcul reste sur le serveur.
  */
 const { app, BrowserWindow, Menu, ipcMain, shell, dialog } = require('electron');
 const path = require('node:path');
@@ -46,12 +46,19 @@ function normalizeServer(input) {
   return s.replace(/\/+$/, '');
 }
 
+// Serveur par défaut : l'application s'ouvre directement sur la boutique, sans demander d'adresse.
+// Convient quand le serveur tourne sur le même poste. Pour pointer un autre serveur (écran TV sur un
+// autre PC), utiliser « Boutique → Changer de serveur… ».
+const DEFAULT_SERVER = 'http://localhost:3000';
+
 let win;
 
+function serverUrl() {
+  return readConfig().server || DEFAULT_SERVER;
+}
+
 function loadServerPage(page = '') {
-  const server = readConfig().server;
-  if (!server) return win.loadFile('config.html');
-  return win.loadURL(`${server}/${page}`);
+  return win.loadURL(`${serverUrl()}/${page}`);
 }
 
 function setFullScreen(on) {
@@ -102,7 +109,7 @@ function buildMenu() {
               type: 'info',
               title: 'Paryaj Paw Boutik',
               message: 'Paryaj Paw Boutik',
-              detail: `Version ${app.getVersion()}\nServeur : ${readConfig().server || '(non configuré)'}`,
+              detail: `Version ${app.getVersion()}\nServeur : ${readConfig().server || DEFAULT_SERVER + ' (par défaut)'}`,
             }),
         },
       ],
