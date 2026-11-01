@@ -45,6 +45,14 @@
       "icon": "build/icon.ico",
       "signAndEditExecutable": false
     },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Office",
+      "maintainer": "Paryaj Paw"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
