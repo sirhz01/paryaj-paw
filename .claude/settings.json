@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && if [ -n \"$(git status --porcelain)\" ]; then git add -A && git commit -q -m \"auto: $(date '+%Y-%m-%d %H:%M')\" -m \"Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\"; fi && if [ \"$(git rev-list --count @{u}..HEAD)\" -gt 0 ]; then git push -q origin main; fi",
+            "timeout": 60,
+            "statusMessage": "Auto commit + push..."
+          }
+        ]
+      }
+    ]
+  }
+}
