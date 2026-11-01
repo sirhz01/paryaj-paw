@@ -34,7 +34,7 @@ import { AppError } from '../common/errors';
 import { Paytable, MAX_PICKS_LIMIT } from '../keno/paytable';
 import { KenoSettingsService } from '../keno/settings.service';
 import { PaymentStatus, PaymentsService } from '../payments/payments.service';
-import { BetType, VARIANTS, Variant } from '../roulette/rules';
+import { BetType } from '../roulette/rules';
 import { BetLimit, RouletteSettingsService } from '../roulette/settings.service';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminService, EXPORT_KINDS, ExportKind } from './admin.service';
@@ -89,7 +89,7 @@ class RouletteSettingsDto {
   chipValuesCents!: number[];
 
   @IsObject()
-  betLimits!: Partial<Record<BetType, BetLimit>>;
+  betLimits!: Record<BetType, BetLimit>;
 
   @IsInt()
   @Min(1)
@@ -100,15 +100,7 @@ class RouletteSettingsDto {
   maxPayoutCents!: number;
 
   @IsBoolean()
-  laPartage!: boolean;
-
-  @IsBoolean()
   topLineEnabled!: boolean;
-}
-
-function parseVariant(value: string): Variant {
-  if (!(VARIANTS as string[]).includes(value)) throw new AppError('NOT_FOUND', 404);
-  return value as Variant;
 }
 
 class PlayersQuery {
@@ -190,21 +182,15 @@ export class AdminController {
     return this.kenoSettings.update(staff.id, dto);
   }
 
-  /** `variant` : `european` ou `american`. */
-  @Get('roulette/:variant/settings')
-  async getRouletteSettings(@Param('variant') variant: string) {
-    const v = parseVariant(variant);
-    return { current: await this.rouletteSettings.current(v), history: await this.rouletteSettings.history(v) };
+  @Get('roulette/settings')
+  async getRouletteSettings() {
+    return { current: await this.rouletteSettings.current(), history: await this.rouletteSettings.history() };
   }
 
-  @Put('roulette/:variant/settings')
+  @Put('roulette/settings')
   @Roles('super_admin')
-  updateRouletteSettings(
-    @CurrentStaff() staff: StaffPrincipal,
-    @Param('variant') variant: string,
-    @Body() dto: RouletteSettingsDto,
-  ) {
-    return this.rouletteSettings.update(staff.id, parseVariant(variant), dto);
+  updateRouletteSettings(@CurrentStaff() staff: StaffPrincipal, @Body() dto: RouletteSettingsDto) {
+    return this.rouletteSettings.update(staff.id, dto);
   }
 
   @Get('roulette/alerts')

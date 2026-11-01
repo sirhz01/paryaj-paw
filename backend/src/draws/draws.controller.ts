@@ -162,7 +162,6 @@ export class DrawsController {
       serverTime: this.clock.now(),
       games: [
         { game: 'american_roulette', kind: 'instant', path: '/american-roulette' },
-        { game: 'roulette', kind: 'instant', path: '/roulette' },
         { game: 'keno', kind: 'instant', path: '/keno' },
         ...scheduled,
       ],

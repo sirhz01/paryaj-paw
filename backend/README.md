@@ -1,10 +1,9 @@
-# Back-end Paryaj Paw — 5 jeux
+# Back-end Paryaj Paw — 4 jeux
 
 API NestJS + PostgreSQL pour le web, l'Android, l'application desktop et l'application des points de vente. Un seul compte, un seul portefeuille en HTG et un seul back-office pour :
 
 | Jeu | Type | Tirage |
 | --- | --- | --- |
-| Roulette européenne (0) | Roulette | Instantané, propre à chaque joueur |
 | Roulette américaine (0, 00) | Roulette | Instantané, propre à chaque joueur |
 | Keno 20/80 (jusqu'à 15 numéros) | Loterie de numéros | Instantané, propre à chaque joueur |
 | Lucky Six (35 sur 48) | Tirage programmé | Toutes les 5 min, commun à tous |
@@ -40,11 +39,11 @@ En développement, les codes SMS s'affichent dans la console et le fournisseur d
 npm test                                   # 153 tests, dont le parcours complet sur un PostgreSQL en mémoire
 npm run build
 npm run simulate:keno -- --rounds 10000000
-npm run simulate:roulette -- --spins 10000000 --variant european   # ou american
+npm run simulate:roulette -- --spins 10000000
 npm run simulate:draws -- --game lucky_six --draws 10000000         # ou lucky_ten
 ```
 
-Les simulations mesurent le RTP de chaque pari et l'uniformité des numéros (khi-deux), les deux premiers critères d'acceptation des cahiers des charges. Le moteur de règles de la roulette (`src/roulette/rules.ts`) est couvert à 100 % : chaque position du tapis est testée contre chaque case, en européenne et en américaine.
+Les simulations mesurent le RTP de chaque pari et l'uniformité des numéros (khi-deux), les deux premiers critères d'acceptation des cahiers des charges. Le moteur de règles de la roulette (`src/roulette/rules.ts`) est couvert à 100 % : chaque position du tapis est testée contre chacune des 38 cases.
 
 ## Choix techniques
 
@@ -70,7 +69,7 @@ Les erreurs ont la forme `{ "code": "INSUFFICIENT_FUNDS", ... }` : les clients t
 
 ## Routes
 
-Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️ = jeton back-office, 🏪 = jeton agent. `{roulette}` = `roulette` (européenne) ou `american-roulette`.
+Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️ = jeton back-office, 🏪 = jeton agent.
 
 | Méthode | Route | Rôle |
 | --- | --- | --- |
@@ -82,17 +81,17 @@ Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️
 | POST | `/me/self-exclusion` 🔒 | Auto-exclusion de 7 à 365 jours |
 | GET | `/wallet`, `/wallet/transactions` 🔒 | Solde et historique filtrable par date |
 | POST | `/payments/deposits`, `/payments/deposits/:id/check`, `/payments/withdrawals` 🔒 | Dépôts et retraits |
-| GET | `/lobby` | Les 5 jeux, prochain tirage et compte à rebours de Lucky Six et Lucky 10 (public) |
+| GET | `/lobby` | Les 4 jeux, prochain tirage et compte à rebours de Lucky Six et Lucky 10 (public) |
 | GET | `/keno/config` | Table de gains, mises, RTP (public) |
 | POST | `/keno/bets`, `/keno/autoplay` 🔒 | Mise unique, série de 5 à 100 mises |
 | GET | `/keno/bets`, `/keno/stats` 🔒 | 50 derniers tirages, numéros chauds et froids |
 | GET, POST | `/keno/seeds`, `/keno/seeds/rotate`, `/keno/seeds/revealed` 🔒 | Graines du tirage vérifiable |
 | POST | `/keno/verify` | Recalcule un tirage à partir des graines (public) |
-| GET | `/{roulette}/config` | Jetons, limites, table de paiement, RTP, roue, annonces de la piste (public) |
-| POST | `/{roulette}/spins`, `/{roulette}/autoplay` 🔒 | Un tour avec toutes ses mises, série de 5 à 100 tours |
-| GET | `/{roulette}/spins`, `/{roulette}/stats` 🔒 | 50 derniers tours, rouge/noir, zéros, douzaines, chauds et froids |
-| GET, POST | `/{roulette}/seeds`, `…/seeds/rotate`, `…/seeds/revealed` 🔒 | Graines de la roulette |
-| POST | `/{roulette}/verify` | Recalcule le numéro d'un tour (public) |
+| GET | `/american-roulette/config` | Jetons, limites, table de paiement, RTP, roue (public) |
+| POST | `/american-roulette/spins`, `/american-roulette/autoplay` 🔒 | Un tour avec toutes ses mises, série de 5 à 100 tours |
+| GET | `/american-roulette/spins`, `/american-roulette/stats` 🔒 | 50 derniers tours, rouge/noir, zéros, douzaines, chauds et froids |
+| GET, POST | `/american-roulette/seeds`, `…/seeds/rotate`, `…/seeds/revealed` 🔒 | Graines de la roulette |
+| POST | `/american-roulette/verify` | Recalcule la case d'un tour (public) |
 | GET | `/draws/{lucky_six,lucky_ten}/config` | Mises, coefficients, paris annexes et RTP de chacun (public) |
 | GET | `/draws/:game/upcoming`, `/draws/:game/results?date=&drawId=`, `/draws/:game/:id` | Prochains tirages (hash publié), résultats par jour ou par numéro (public) |
 | POST | `/draws/verify` | Recalcule les boules d'un tirage à partir de sa graine révélée (public) |
@@ -101,8 +100,8 @@ Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️
 | GET | `/tickets`, `/tickets/:code` 🔒 | Historique par jeu (en attente, gagnant, perdant, remboursé), détail par code |
 | POST | `/admin/auth/login` | Connexion back-office (mot de passe + TOTP) |
 | GET | `/admin/dashboard` 🛡️ | Mises, gains, GGR et joueurs actifs par jour, au total et par jeu |
-| GET, PUT | `/admin/keno/settings`, `/admin/roulette/{european,american}/settings`, `/admin/draws/:game/settings` 🛡️ | Paramètres des jeux (modification : `super_admin`) |
-| GET | `/admin/roulette/alerts` 🛡️ | Tours dont les mises couvraient toute la roue (anti-blanchiment) |
+| GET, PUT | `/admin/keno/settings`, `/admin/roulette/settings`, `/admin/draws/:game/settings` 🛡️ | Paramètres des jeux (modification : `super_admin`) |
+| GET | `/admin/roulette/alerts` 🛡️ | Tours dont les mises couvraient les 38 cases (anti-blanchiment) |
 | GET, POST | `/admin/draws/reviews`, `…/:entryId/approve`, `…/:entryId/reject` 🛡️ | Gros gains de tickets à valider |
 | POST | `/admin/draws/:drawId/cancel` 🛡️ | Annulation d'un tirage à venir, mises rendues (`super_admin`) |
 | GET, PATCH | `/admin/players` 🛡️ | Recherche, blocage, KYC, limites |
@@ -123,7 +122,7 @@ Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️
 
 ## Mise de roulette
 
-Un tour envoie toutes ses mises d'un coup ; le serveur additionne les jetons posés sur une même position puis vérifie les limites. En américaine, le 00 s'écrit **37**.
+Un tour envoie toutes ses mises d'un coup ; le serveur additionne les jetons posés sur une même position puis vérifie les limites. Le 00 s'écrit **37**.
 
 ```json
 {
@@ -132,14 +131,14 @@ Un tour envoie toutes ses mises d'un coup ; le serveur additionne les jetons pos
     { "type": "straight", "numbers": [17], "amountCents": 1000 },
     { "type": "split", "numbers": [17, 20], "amountCents": 1000 },
     { "type": "dozen", "index": 2, "amountCents": 2500 },
-    { "type": "red", "amountCents": 5000 },
-    { "type": "voisins_du_zero", "amountCents": 1000 },
-    { "type": "neighbors", "numbers": [26], "amountCents": 1000 }
+    { "type": "split", "numbers": [0, 37], "amountCents": 1000 },
+    { "type": "top_line", "numbers": [0, 37, 1, 2, 3], "amountCents": 1000 },
+    { "type": "red", "amountCents": 5000 }
   ]
 }
 ```
 
-Types : `straight`, `split`, `street`, `corner`, `top_line` (américaine : 0, 00, 1, 2, 3), `line` (avec `numbers`), `dozen`, `column` (avec `index` 1 à 3), `red`, `black`, `even`, `odd`, `low`, `high`, et en européenne les annonces de la piste `voisins_du_zero`, `tiers`, `orphelins`, `neighbors` (montant = valeur d'un jeton). « Rejouer », « Doubler » et « Annuler dernier jeton » se font côté client.
+Types : `straight`, `split`, `street`, `corner`, `top_line` (0, 00, 1, 2, 3 ; désactivable), `line` (avec `numbers`), `dozen`, `column` (avec `index` 1 à 3), `red`, `black`, `even`, `odd`, `low`, `high`. Sur 0 et 00, toutes les mises extérieures sont perdues. « Rejouer », « Doubler » et « Effacer » se font côté client.
 
 ## Ticket Lucky Six / Lucky 10
 

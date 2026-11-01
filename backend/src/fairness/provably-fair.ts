@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 
 /** Jeux qui ont chacun leur paire de graines et leur suite de nonces par joueur. */
-export type Game = 'keno' | 'roulette' | 'american_roulette';
+export type Game = 'keno' | 'american_roulette';
 
 export function newServerSeed(): string {
   return randomBytes(32).toString('hex');

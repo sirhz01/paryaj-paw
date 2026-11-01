@@ -8,7 +8,7 @@ export type ExportKind = 'bets' | 'spins' | 'tickets' | 'draws' | 'ledger' | 'ag
 export const EXPORT_KINDS: ExportKind[] = ['bets', 'spins', 'tickets', 'draws', 'ledger', 'agent_ledger', 'payments'];
 
 /** Jeux suivis par le tableau de bord. */
-export const DASHBOARD_GAMES = ['keno', 'roulette', 'american_roulette', 'lucky_six', 'lucky_ten'] as const;
+export const DASHBOARD_GAMES = ['keno', 'american_roulette', 'lucky_six', 'lucky_ten'] as const;
 
 const MAX_RANGE_DAYS = 92;
 const MAX_EXPORT_ROWS = 200_000;
@@ -20,8 +20,8 @@ const IN_RANGE = `created_at >= ($1::date::timestamp AT TIME ZONE '${HAITI_TIME_
 const EXPORT_QUERIES: Record<ExportKind, string> = {
   bets: `SELECT id, user_id, created_at, picks, drawn, hits, stake_cents, multiplier, payout_cents, seed_id, nonce, settings_version
            FROM keno_bets WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
-  spins: `SELECT id, user_id, created_at, variant, number, total_stake_cents, total_payout_cents, covers_all, bets, seed_id, nonce, settings_version
-            FROM roulette_spins WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
+  spins: `SELECT id, user_id, created_at, number, total_stake_cents, total_payout_cents, covers_all, bets, seed_id, nonce, settings_version
+            FROM roulette_spins WHERE variant = 'american' AND ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
   tickets: `SELECT e.id AS entry_id, t.code, t.user_id, t.agent_id, t.game, t.created_at, e.draw_id, t.bet, e.stake_cents, e.status,
                    e.payout_cents, e.commission_cents, e.settled_at, e.reviewed_by
               FROM ticket_entries e JOIN tickets t ON t.id = e.ticket_id
@@ -68,9 +68,8 @@ export class AdminService {
               SELECT 'keno' AS game, user_id, stake_cents AS stake, payout_cents AS payout, created_at AS at
                 FROM keno_bets WHERE ${IN_RANGE}
               UNION ALL
-              SELECT CASE WHEN variant = 'american' THEN 'american_roulette' ELSE 'roulette' END,
-                     user_id, total_stake_cents, total_payout_cents, created_at
-                FROM roulette_spins WHERE ${IN_RANGE}
+              SELECT 'american_roulette', user_id, total_stake_cents, total_payout_cents, created_at
+                FROM roulette_spins WHERE variant = 'american' AND ${IN_RANGE}
               UNION ALL
               SELECT t.game, e.user_id, e.stake_cents, e.payout_cents, e.settled_at
                 FROM ticket_entries e JOIN tickets t ON t.id = e.ticket_id
@@ -112,13 +111,13 @@ export class AdminService {
     });
   }
 
-  /** Tours de roulette dont les mises couvraient toute la roue, 37 ou 38 cases (signal anti-blanchiment). */
+  /** Tours de roulette dont les mises couvraient les 38 cases (signal anti-blanchiment). */
   async rouletteAlerts(from: string, to: string) {
     this.checkRange(from, to);
     const { rows } = await this.db.query(
-      `SELECT r.id AS "spinId", r.variant, r.user_id AS "userId", u.phone, r.number,
+      `SELECT r.id AS "spinId", r.user_id AS "userId", u.phone, r.number,
               r.total_stake_cents AS "totalStakeCents", r.total_payout_cents AS "totalPayoutCents", r.created_at AS "createdAt"
-         FROM (SELECT * FROM roulette_spins WHERE covers_all AND ${IN_RANGE}) r
+         FROM (SELECT * FROM roulette_spins WHERE variant = 'american' AND covers_all AND ${IN_RANGE}) r
          JOIN users u ON u.id = r.user_id
         ORDER BY r.id DESC LIMIT 500`,
       [from, to],
