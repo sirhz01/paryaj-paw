@@ -224,7 +224,8 @@ PP.ready.then(function () {
   /** { t, state: 'pending' | 'lost' | 'won' | 'paid', win } depuis le serveur, ou depuis le stockage local en démo. */
   async function lookup(raw) {
     // Un scanner peut envoyer l'adresse du QR (…/t/CODE) ou des espaces : on garde le code seul ; vide = introuvable.
-    const id = String(raw || '').trim().split(/[/?#]/).filter(Boolean).pop() || '';
+    // Un scanner Code 39 peut ajouter les * de début/fin ; on ne garde que lettres et chiffres.
+    const id = (String(raw || '').trim().split(/[/?#]/).filter(Boolean).pop() || '').replace(/[^A-Za-z0-9-]/g, '');
     if (!id) throw { code: 'TICKET_NOT_FOUND', body: {} };
     if (online) {
       const t = PP.fromServerTicket(await PP.api.ticket(id));
@@ -250,6 +251,12 @@ PP.ready.then(function () {
   }
   $('checkBtn').addEventListener('click', () => checkTicket());
   $('payId').addEventListener('keydown', (e) => { if (e.key === 'Enter') checkTicket(); });
+  // Le scanner tape le code comme un clavier : s'il part ailleurs que dans un champ, on le redirige vers « ID de ticket ».
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || !/[A-Za-z0-9*]/.test(e.key)) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || !$('login').classList.contains('hidden')) return;
+    $('payId').focus(); $('payId').select();
+  });
   $('payBtn').addEventListener('click', async () => {
     if (!payTicket) return;
     const { t, win } = payTicket, btn = $('payBtn');

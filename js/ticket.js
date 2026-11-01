@@ -19,7 +19,8 @@
       }
       x += 1;
     }
-    return `<svg class="bc" viewBox="0 0 ${x} 40" preserveAspectRatio="none" aria-label="${PP.esc(text)}">${bars}</svg>`;
+    /* Marges blanches de 10 modules de chaque côté (Code 39 en exige ~10×) : sans elles le scanner ne lit pas. */
+    return `<svg class="bc" viewBox="-10 0 ${x + 20} 40" preserveAspectRatio="none" shape-rendering="crispEdges" aria-label="${PP.esc(text)}">${bars}</svg>`;
   }
 
   const row = (a, b, cls = '') => `<div class="r ${cls}"><span>${a}</span><span>${b}</span></div>`;
@@ -76,7 +77,7 @@
     .tk .line .picks{text-align:center;font-size:17px;margin:1mm 0 2mm;word-spacing:3mm;overflow-wrap:anywhere}
     .tk .big{margin-top:3mm}
     .tk .total{text-align:center;font-size:19px;margin:1mm 0 3mm}
-    .tk .bc{display:block;width:95%;height:13mm;margin:4mm auto 0;fill:#000}`;
+    .tk .bc{display:block;width:100%;height:13mm;margin:4mm auto 0;fill:#000}`;
 
   /* Impression via un iframe caché : le reste de la page n'est jamais imprimé. */
   PP.printHTML = function (html) {
