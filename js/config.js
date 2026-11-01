@@ -21,29 +21,28 @@ PP.COLORS = ['#2b2f33', '#e53935', '#1fbf55', '#38b6ff', '#2740d6', '#7a5a3a', '
 PP.COLOR_NAMES = ['Noir', 'Rouge', 'Vert', 'Bleu clair', 'Bleu', 'Marron', 'Jaune', 'Orange'];
 
 /* Lucky Six : 35 boules tirées sur 48. La boule n°6..35 qui complète les 6 numéros du joueur
-   paie LADDER[position - 6] × la mise. */
-PP.LUCKY_LADDER = [10000, 7500, 5000, 2500, 1000, 500, 300, 200, 150, 100,
-  80, 60, 40, 30, 25, 20, 18, 16, 14, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+   paie LADDER[position - 6] × la mise. Échelle certifiée, RTP 92,5 % (même valeur côté serveur). */
+PP.LUCKY_LADDER = [10000, 7500, 5000, 2500, 905, 455, 270, 180, 135, 91,
+  82, 73, 63, 54, 45, 36, 27, 23, 18, 14, 9.1, 8.2, 7.3, 6.3, 5.4, 4.5, 3.6, 2.7, 1.8, 0.9];
 
-/* Lucky X : 20 boules sur 50. 1 numéro dans les 6 premières = cote 6 ;
-   N numéros (2..10) tous tirés = LUCKYX_TIERS[N] × la mise. */
-PP.LUCKYX_TIERS = { 2: 6, 3: 13, 4: 19, 5: 70, 6: 250, 7: 700, 8: 2000, 9: 3000, 10: 20000 };
-PP.LUCKYX_SINGLE_ODDS = 6;
+/* Lucky X : 20 boules sur 50. 1 numéro dans les 6 premières = cote 7,67 ;
+   N numéros (2..10) tous tirés = LUCKYX_TIERS[N] × la mise. Chaque pari ~92 % de RTP. */
+PP.LUCKYX_TIERS = { 2: 5.93, 3: 15.82, 4: 43.73, 5: 126, 6: 377, 7: 1185, 8: 3921, 9: 13723, 10: 51151 };
+PP.LUCKYX_SINGLE_ODDS = 7.67;
 
 /* Keno : KENO_PAY[numéros choisis][numéros trouvés] = coefficient × la mise.
-   1 à 5 : exemple du cahier des charges (à valider par rapport mathématique).
-   9 : écran de la boutique. 6, 7, 8, 10 : DEMO, valeurs provisoires. */
+   Table certifiée, identique au moteur en ligne ; chaque ligne 91,6-93 % de RTP. */
 PP.KENO_PAY = {
-  1:  { 1: 3 },
-  2:  { 2: 19 },
-  3:  { 2: 2, 3: 25 },
-  4:  { 2: 1, 3: 5, 4: 80 },
-  5:  { 3: 3, 4: 15, 5: 400 },
-  6:  { 3: 1, 4: 4, 5: 20, 6: 300 },
-  7:  { 4: 2, 5: 10, 6: 60, 7: 800 },
-  8:  { 4: 1, 5: 5, 6: 25, 7: 200, 8: 2000 },
-  9:  { 0: 1, 4: 2, 5: 10, 6: 25, 7: 125, 8: 1000, 9: 5000 },
-  10: { 5: 2, 6: 10, 7: 50, 8: 300, 9: 2500, 10: 10000 },
+  1:  { 1: 3.7 },
+  2:  { 1: 1, 2: 9.1 },
+  3:  { 2: 3, 3: 37 },
+  4:  { 2: 1.4, 3: 6.8, 4: 110 },
+  5:  { 2: 0.6, 3: 3.3, 4: 17, 5: 440 },
+  6:  { 3: 2, 4: 7.9, 5: 79, 6: 1500 },
+  7:  { 3: 1.1, 4: 4.5, 5: 23, 6: 225, 7: 5650 },
+  8:  { 3: 0.5, 4: 2.2, 5: 11, 6: 88, 7: 1100, 8: 10000 },
+  9:  { 3: 0.5, 4: 1.6, 5: 5.4, 6: 33, 7: 270, 8: 2700, 9: 10000 },
+  10: { 0: 1.1, 4: 1.1, 5: 3.3, 6: 16, 7: 110, 8: 1100, 9: 5400, 10: 10000 },
 };
 
 PP.STAKES = [25, 50, 100, 250, 500, 1000];

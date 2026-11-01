@@ -98,6 +98,33 @@ describe('roulette américaine', () => {
     expect(l).toMatchObject({ label: 'Douzaine 1', odds: 3, possibleCents: 7500, picks: ['DOUZAINE 1'] });
     expect(rouletteLine('n:5', 100, true)!.picks).toEqual(['5']);
   });
+
+  it('accepte les chevaux (17:1) et les carrés (8:1) standard, y compris avec 0 et 00', () => {
+    // Chevaux : horizontal 1-4, vertical 1-2, et les chevaux du zéro ; 1-5 n'est pas un cheval.
+    expect(rouletteKeyNumbers('sp:1-4')).toEqual(['1', '4']);
+    expect(rouletteKeyNumbers('sp:1-2')).toEqual(['1', '2']);
+    expect(rouletteKeyNumbers('sp:0-00')).toEqual(['0', '00']);
+    expect(rouletteKeyNumbers('sp:3-00')).toEqual(['3', '00']);
+    expect(rouletteKeyNumbers('sp:1-5')).toBeNull();
+    expect(rouletteKeyNumbers('sp:3-4')).toBeNull(); // 3 est en haut de colonne : pas de cheval vertical
+    // Carrés : coin bas-gauche, couvre m, m+1, m+3, m+4 ; 3 (haut de colonne) n'en est pas un.
+    expect(rouletteKeyNumbers('co:1')).toEqual(['1', '2', '4', '5']);
+    expect(rouletteKeyNumbers('co:32')).toEqual(['32', '33', '35', '36']);
+    expect(rouletteKeyNumbers('co:3')).toBeNull();
+    expect(rouletteKeyNumbers('co:33')).toBeNull();
+    const win = (key: string, n: string) => lineWin('roulette', rouletteLine(key, 10000, true)!, { n }, PAYTABLES);
+    expect(win('sp:1-4', '4')).toBe(180000); // 17:1 + mise
+    expect(win('sp:1-4', '2')).toBe(0);
+    expect(win('co:1', '5')).toBe(90000); //  8:1 + mise
+    expect(win('co:1', '3')).toBe(0);
+    expect(rouletteLine('sp:1-4', 100, true)!.picks).toEqual(['1', '4']);
+  });
+
+  it('avantage maison 5,26 % sur les mises intérieures (sauf top line à 7,89 %)', () => {
+    const rtp = (line: string) => rtpReport(PAYTABLES, true).find((r) => r.game === 'roulette' && r.line === line)!.rtpPercent;
+    for (const line of ['straight', 'split', 'street', 'corner', 'six']) expect(rtp(line)).toBeCloseTo(94.74, 2);
+    expect(rtp('top line')).toBeCloseTo(92.11, 2); // pari à 5 numéros (0,00,1,2,3) : la pire mise de la roue
+  });
 });
 
 describe('Keno 20/80', () => {

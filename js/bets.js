@@ -6,7 +6,7 @@
     /* Ligne de roulette à partir d'une clé de mise (cf. roulette-core). */
     rouletteLine(key, stake) {
       const k = key.split(':')[0], odds = R.odds(key);
-      const picks = ['n', 'st', 'six'].includes(k) ? R.keyNumbers(key) : [R.label(key).toUpperCase()];
+      const picks = ['n', 'sp', 'st', 'co', 'six'].includes(k) ? R.keyNumbers(key) : [R.label(key).toUpperCase()];
       return { key, label: R.label(key), picks, odds, stake, possible: stake * odds };
     },
 

@@ -10,12 +10,35 @@
 
   const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => String(a + i));
 
-  /* Clés de mise : n:17  st:19  six:31  col:1-3  doz:1-3  red black even odd low high */
+  /* Chevaux valides (deux cases voisines), 0 et 00 compris. Clé canonique « a-b ». */
+  R.SPLITS = (function () {
+    const s = new Set(['0-1', '0-2', '0-00', '2-00', '3-00']);
+    for (let a = 1; a <= 35; a++) for (const b of [a + 1, a + 3]) if (b <= 36 && (b === a + 3 || a % 3 !== 0)) s.add(a + '-' + b);
+    return s;
+  })();
+
+  /* Clé de cheval à partir de deux cases ('0','00','17'…), ou null si elles ne sont pas voisines. */
+  R.splitKey = function (a, b) {
+    for (const [x, y] of [[a, b], [b, a]]) if (R.SPLITS.has(x + '-' + y)) return 'sp:' + x + '-' + y;
+    return null;
+  };
+
+  /* Clé de carré à partir de deux numéros en diagonale (pas de 0/00), ou null. */
+  R.cornerKey = function (a, b) {
+    if (/\D/.test(String(a)) || /\D/.test(String(b))) return null;
+    const lo = Math.min(+a, +b), hi = Math.max(+a, +b), d = hi - lo;
+    const m = d === 4 ? lo : d === 2 ? lo - 1 : 0;        // diagonale (m,m+4) ou (m+1,m+3)
+    return m >= 1 && m <= 32 && m % 3 !== 0 ? 'co:' + m : null;
+  };
+
+  /* Clés de mise : n:17  sp:17-20  st:19  co:17  six:31  col:1-3  doz:1-3  red black even odd low high */
   R.keyNumbers = function (key) {
     const [k, v] = key.split(':'), x = +v;
     const all = range(1, 36);
     switch (k) {
       case 'n': return [v];
+      case 'sp': return R.SPLITS.has(v) ? v.split('-') : [];
+      case 'co': return x >= 1 && x <= 32 && x % 3 !== 0 && String(x) === v ? [x, x + 1, x + 3, x + 4].map(String) : [];
       case 'st': return range(x, x + 2);
       case 'six': return range(x, x + 5);
       case 'col': return all.filter((n) => n % 3 === x % 3);
@@ -31,11 +54,11 @@
   };
 
   /* Cote totale (mise comprise), comme sur les tickets de la boutique. */
-  R.odds = (key) => ({ n: 36, st: 12, six: 6, col: 3, doz: 3, red: 2, black: 2, even: 2, odd: 2, low: 2, high: 2 })[key.split(':')[0]];
+  R.odds = (key) => ({ n: 36, sp: 18, st: 12, co: 9, six: 6, col: 3, doz: 3, red: 2, black: 2, even: 2, odd: 2, low: 2, high: 2 })[key.split(':')[0]];
 
   R.label = function (key) {
     const [k, v] = key.split(':');
-    return ({ n: 'Pari simple', st: 'Street', six: 'Six lignes', col: 'Colonne ' + v, doz: 'Douzaine ' + v,
+    return ({ n: 'Pari simple', sp: 'Cheval', st: 'Street', co: 'Carré', six: 'Six lignes', col: 'Colonne ' + v, doz: 'Douzaine ' + v,
       red: 'Rouge', black: 'Noir', even: 'Pair', odd: 'Impair', low: 'Manque 1-18', high: 'Passe 19-36' })[k];
   };
 

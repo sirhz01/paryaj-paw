@@ -37,6 +37,8 @@ button { font: inherit; cursor: pointer; }
 .rc.side { font-size: .72rem; background: #0c4a31; }
 .rc.sel { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(255, 210, 63, .5); }
 .rc.sel::after { content: attr(data-stake); position: absolute; right: -2px; top: -9px; background: var(--gold); color: #1a1a1a; font-size: .62rem; padding: 0 4px; border-radius: 8px; }
+/* 1re case touchée en mode Cheval / Carré, en attente de la seconde. */
+.rc.pending { border-color: #38d1ff; box-shadow: 0 0 0 2px rgba(56, 209, 255, .6), 0 0 .7rem rgba(56, 209, 255, .5) inset; }
 
 /* Grille de numéros */
 .quick { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin-bottom: .8rem; }

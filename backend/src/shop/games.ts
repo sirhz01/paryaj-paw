@@ -58,20 +58,30 @@ export function rouletteColor(n: string): RouletteColor {
 const range = (a: number, b: number): string[] => Array.from({ length: b - a + 1 }, (_, i) => String(a + i));
 const ALL = range(1, 36);
 
-/** Cote totale (mise comprise) par type de mise. */
+/** Cote totale (mise comprise) par type de mise. Table américaine standard (avantage maison 5,26 %). */
 const ROULETTE_ODDS: Record<string, number> = {
-  n: 36, st: 12, six: 6, col: 3, doz: 3, red: 2, black: 2, even: 2, odd: 2, low: 2, high: 2, basket: 7,
+  n: 36, sp: 18, st: 12, co: 9, six: 6, col: 3, doz: 3, red: 2, black: 2, even: 2, odd: 2, low: 2, high: 2, basket: 7,
 };
 
 const ROULETTE_LABELS: Record<string, string> = {
-  n: 'Pari simple', st: 'Street', six: 'Six lignes', red: 'Rouge', black: 'Noir', even: 'Pair', odd: 'Impair',
-  low: 'Manque 1-18', high: 'Passe 19-36', basket: 'Top line',
+  n: 'Pari simple', sp: 'Cheval', st: 'Street', co: 'Carré', six: 'Six lignes', red: 'Rouge', black: 'Noir',
+  even: 'Pair', odd: 'Impair', low: 'Manque 1-18', high: 'Passe 19-36', basket: 'Top line',
 };
 
 /**
- * Clés de mise : n:17 n:0 n:00, st:19 (début de la rue : 1, 4 … 34), six:31 (1, 4 … 31),
- * col:1-3, doz:1-3, red, black, even, odd, low, high, basket (0, 00, 1, 2, 3).
- * Renvoie null si la clé n'existe pas sur le tapis.
+ * Chevaux valides (deux cases voisines), 0 et 00 compris : horizontaux a/a+3, verticaux a/a+1 hors
+ * haut de colonne, et les chevaux du zéro. Clé canonique « petit-grand » (00 en dernier).
+ */
+export const ROULETTE_SPLITS: ReadonlySet<string> = (() => {
+  const splits = new Set(['0-1', '0-2', '0-00', '2-00', '3-00']);
+  for (let a = 1; a <= 35; a++) for (const b of [a + 1, a + 3]) if (b <= 36 && (b === a + 3 || a % 3 !== 0)) splits.add(`${a}-${b}`);
+  return splits;
+})();
+
+/**
+ * Clés de mise : n:17 n:0 n:00, sp:17-20 (cheval), st:19 (début de la rue : 1, 4 … 34), co:17 (carré,
+ * coin bas-gauche : 1, 2, 4, 5 … 32), six:31 (1, 4 … 31), col:1-3, doz:1-3, red, black, even, odd, low,
+ * high, basket (0, 00, 1, 2, 3). Renvoie null si la clé n'existe pas sur le tapis.
  */
 export function rouletteKeyNumbers(key: string): string[] | null {
   const [kind, value] = key.split(':');
@@ -79,8 +89,14 @@ export function rouletteKeyNumbers(key: string): string[] | null {
   switch (kind) {
     case 'n':
       return value === '0' || value === '00' || (/^[1-9]\d?$/.test(value ?? '') && x <= 36) ? [value] : null;
+    case 'sp':
+      return ROULETTE_SPLITS.has(value ?? '') ? (value as string).split('-') : null;
     case 'st':
       return Number.isInteger(x) && x >= 1 && x <= 34 && x % 3 === 1 && value === String(x) ? range(x, x + 2) : null;
+    case 'co':
+      return Number.isInteger(x) && x >= 1 && x <= 32 && x % 3 !== 0 && value === String(x)
+        ? [x, x + 1, x + 3, x + 4].map(String)
+        : null;
     case 'six':
       return Number.isInteger(x) && x >= 1 && x <= 31 && x % 3 === 1 && value === String(x) ? range(x, x + 5) : null;
     case 'col':
@@ -134,7 +150,7 @@ export function rouletteLine(key: string, stakeCents: number, topLineEnabled: bo
   const value = key.split(':')[1];
   const label =
     kind === 'col' ? `Colonne ${value}` : kind === 'doz' ? `Douzaine ${value}` : ROULETTE_LABELS[kind];
-  const picks = ['n', 'st', 'six', 'basket'].includes(kind) ? numbers : [label.toUpperCase()];
+  const picks = ['n', 'sp', 'st', 'co', 'six', 'basket'].includes(kind) ? numbers : [label.toUpperCase()];
   return newLine({ key, label, picks, odds: ROULETTE_ODDS[kind], stakeCents });
 }
 
@@ -247,10 +263,10 @@ export function rtpReport(paytables: ShopPaytables, topLineEnabled: boolean): Rt
     out.push({ game, line, rtpPercent: Math.round(rtp * 10000) / 100 });
 
   for (const [type, covered] of [
-    ['straight', 1], ['street', 3], ['six', 6], ['column/douzaine', 12], ['chance simple', 18], ['top line', 5],
+    ['straight', 1], ['split', 2], ['street', 3], ['corner', 4], ['six', 6], ['column/douzaine', 12], ['chance simple', 18], ['top line', 5],
   ] as const) {
     if (type === 'top line' && !topLineEnabled) continue;
-    const odds = { straight: 36, street: 12, six: 6, 'column/douzaine': 3, 'chance simple': 2, 'top line': 7 }[type];
+    const odds = { straight: 36, split: 18, street: 12, corner: 9, six: 6, 'column/douzaine': 3, 'chance simple': 2, 'top line': 7 }[type];
     add('roulette', type, (odds * covered) / 38);
   }
   for (const [n, row] of Object.entries(paytables.keno)) {

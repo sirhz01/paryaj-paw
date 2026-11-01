@@ -87,7 +87,7 @@ describe('Boutique (e2e)', () => {
       expect(res.body.timings.roulette).toEqual({ bet: 25, draw: 11, result: 8 });
       expect(res.body.grids.luckysix).toMatchObject({ max: 48, min: 6, maxPick: 6, drawn: 35 });
       expect(res.body.stakesCents).toEqual([2500, 5000, 10000, 25000, 50000, 100000]);
-      expect(res.body.paytables.keno['9']['9']).toBe(5000);
+      expect(res.body.paytables.keno['9']['9']).toBe(10000);
       expect(res.body.wheelOrder).toHaveLength(38);
       expect(res.body.serverTime).toBe(now);
     });
@@ -182,7 +182,7 @@ describe('Boutique (e2e)', () => {
       expect(again.body.id).toBe(first.body.id);
       const { rows } = await db.query('SELECT count(*)::int AS n FROM shop_tickets WHERE idempotency_key = $1', ['meme-vente-001']);
       expect(rows[0]).toEqual({ n: 1 });
-      expect(first.body.lines[0]).toMatchObject({ label: 'Keno 3 numéros', picks: [1, 2, 3], odds: 25, possibleCents: 125000 });
+      expect(first.body.lines[0]).toMatchObject({ label: 'Keno 3 numéros', picks: [1, 2, 3], odds: 37, possibleCents: 185000 });
     });
 
     it('refuse les mises invalides avec un code', async () => {
@@ -363,10 +363,13 @@ describe('Boutique (e2e)', () => {
     it('paramètres : le RTP de chaque ligne est publié, une ligne > 100 % est refusée', async () => {
       const res = await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200);
       const keno2 = res.body.rtp.find((r: { game: string; line: string }) => r.game === 'keno' && r.line === '2 numéros');
-      expect(keno2.rtpPercent).toBeGreaterThan(100);
+      expect(keno2.rtpPercent).toBeGreaterThan(90); // tables certifiées ~92 %
+      expect(keno2.rtpPercent).toBeLessThanOrEqual(100);
 
       const { version: _v, createdAt: _c, ...input } = res.body.settings;
-      const refused = await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send(input).expect(400);
+      // Une ligne qui rend plus que la mise (Keno 2 numéros à 19 ×) est refusée.
+      const over = { ...input, paytables: { ...input.paytables, keno: { ...input.paytables.keno, '2': { '2': 19 } } } };
+      const refused = await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send(over).expect(400);
       expect(refused.body.code).toBe('INVALID_SETTINGS');
       expect(refused.body.errors.join()).toMatch(/keno 2 numéros/);
 
@@ -377,7 +380,7 @@ describe('Boutique (e2e)', () => {
     it('un nouveau jeu de paramètres s\'applique aux ventes suivantes', async () => {
       const res = await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200);
       const { version, createdAt: _c, ...input } = res.body.settings;
-      expect(version).toBe(1);
+      expect(version).toBeGreaterThanOrEqual(1); // version courante (la migration des tables certifiées en ajoute une)
       input.paytables.keno['2'] = { '2': 15 };
       const updated = await api()
         .put('/api/v1/admin/shop/settings')

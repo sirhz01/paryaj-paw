@@ -38,7 +38,9 @@ Page **Administration** ([admin.html](admin.html)) : rapport de fin de journée 
 
 Touche **F** = plein écran sur les écrans TV, `?shift=30` décale l'horloge (démo), `?api=…` choisit une autre adresse d'API.
 Le logo (`assets/logo.jpg`) est en tête de chaque écran et de chaque ticket (`js/ticket.js`).
-L'écran et le back-end utilisent tous deux la roulette américaine (0 et 00).
+L'écran et le back-end utilisent tous deux la roulette américaine (0 et 00), avec le jeu de mises standard complet :
+pari simple, cheval (17:1), street, carré (8:1), six lignes, colonne, douzaine, chances simples et top line.
 
-À remplacer avant la production : tables de gains Keno 6/7/8/10 et règles Lucky X = valeurs DEMO, dont le RTP s'éloigne de 90–95 %
-(voir `GET /api/v1/admin/shop/settings`).
+Tables de gains au **format international, RTP ~92 %** (`migrations/008_shop_paytables_rtp.sql`, vérifiées par
+`src/shop/certified-paytables.spec.ts`) : Keno 20/80 identique au moteur en ligne, Lucky Six 35/48 à l'échelle certifiée,
+Lucky X 50/20 recalculé. Taux de gain de chaque ligne : `GET /api/v1/admin/shop/settings`.

@@ -6,6 +6,7 @@ PP.ready.then(function () {
   let game = 'roulette', stake = 100;
   let slip = [];            // roulette : [{ key, stake }]
   let picks = [];           // autres jeux : numéros choisis
+  let pendingCell = null;   // 1re case touchée en mode Cheval / Carré (2 touches)
   let payTicket = null;
 
   const NUM = {   // paramètres des grilles de numéros
@@ -60,7 +61,7 @@ PP.ready.then(function () {
   document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
     game = b.dataset.g;
     document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
-    slip = []; picks = [];
+    slip = []; picks = []; clearPending();
     renderBoard(); renderSlip();
   }));
 
@@ -74,17 +75,40 @@ PP.ready.then(function () {
   /* ---------- Plateau ---------- */
   R.buildTable($('rtable'), onRouletteCell);
   const mode = () => document.querySelector('input[name=mode]:checked').value;
+  // Changer de mode annule une 1re touche de Cheval / Carré restée en attente.
+  document.getElementById('modes').addEventListener('change', clearPending);
 
-  function onRouletteCell(key) {
-    const m = mode();
-    if (key.startsWith('n:') && !['n:0', 'n:00'].includes(key) && m !== 'n') {
-      const x = +key.slice(2), s = x - ((x - 1) % 3);
-      key = m === 'st' ? 'st:' + s : 'six:' + Math.min(s, 31);
-    }
+  function clearPending() { pendingCell = null; highlightPending(null); }
+  function highlightPending(key) {
+    document.querySelectorAll('#rtable .rc.pending').forEach((c) => c.classList.remove('pending'));
+    if (key) { const c = document.querySelector(`#rtable .rc[data-key="${key}"]`); if (c) c.classList.add('pending'); }
+  }
+  function addKey(key) {
     if (!stake) return flash('Choisir une mise', true);
     const l = slip.find((x) => x.key === key);
     if (l) l.stake += stake; else slip.push({ key, stake });
     renderSlip();
+  }
+
+  function onRouletteCell(key) {
+    const m = mode();
+    const isNum = key.startsWith('n:');
+    // Cheval / Carré : deux touches sur des numéros (0 et 00 compris pour le cheval).
+    if ((m === 'sp' || m === 'co') && isNum) {
+      const tok = key.slice(2);
+      if (pendingCell === null) return (pendingCell = tok), highlightPending(key);
+      if (pendingCell === tok) return clearPending();                 // retoucher la même case annule
+      const combo = m === 'sp' ? R.splitKey(pendingCell, tok) : R.cornerKey(pendingCell, tok);
+      clearPending();
+      if (!combo) return flash(m === 'sp' ? 'Cheval : toucher deux numéros voisins' : 'Carré : toucher deux numéros en diagonale', true);
+      return addKey(combo);
+    }
+    // Street / Six lignes : une touche sur un numéro (hors 0 et 00).
+    if (isNum && !['n:0', 'n:00'].includes(key) && (m === 'st' || m === 'six')) {
+      const x = +key.slice(2), s = x - ((x - 1) % 3);
+      key = m === 'st' ? 'st:' + s : 'six:' + Math.min(s, 31);
+    }
+    addKey(key);
   }
 
   function renderBoard() {
@@ -134,14 +158,14 @@ PP.ready.then(function () {
       : '<div class="empty">Aucune mise. Choisir sur le plateau.</div>';
     $('total').textContent = PP.money(lines.reduce((a, l) => a + l.stake, 0));
     if (game === 'roulette') document.querySelectorAll('#rtable .rc').forEach((c) => {
-      const keys = slip.filter((l) => l.key === c.dataset.key || (/^(st|six):/.test(l.key) && c.dataset.key.startsWith('n:') && R.keyNumbers(l.key).includes(c.dataset.key.slice(2))));
+      const keys = slip.filter((l) => l.key === c.dataset.key || (/^(sp|st|co|six):/.test(l.key) && c.dataset.key.startsWith('n:') && R.keyNumbers(l.key).includes(c.dataset.key.slice(2))));
       c.classList.toggle('sel', keys.length > 0);
       const own = slip.find((l) => l.key === c.dataset.key);
       if (own) c.dataset.stake = own.stake; else delete c.dataset.stake;
     });
   }
   $('slip').addEventListener('click', (e) => { const i = e.target.dataset.i; if (i !== undefined) { slip.splice(+i, 1); renderSlip(); } });
-  $('resetBtn').addEventListener('click', () => { slip = []; picks = []; syncNums(); renderSlip(); flash(''); });
+  $('resetBtn').addEventListener('click', () => { slip = []; picks = []; clearPending(); syncNums(); renderSlip(); flash(''); });
 
   function flash(text, err) { const m = $('msg'); m.textContent = text; m.className = 'msg' + (err ? ' err' : text ? ' ok' : ''); }
 
