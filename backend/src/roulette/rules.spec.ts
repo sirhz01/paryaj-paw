@@ -1,7 +1,7 @@
 import {
-  BET_TYPES,
   Bet,
   BetType,
+  DOUBLE_ZERO,
   EVEN_MONEY_BET_TYPES,
   INSIDE_BET_TYPES,
   OUTSIDE_BET_TYPES,
@@ -9,13 +9,16 @@ import {
   POCKETS,
   RED_NUMBERS,
   WHEEL_ORDER,
+  WHEEL_ORDERS,
   betReturn,
+  betTypesOf,
   colorOf,
   coverage,
   coversAllPockets,
   expandRacetrack,
   insidePositions,
   normalizeBets,
+  pocketLabel,
   rtpPercent,
   spinNumber,
 } from './rules';
@@ -130,6 +133,7 @@ describe('paiements', () => {
       split: 17,
       street: 11,
       corner: 8,
+      top_line: 6,
       line: 5,
       dozen: 2,
       column: 2,
@@ -147,7 +151,7 @@ describe('paiements', () => {
       const average = ALL.reduce((sum, n) => sum + betReturn(bet, n, false), 0) / POCKETS;
       expect(average / bet.amountCents).toBeCloseTo(36 / 37, 12);
     }
-    for (const type of BET_TYPES) expect(rtpPercent(type, false)).toBeCloseTo(97.297, 3);
+    for (const type of betTypesOf('european')) expect(rtpPercent(type, false)).toBeCloseTo(97.297, 3);
   });
 
   it('La Partage rend la moitié des chances simples sur le zéro, rien aux autres mises', () => {
@@ -276,5 +280,93 @@ describe('tirage', () => {
 
   it('liste les mises extérieures', () => {
     expect(OUTSIDE_BET_TYPES).toHaveLength(8);
+  });
+});
+
+describe('roulette américaine', () => {
+  const AMERICAN = Array.from({ length: 38 }, (_, n) => n);
+
+  function americanPositions(): Bet[] {
+    const bets: Bet[] = [];
+    for (const type of INSIDE_BET_TYPES) {
+      for (const numbers of insidePositions(type, 'american')) bets.push({ type, numbers, amountCents: 1000 });
+    }
+    for (const index of [1, 2, 3]) {
+      bets.push({ type: 'dozen', numbers: coverage('dozen', [], index, 'american')!, amountCents: 1000 });
+      bets.push({ type: 'column', numbers: coverage('column', [], index, 'american')!, amountCents: 1000 });
+    }
+    for (const type of EVEN_MONEY_BET_TYPES) bets.push({ type, numbers: coverage(type)!, amountCents: 1000 });
+    return bets;
+  }
+
+  it.each([
+    ['straight', 38],
+    ['split', 62],
+    ['street', 14],
+    ['corner', 22],
+    ['top_line', 1],
+    ['line', 11],
+  ] as const)('%s : %i positions', (type, count) => {
+    expect(insidePositions(type, 'american')).toHaveLength(count);
+  });
+
+  it('a 38 cases sur la roue, chacune une fois, et affiche 37 comme « 00 »', () => {
+    expect([...WHEEL_ORDERS.american].sort((a, b) => a - b)).toEqual(AMERICAN);
+    expect(pocketLabel(DOUBLE_ZERO)).toBe('00');
+    expect(pocketLabel(17)).toBe('17');
+    expect(colorOf(DOUBLE_ZERO)).toBe('green');
+  });
+
+  it('accepte 0-00, 0-1-2, 00-2-3 et la top line, refuse le carré 0-1-2-3 de l’européenne', () => {
+    expect(coverage('split', [DOUBLE_ZERO, 0], undefined, 'american')).toEqual([0, DOUBLE_ZERO]);
+    expect(coverage('street', [2, 3, DOUBLE_ZERO], undefined, 'american')).toEqual([2, 3, DOUBLE_ZERO]);
+    expect(coverage('top_line', [0, DOUBLE_ZERO, 1, 2, 3], undefined, 'american')).toHaveLength(5);
+    expect(coverage('corner', [0, 1, 2, 3], undefined, 'american')).toBeNull();
+    expect(coverage('split', [0, 3], undefined, 'american')).toBeNull();
+    expect(coverage('top_line', [0, 1, 2, 3, DOUBLE_ZERO])).toBeNull();
+    expect(coverage('straight', [DOUBLE_ZERO])).toBeNull();
+  });
+
+  it('paie chaque position sur chacune des 38 cases : 36 / cases couvertes, sauf la top line (7×)', () => {
+    for (const bet of americanPositions()) {
+      for (const number of AMERICAN) {
+        const multiple = bet.type === 'top_line' ? 7 : 36 / bet.numbers.length;
+        expect(betReturn(bet, number, false)).toBe(bet.numbers.includes(number) ? bet.amountCents * multiple : 0);
+      }
+    }
+  });
+
+  it('perd toutes les mises extérieures sur 0 et 00', () => {
+    for (const type of ['dozen', 'column', ...EVEN_MONEY_BET_TYPES] as BetType[]) {
+      const numbers = coverage(type, [], type === 'dozen' || type === 'column' ? 1 : undefined, 'american')!;
+      for (const zero of [0, DOUBLE_ZERO]) expect(betReturn({ type, numbers, amountCents: 1000 }, zero, false)).toBe(0);
+    }
+  });
+
+  it('donne un RTP de 94,74 %, et 92,11 % pour la top line', () => {
+    for (const bet of americanPositions()) {
+      const average = AMERICAN.reduce((sum, n) => sum + betReturn(bet, n, false), 0) / 38 / bet.amountCents;
+      expect(average).toBeCloseTo(bet.type === 'top_line' ? 35 / 38 : 36 / 38, 12);
+    }
+    expect(rtpPercent('straight', false, 'american')).toBeCloseTo(94.737, 3);
+    expect(rtpPercent('top_line', false, 'american')).toBeCloseTo(92.105, 3);
+  });
+
+  it('refuse la piste et repère les mises qui couvrent les 38 cases', () => {
+    expect(() => normalizeBets([{ type: 'tiers', amountCents: 1000 }], 'american')).toThrow();
+    const nearlyAll = [
+      { type: 'red' as const, amountCents: 1000 },
+      { type: 'black' as const, amountCents: 1000 },
+      { type: 'straight' as const, numbers: [0], amountCents: 1000 },
+    ];
+    expect(coversAllPockets(normalizeBets(nearlyAll, 'american'), 'american')).toBe(false);
+    const all = normalizeBets([...nearlyAll, { type: 'straight', numbers: [DOUBLE_ZERO], amountCents: 1000 }], 'american');
+    expect(coversAllPockets(all, 'american')).toBe(true);
+  });
+
+  it('tire les 38 cases de façon uniforme', () => {
+    const counts = new Array<number>(38).fill(0);
+    for (let nonce = 0; nonce < 38_000; nonce++) counts[spinNumber('a', 'b', nonce, 'american')]++;
+    expect(counts.every((c) => c > 800 && c < 1200)).toBe(true);
   });
 });

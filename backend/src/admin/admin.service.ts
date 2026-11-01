@@ -4,8 +4,11 @@ import { AppError } from '../common/errors';
 import { HAITI_TIME_ZONE } from '../common/haiti';
 import { DATABASE, Database } from '../database/db';
 
-export type ExportKind = 'bets' | 'spins' | 'ledger' | 'payments';
-export const EXPORT_KINDS: ExportKind[] = ['bets', 'spins', 'ledger', 'payments'];
+export type ExportKind = 'bets' | 'spins' | 'tickets' | 'draws' | 'ledger' | 'payments';
+export const EXPORT_KINDS: ExportKind[] = ['bets', 'spins', 'tickets', 'draws', 'ledger', 'payments'];
+
+/** Jeux suivis par le tableau de bord. */
+export const DASHBOARD_GAMES = ['keno', 'roulette', 'american_roulette', 'lucky_six', 'lucky_ten'] as const;
 
 const MAX_RANGE_DAYS = 92;
 const MAX_EXPORT_ROWS = 200_000;
@@ -17,8 +20,15 @@ const IN_RANGE = `created_at >= ($1::date::timestamp AT TIME ZONE '${HAITI_TIME_
 const EXPORT_QUERIES: Record<ExportKind, string> = {
   bets: `SELECT id, user_id, created_at, picks, drawn, hits, stake_cents, multiplier, payout_cents, seed_id, nonce, settings_version
            FROM keno_bets WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
-  spins: `SELECT id, user_id, created_at, number, total_stake_cents, total_payout_cents, covers_all, bets, seed_id, nonce, settings_version
+  spins: `SELECT id, user_id, created_at, variant, number, total_stake_cents, total_payout_cents, covers_all, bets, seed_id, nonce, settings_version
             FROM roulette_spins WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
+  tickets: `SELECT e.id AS entry_id, t.code, t.user_id, t.game, t.created_at, e.draw_id, t.bet, e.stake_cents, e.status,
+                   e.payout_cents, e.settled_at, e.reviewed_by
+              FROM ticket_entries e JOIN tickets t ON t.id = e.ticket_id
+             WHERE ${IN_RANGE} ORDER BY e.id LIMIT ${MAX_EXPORT_ROWS + 1}`,
+  draws: `SELECT id, game, scheduled_at, status, balls, server_seed_hash,
+                 CASE WHEN status IN ('drawn', 'settled') THEN server_seed END AS server_seed, cancel_reason, drawn_at, settled_at
+            FROM draws WHERE ${IN_RANGE.replaceAll('created_at', 'scheduled_at')} ORDER BY scheduled_at LIMIT ${MAX_EXPORT_ROWS + 1}`,
   ledger: `SELECT id, user_id, created_at, kind, amount_cents, balance_after_cents, ref_type, ref_id
              FROM ledger_entries WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
   payments: `SELECT id, user_id, created_at, updated_at, direction, provider, amount_cents, status, provider_ref, failure_reason, reviewed_by
@@ -38,51 +48,73 @@ export class AdminService {
     private readonly audit: AuditService,
   ) {}
 
-  /** Une ligne par jour, tous jeux confondus et par jeu : mises, gains versés, GGR, joueurs actifs, dépôts et retraits. */
+  /**
+   * Une ligne par jour : mises, gains, GGR et joueurs actifs, au total et par jeu, plus dépôts et retraits réussis.
+   * Les tickets comptent le jour de leur règlement ; un gros gain en revue compte déjà comme gain.
+   */
   async dashboard(from: string, to: string) {
     this.checkRange(from, to);
-    const { rows } = await this.db.query(
-      `WITH days AS (SELECT generate_series($1::date, $2::date, interval '1 day')::date AS day),
-            plays AS (
-              SELECT 'keno' AS game, user_id, stake_cents AS stake, payout_cents AS payout, created_at
+    const { rows: plays } = await this.db.query<{
+      day: string;
+      game: string | null;
+      bets: number;
+      players: number;
+      stakes: number;
+      payouts: number;
+    }>(
+      `WITH plays AS (
+              SELECT 'keno' AS game, user_id, stake_cents AS stake, payout_cents AS payout, created_at AS at
                 FROM keno_bets WHERE ${IN_RANGE}
               UNION ALL
-              SELECT 'roulette', user_id, total_stake_cents, total_payout_cents, created_at
-                FROM roulette_spins WHERE ${IN_RANGE}),
-            bets AS (
-              SELECT (created_at AT TIME ZONE '${HAITI_TIME_ZONE}')::date AS day,
-                     count(*)::int AS bets, count(DISTINCT user_id)::int AS players,
-                     sum(stake)::bigint AS stakes, sum(payout)::bigint AS payouts,
-                     (sum(stake - payout) FILTER (WHERE game = 'keno'))::bigint AS keno_ggr,
-                     (sum(stake - payout) FILTER (WHERE game = 'roulette'))::bigint AS roulette_ggr
-                FROM plays GROUP BY 1),
-            pay AS (
-              SELECT (created_at AT TIME ZONE '${HAITI_TIME_ZONE}')::date AS day,
-                     (sum(amount_cents) FILTER (WHERE direction = 'deposit'))::bigint AS deposits,
-                     (sum(amount_cents) FILTER (WHERE direction = 'withdrawal'))::bigint AS withdrawals
-                FROM payments WHERE status = 'completed' AND ${IN_RANGE} GROUP BY 1)
-       SELECT to_char(d.day, 'YYYY-MM-DD') AS day,
-              COALESCE(b.bets, 0) AS bets,
-              COALESCE(b.players, 0) AS "activePlayers",
-              COALESCE(b.stakes, 0) AS "stakesCents",
-              COALESCE(b.payouts, 0) AS "payoutsCents",
-              COALESCE(b.stakes, 0) - COALESCE(b.payouts, 0) AS "ggrCents",
-              COALESCE(b.keno_ggr, 0) AS "kenoGgrCents",
-              COALESCE(b.roulette_ggr, 0) AS "rouletteGgrCents",
-              COALESCE(p.deposits, 0) AS "depositsCents",
-              COALESCE(p.withdrawals, 0) AS "withdrawalsCents"
-         FROM days d LEFT JOIN bets b USING (day) LEFT JOIN pay p USING (day)
-        ORDER BY d.day`,
+              SELECT CASE WHEN variant = 'american' THEN 'american_roulette' ELSE 'roulette' END,
+                     user_id, total_stake_cents, total_payout_cents, created_at
+                FROM roulette_spins WHERE ${IN_RANGE}
+              UNION ALL
+              SELECT t.game, e.user_id, e.stake_cents, e.payout_cents, e.settled_at
+                FROM ticket_entries e JOIN tickets t ON t.id = e.ticket_id
+               WHERE e.status IN ('won', 'lost', 'review') AND ${IN_RANGE.replaceAll('created_at', 'e.settled_at')})
+       SELECT to_char((at AT TIME ZONE '${HAITI_TIME_ZONE}')::date, 'YYYY-MM-DD') AS day, game,
+              count(*)::int AS bets, count(DISTINCT user_id)::int AS players,
+              sum(stake)::bigint AS stakes, sum(payout)::bigint AS payouts
+         FROM plays GROUP BY GROUPING SETS ((1, game), (1))`,
       [from, to],
     );
-    return rows;
+    const { rows: payments } = await this.db.query<{ day: string; deposits: number; withdrawals: number }>(
+      `SELECT to_char((created_at AT TIME ZONE '${HAITI_TIME_ZONE}')::date, 'YYYY-MM-DD') AS day,
+              COALESCE(sum(amount_cents) FILTER (WHERE direction = 'deposit'), 0)::bigint AS deposits,
+              COALESCE(sum(amount_cents) FILTER (WHERE direction = 'withdrawal'), 0)::bigint AS withdrawals
+         FROM payments WHERE status = 'completed' AND ${IN_RANGE} GROUP BY 1`,
+      [from, to],
+    );
+
+    const figures = (row?: { bets: number; players: number; stakes: number; payouts: number }) => ({
+      bets: row?.bets ?? 0,
+      activePlayers: row?.players ?? 0,
+      stakesCents: row?.stakes ?? 0,
+      payoutsCents: row?.payouts ?? 0,
+      ggrCents: (row?.stakes ?? 0) - (row?.payouts ?? 0),
+    });
+    const days: string[] = [];
+    for (let t = Date.parse(from); t <= Date.parse(to); t += 86_400_000) days.push(new Date(t).toISOString().slice(0, 10));
+    return days.map((day) => {
+      const pay = payments.find((p) => p.day === day);
+      return {
+        day,
+        ...figures(plays.find((p) => p.day === day && p.game === null)),
+        depositsCents: pay?.deposits ?? 0,
+        withdrawalsCents: pay?.withdrawals ?? 0,
+        games: Object.fromEntries(
+          DASHBOARD_GAMES.map((game) => [game, figures(plays.find((p) => p.day === day && p.game === game))]),
+        ),
+      };
+    });
   }
 
-  /** Tours de roulette dont les mises couvraient les 37 cases (signal anti-blanchiment). */
+  /** Tours de roulette dont les mises couvraient toute la roue, 37 ou 38 cases (signal anti-blanchiment). */
   async rouletteAlerts(from: string, to: string) {
     this.checkRange(from, to);
     const { rows } = await this.db.query(
-      `SELECT r.id AS "spinId", r.user_id AS "userId", u.phone, r.number,
+      `SELECT r.id AS "spinId", r.variant, r.user_id AS "userId", u.phone, r.number,
               r.total_stake_cents AS "totalStakeCents", r.total_payout_cents AS "totalPayoutCents", r.created_at AS "createdAt"
          FROM (SELECT * FROM roulette_spins WHERE covers_all AND ${IN_RANGE}) r
          JOIN users u ON u.id = r.user_id

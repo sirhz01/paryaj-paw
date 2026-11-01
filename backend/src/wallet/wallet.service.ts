@@ -3,7 +3,7 @@ import { AppError } from '../common/errors';
 import { HAITI_TIME_ZONE } from '../common/haiti';
 import { DATABASE, Database, Queryable } from '../database/db';
 
-export type LedgerKind = 'deposit' | 'withdrawal' | 'withdrawal_refund' | 'bet' | 'win' | 'adjustment';
+export type LedgerKind = 'deposit' | 'withdrawal' | 'withdrawal_refund' | 'bet' | 'win' | 'bet_refund' | 'adjustment';
 
 export interface LedgerEntry {
   id: number;

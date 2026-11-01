@@ -1,9 +1,10 @@
 import { DRAW_SIZE, GRID_SIZE } from './provably-fair';
 
-/** Coefficients par nombre de numéros choisis ("1" à "10") ; l'indice du tableau = numéros trouvés. */
+/** Coefficients par nombre de numéros choisis ("1" à "15") ; l'indice du tableau = numéros trouvés. */
 export type Paytable = Record<string, number[]>;
 
-export const MAX_PICKS_LIMIT = 10;
+/** Le cahier des charges autorise un plafond jusqu'à 15 ; la table par défaut s'arrête à 10. */
+export const MAX_PICKS_LIMIT = 15;
 export const RTP_MIN_PERCENT = 90;
 export const RTP_MAX_PERCENT = 95;
 
@@ -21,7 +22,7 @@ export const DEFAULT_PAYTABLE: Paytable = {
   '10': [1.1, 0, 0, 0, 1.1, 3.3, 16, 110, 1100, 5400, 10000],
 };
 
-function binomial(n: number, k: number): number {
+export function binomial(n: number, k: number): number {
   if (k < 0 || k > n) return 0;
   let result = 1;
   for (let i = 1; i <= k; i++) result = (result * (n - k + i)) / i;

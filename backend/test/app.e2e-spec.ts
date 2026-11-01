@@ -6,11 +6,15 @@ import { totpAt, totpCounter } from '../src/admin/totp';
 import { AppModule, configureApp } from '../src/app.module';
 import { SMS_SENDER, SmsSender } from '../src/auth/sms';
 import { StaffRole } from '../src/common/auth';
+import { CLOCK } from '../src/common/clock';
 import { loadConfig } from '../src/config';
 import { DATABASE, Database } from '../src/database/db';
 import { migrate } from '../src/database/migrate';
-import { DEFAULT_PAYTABLE } from '../src/keno/paytable';
+import { DrawEventsService } from '../src/draws/events.service';
+import { DEFAULT_LUCKY_SIX_CONFIG, DEFAULT_LUCKY_TEN_CONFIG } from '../src/draws/games';
+import { DrawScheduler } from '../src/draws/scheduler.service';
 import { hashServerSeed } from '../src/fairness/provably-fair';
+import { DEFAULT_PAYTABLE, hitProbability } from '../src/keno/paytable';
 import { createTestDatabase } from './pglite-database';
 
 class CapturingSms implements SmsSender {
@@ -22,6 +26,9 @@ class CapturingSms implements SmsSender {
 }
 
 const PASSWORD = 'motdepasse-solide';
+
+/** Horloge des tirages programmés, avancée à la main par les tests. */
+const clock = { current: Date.now(), now: () => new Date(clock.current) };
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 describe('API (e2e)', () => {
@@ -39,6 +46,8 @@ describe('API (e2e)', () => {
       .useValue(db)
       .overrideProvider(SMS_SENDER)
       .useValue(sms)
+      .overrideProvider(CLOCK)
+      .useValue(clock)
       .compile();
     app = moduleRef.createNestApplication();
     configureApp(app, config);
@@ -272,7 +281,7 @@ describe('API (e2e)', () => {
       const res = await api().get('/api/v1/roulette/config').expect(200);
       expect(res.body).toMatchObject({ laPartage: false, payouts: { straight: 35, split: 17, dozen: 2, red: 1 } });
       expect(res.body.rtpPercent.straight).toBeCloseTo(97.297, 3);
-      expect(res.body.wheelOrder).toHaveLength(37);
+      expect(res.body.wheel).toHaveLength(37);
       const voisins = res.body.racetrack.voisins_du_zero as { amountCents: number }[];
       expect(voisins.reduce((sum, b) => sum + b.amountCents, 0)).toBe(9);
     });
@@ -378,15 +387,17 @@ describe('API (e2e)', () => {
       expect(netCents).toBe(spins.reduce((sum, s) => sum + s.netCents, 0));
       expect(await balance(player.token)).toBe(100_000 + netCents);
 
-      const lost = Math.max(0, -netCents);
+      // Perte du jour = −netCents ; la mise suivante doit la faire passer au-dessus de la limite, gain ou perte.
+      const limit = 500 + Math.max(0, -netCents);
+      const stakeCents = Math.max(1000, netCents + 1000);
       await api()
         .put('/api/v1/me/limits')
         .set(auth(player.token))
-        .send({ dailyLossLimitCents: lost + 500, dailyDepositLimitCents: null })
+        .send({ dailyLossLimitCents: limit, dailyDepositLimitCents: null })
         .expect(200);
-      const limited = await spin(player.token, { bets: [{ type: 'red', amountCents: 1000 }], idempotencyKey: 'limite-tour-01' }).expect(403);
+      const limited = await spin(player.token, { bets: [{ type: 'red', amountCents: stakeCents }], idempotencyKey: 'limite-tour-01' }).expect(403);
       expect(limited.body.code).toBe('LOSS_LIMIT_REACHED');
-      const keno = await bet(player.token, { picks: [1], stakeCents: 1000, idempotencyKey: 'limite-keno-01' }).expect(403);
+      const keno = await bet(player.token, { picks: [1], stakeCents, idempotencyKey: 'limite-keno-01' }).expect(403);
       expect(keno.body.code).toBe('LOSS_LIMIT_REACHED');
     });
 
@@ -419,28 +430,313 @@ describe('API (e2e)', () => {
 
     it('active La Partage depuis le back-office (super-admin seulement)', async () => {
       const admin = await staffLogin('super_admin');
-      const current = (await api().get('/api/v1/admin/roulette/settings').set(auth(admin.token)).expect(200)).body.current;
+      const current = (await api().get('/api/v1/admin/roulette/european/settings').set(auth(admin.token)).expect(200)).body.current;
       const input = {
         chipValuesCents: current.chipValuesCents,
         betLimits: current.betLimits,
         maxTotalStakeCents: current.maxTotalStakeCents,
         maxPayoutCents: current.maxPayoutCents,
         laPartage: true,
+        topLineEnabled: false,
       };
       const finance = await staffLogin('finance');
-      await api().put('/api/v1/admin/roulette/settings').set(auth(finance.token)).send(input).expect(403);
+      await api().put('/api/v1/admin/roulette/european/settings').set(auth(finance.token)).send(input).expect(403);
       const invalid = await api()
-        .put('/api/v1/admin/roulette/settings')
+        .put('/api/v1/admin/roulette/european/settings')
         .set(auth(admin.token))
         .send({ ...input, chipValuesCents: [5000, 1000] })
         .expect(400);
       expect(invalid.body.code).toBe('INVALID_SETTINGS');
 
-      const updated = await api().put('/api/v1/admin/roulette/settings').set(auth(admin.token)).send(input).expect(200);
-      expect(updated.body).toMatchObject({ version: current.version + 1, laPartage: true });
+      const updated = await api().put('/api/v1/admin/roulette/european/settings').set(auth(admin.token)).send(input).expect(200);
+      expect(updated.body.laPartage).toBe(true);
+      expect(updated.body.version).toBeGreaterThan(current.version);
       const config = (await api().get('/api/v1/roulette/config').expect(200)).body;
       expect(config.laPartage).toBe(true);
       expect(config.rtpPercent.red).toBeCloseTo(98.649, 3);
+    });
+  });
+
+  describe('roulette américaine', () => {
+    type SpinBet = { type: string; numbers: number[]; amountCents: number; returnCents: number };
+    const spin = (token: string, body: object) => api().post('/api/v1/american-roulette/spins').set(auth(token)).send(body);
+
+    it('publie une roue de 38 cases, la top line et un RTP de 94,74 %', async () => {
+      const res = await api().get('/api/v1/american-roulette/config').expect(200);
+      expect(res.body.wheel).toHaveLength(38);
+      expect(res.body.wheel.find((p: { number: number }) => p.number === 37)).toEqual({ number: 37, label: '00', color: 'green' });
+      expect(res.body).toMatchObject({ variant: 'american', laPartage: false, topLineEnabled: true, racetrack: null });
+      expect(res.body.payouts.top_line).toBe(6);
+      expect(res.body.rtpPercent.straight).toBeCloseTo(94.737, 3);
+      expect(res.body.rtpPercent.top_line).toBeCloseTo(92.105, 3);
+    });
+
+    it('paie le 00, la top line et les mises extérieures, avec ses propres graines', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 200_000);
+      const european = (await api().get('/api/v1/roulette/seeds').set(auth(player.token)).expect(200)).body;
+      let expected = 200_000;
+      for (let i = 0; i < 10; i++) {
+        const s = (
+          await spin(player.token, {
+            bets: [
+              { type: 'straight', numbers: [37], amountCents: 1000 },
+              { type: 'split', numbers: [0, 37], amountCents: 1000 },
+              { type: 'top_line', numbers: [0, 37, 1, 2, 3], amountCents: 1000 },
+              { type: 'black', amountCents: 2000 },
+            ],
+            idempotencyKey: `us-tour-${i}-abcdef`,
+          }).expect(201)
+        ).body;
+        expect(s.variant).toBe('american');
+        expect(s.label).toBe(s.number === 37 ? '00' : String(s.number));
+        for (const bet of s.bets as SpinBet[]) {
+          const multiple = bet.type === 'top_line' ? 7 : 36 / bet.numbers.length;
+          expect(bet.returnCents).toBe(bet.numbers.includes(s.number) ? bet.amountCents * multiple : 0);
+        }
+        expected += s.netCents;
+        expect(s.balanceCents).toBe(expected);
+        expect(s.serverSeedHash).not.toBe(european.serverSeedHash);
+      }
+      const verified = await api()
+        .post('/api/v1/american-roulette/verify')
+        .send({ serverSeed: 'graine-test', clientSeed: 'abc', nonce: 3 })
+        .expect(200);
+      expect(verified.body.number).toBeGreaterThanOrEqual(0);
+      expect(verified.body.number).toBeLessThanOrEqual(37);
+      expect((await api().get('/api/v1/american-roulette/spins').set(auth(player.token)).expect(200)).body).toHaveLength(10);
+      expect((await api().get('/api/v1/roulette/spins').set(auth(player.token)).expect(200)).body).toHaveLength(0);
+    });
+
+    it('refuse la piste et le carré 0-1-2-3, et la top line une fois désactivée', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 50_000);
+      const code = async (bets: object[]) =>
+        (await spin(player.token, { bets, idempotencyKey: 'us-refus-0001' }).expect(400)).body.code;
+      expect(await code([{ type: 'orphelins', amountCents: 1000 }])).toBe('INVALID_BET');
+      expect(await code([{ type: 'corner', numbers: [0, 1, 2, 3], amountCents: 1000 }])).toBe('INVALID_BET');
+
+      const admin = await staffLogin('super_admin');
+      const current = (await api().get('/api/v1/admin/roulette/american/settings').set(auth(admin.token)).expect(200)).body.current;
+      const input = {
+        chipValuesCents: current.chipValuesCents,
+        betLimits: current.betLimits,
+        maxTotalStakeCents: current.maxTotalStakeCents,
+        maxPayoutCents: current.maxPayoutCents,
+        laPartage: false,
+        topLineEnabled: false,
+      };
+      expect(
+        (await api().put('/api/v1/admin/roulette/american/settings').set(auth(admin.token)).send({ ...input, laPartage: true }).expect(400))
+          .body.code,
+      ).toBe('INVALID_SETTINGS');
+      await api().put('/api/v1/admin/roulette/american/settings').set(auth(admin.token)).send(input).expect(200);
+      expect(await code([{ type: 'top_line', numbers: [0, 1, 2, 3, 37], amountCents: 1000 }])).toBe('BET_NOT_AVAILABLE');
+      expect((await api().get('/api/v1/american-roulette/config').expect(200)).body.payouts.top_line).toBeUndefined();
+      await api().put('/api/v1/admin/roulette/american/settings').set(auth(admin.token)).send({ ...input, topLineEnabled: true }).expect(200);
+      expect(await balance(player.token)).toBe(50_000);
+    });
+  });
+
+  describe('Keno jusqu’à 15 numéros', () => {
+    /** Ligne de table calibrée à 92,5 % : rien sous 5 numéros trouvés, puis un coefficient qui double à chaque numéro. */
+    const row = (picks: number) => {
+      const shape = Array.from({ length: picks + 1 }, (_, h) => (h >= 5 ? 2 ** (h - 5) : 0));
+      const rtp = shape.reduce((s, m, h) => s + m * hitProbability(picks, h), 0);
+      return shape.map((m) => Math.round(((m * 0.925) / rtp) * 100) / 100);
+    };
+
+    it('accepte 12 numéros une fois le plafond et la table étendus par le super-admin', async () => {
+      const admin = await staffLogin('super_admin');
+      const current = (await api().get('/api/v1/admin/keno/settings').set(auth(admin.token)).expect(200)).body.current;
+      await api()
+        .put('/api/v1/admin/keno/settings')
+        .set(auth(admin.token))
+        .send({
+          minStakeCents: current.minStakeCents,
+          maxStakeCents: current.maxStakeCents,
+          maxPicks: 12,
+          maxPayoutCents: current.maxPayoutCents,
+          paytable: { ...current.paytable, '11': row(11), '12': row(12) },
+        })
+        .expect(200);
+
+      const player = await registerPlayer();
+      await deposit(player.token, 10_000);
+      const twelve = Array.from({ length: 12 }, (_, i) => i * 6 + 1);
+      const placed = await bet(player.token, { picks: twelve, stakeCents: 1000, idempotencyKey: 'douze-0001' }).expect(201);
+      expect(placed.body.picks).toHaveLength(12);
+      const thirteen = await bet(player.token, { picks: [...twelve, 80], stakeCents: 1000, idempotencyKey: 'treize-001' }).expect(400);
+      expect(thirteen.body).toMatchObject({ code: 'INVALID_PICKS', maxPicks: 12 });
+    });
+  });
+
+  describe('tirages programmés (Lucky Six, Lucky 10)', () => {
+    type Entry = { drawId: number; scheduledAt: string; status: string; payoutCents: number; balls: number[] | null };
+    const buy = (token: string, body: object) => api().post('/api/v1/tickets').set(auth(token)).send(body);
+    const scheduler = () => app.get(DrawScheduler);
+    /** Avance l'horloge à `at` puis lance un cycle du planificateur. */
+    const runAt = async (at: number) => {
+      clock.current = at;
+      await scheduler().tick();
+    };
+    const ticket = async (token: string, code: string) =>
+      (await api().get(`/api/v1/tickets/${code}`).set(auth(token)).expect(200)).body;
+
+    it('publie les règles chiffrées et le prochain tirage de chaque jeu dans le lobby', async () => {
+      const six = (await api().get('/api/v1/draws/lucky_six/config').expect(200)).body;
+      expect(six).toMatchObject({ balls: 48, drawn: 35, positionCoefficients: DEFAULT_LUCKY_SIX_CONFIG.positionCoefficients });
+      expect(six.rtpPercent.six).toBeCloseTo(92.521, 3);
+      expect(six.colors.red).toEqual([1, 9, 17, 25, 33, 41]);
+      const ten = (await api().get('/api/v1/draws/lucky_ten/config').expect(200)).body;
+      expect(ten.paytable).toEqual(DEFAULT_LUCKY_TEN_CONFIG.paytable);
+
+      const lobby = (await api().get('/api/v1/lobby').expect(200)).body;
+      expect(lobby.games.map((g: { game: string }) => g.game)).toEqual(['american_roulette', 'roulette', 'keno', 'lucky_six', 'lucky_ten']);
+      const next = lobby.games.find((g: { game: string }) => g.game === 'lucky_six').nextDraw;
+      expect(Date.parse(next.closesAt)).toBeGreaterThan(clock.current);
+      expect(Date.parse(next.scheduledAt) % 300_000).toBe(0);
+      expect(next.serverSeedHash).toHaveLength(64);
+    });
+
+    it('vend un ticket sur plusieurs tirages, le règle au tirage et publie un résultat vérifiable', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 50_000);
+      const numbers = [3, 8, 15, 22, 40, 47];
+      const six = (await buy(player.token, { game: 'lucky_six', bet: { type: 'six', numbers }, stakeCents: 1000, draws: 3, idempotencyKey: 'six-3-tirages' }).expect(201)).body;
+      expect(six).toMatchObject({ game: 'lucky_six', totalStakeCents: 3000, status: 'pending' });
+      expect(six.code).toMatch(/^[2-9A-HJ-NP-Z]{10}$/);
+      const slots = (six.entries as Entry[]).map((e) => Date.parse(e.scheduledAt));
+      expect(slots[1] - slots[0]).toBe(300_000);
+      expect(slots[2] - slots[1]).toBe(300_000);
+
+      const even = (await buy(player.token, { game: 'lucky_six', bet: { type: 'first_even' }, stakeCents: 1000, draws: 1, idempotencyKey: 'six-pair-0001' }).expect(201)).body;
+      const odd = (await buy(player.token, { game: 'lucky_six', bet: { type: 'first_odd' }, stakeCents: 1000, draws: 1, idempotencyKey: 'six-impair-01' }).expect(201)).body;
+      expect(await balance(player.token)).toBe(50_000 - 5000);
+
+      const events: { type: string; data: { drawId: number } }[] = [];
+      const subscription = app.get(DrawEventsService).stream().subscribe((e) => events.push(e as never));
+      await runAt(slots[0] + 1000);
+      subscription.unsubscribe();
+
+      const draw = (await api().get(`/api/v1/draws/lucky_six/results?drawId=${(six.entries as Entry[])[0].drawId}`).expect(200)).body[0];
+      expect(draw.status).toBe('settled');
+      expect(draw.balls).toHaveLength(35);
+      expect(hashServerSeed(draw.serverSeed)).toBe(draw.serverSeedHash);
+      const verified = await api().post('/api/v1/draws/verify').send({ game: 'lucky_six', drawId: draw.id, serverSeed: draw.serverSeed }).expect(200);
+      expect(verified.body.balls).toEqual(draw.balls);
+      expect(events).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'draw.result', data: expect.objectContaining({ drawId: draw.id }) })]));
+
+      // Gain attendu, calculé sans le moteur : position de la boule qui complète les 6 numéros.
+      const positions = numbers.map((n) => draw.balls.indexOf(n));
+      const coefficient = positions.includes(-1) ? 0 : DEFAULT_LUCKY_SIX_CONFIG.positionCoefficients[Math.max(...positions) + 1 - 6];
+      const sixAfter = await ticket(player.token, six.code);
+      expect(sixAfter.entries[0]).toMatchObject({ status: coefficient > 0 ? 'won' : 'lost', payoutCents: Math.floor(1000 * coefficient) });
+      expect(sixAfter.entries[1].status).toBe('pending');
+      expect(sixAfter.status).toBe('pending');
+
+      const firstIsEven = draw.balls[0] % 2 === 0;
+      expect((await ticket(player.token, even.code)).status).toBe(firstIsEven ? 'won' : 'lost');
+      expect((await ticket(player.token, odd.code)).status).toBe(firstIsEven ? 'lost' : 'won');
+      expect(await balance(player.token)).toBe(50_000 - 5000 + 1850 + Math.floor(1000 * coefficient));
+
+      const list = (await api().get('/api/v1/tickets?game=lucky_six').set(auth(player.token)).expect(200)).body;
+      expect(list.map((t: { code: string }) => t.code)).toEqual([odd.code, even.code, six.code]);
+    });
+
+    it('rend le même ticket quand la demande est renvoyée, refuse les paris et mises invalides', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 20_000);
+      const body = { game: 'lucky_ten', bet: { type: 'numbers', numbers: [7, 77, 40] }, stakeCents: 500, draws: 4, idempotencyKey: 'dix-meme-cle' };
+      const [first, second] = await Promise.all([buy(player.token, body), buy(player.token, body)]);
+      expect(first.status).toBe(201);
+      expect(second.body.code).toBe(first.body.code);
+      expect(first.body.bet.numbers).toEqual([7, 40, 77]);
+      expect(await balance(player.token)).toBe(20_000 - 2000);
+
+      const code = async (patch: object, status = 400) =>
+        (await buy(player.token, { ...body, idempotencyKey: 'dix-refus-001', ...patch }).expect(status)).body.code;
+      expect(await code({ draws: 21 })).toBe('INVALID_DRAW_COUNT');
+      expect(await code({ stakeCents: 50 })).toBe('STAKE_OUT_OF_RANGE');
+      expect(await code({ bet: { type: 'six', numbers: [1, 2, 3, 4, 5, 6] } })).toBe('INVALID_BET');
+      expect(await code({ bet: { type: 'first_color', color: 'pink' } })).toBe('VALIDATION_ERROR');
+      expect(await code({ stakeCents: 100_000, draws: 20 })).toBe('INSUFFICIENT_FUNDS');
+    });
+
+    it('annule un tirage manqué (serveur arrêté) et rembourse les mises', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 10_000);
+      const t = (await buy(player.token, { game: 'lucky_ten', bet: { type: 'more_even' }, stakeCents: 1000, draws: 1, idempotencyKey: 'dix-manque-01' }).expect(201)).body;
+      expect(await balance(player.token)).toBe(9000);
+      await runAt(Date.parse(t.entries[0].scheduledAt) + 2 * 60_000);
+
+      const after = await ticket(player.token, t.code);
+      expect(after).toMatchObject({ status: 'refunded' });
+      const draw = (await api().get(`/api/v1/draws/lucky_ten/${t.entries[0].drawId}`).expect(200)).body;
+      expect(draw).toMatchObject({ status: 'cancelled', cancelReason: 'missed', balls: null, serverSeed: null });
+      expect(await balance(player.token)).toBe(10_000);
+    });
+
+    it('met les gros gains en revue jusqu’à la décision de la finance', async () => {
+      const admin = await staffLogin('super_admin');
+      const settings = (await api().get('/api/v1/admin/draws/lucky_six/settings').set(auth(admin.token)).expect(200)).body.current;
+      await api()
+        .put('/api/v1/admin/draws/lucky_six/settings')
+        .set(auth(admin.token))
+        .send({ config: { ...settings.config, reviewThresholdCents: 100 } })
+        .expect(200);
+
+      const player = await registerPlayer();
+      await deposit(player.token, 10_000);
+      const low = (await buy(player.token, { game: 'lucky_six', bet: { type: 'first_low' }, stakeCents: 1000, draws: 2, idempotencyKey: 'revue-bas-01' }).expect(201)).body;
+      const high = (await buy(player.token, { game: 'lucky_six', bet: { type: 'first_high' }, stakeCents: 1000, draws: 2, idempotencyKey: 'revue-haut-1' }).expect(201)).body;
+      const [first, second] = (low.entries as Entry[]).map((e) => Date.parse(e.scheduledAt));
+      await runAt(first + 1000);
+      await runAt(second + 1000);
+      expect(await balance(player.token)).toBe(10_000 - 4000);
+
+      const finance = await staffLogin('finance');
+      const reviews = (await api().get('/api/v1/admin/draws/reviews').set(auth(finance.token)).expect(200)).body as { entryId: number; userId: number; payoutCents: number }[];
+      const mine = reviews.filter((r) => r.userId === player.id);
+      expect(mine).toHaveLength(2);
+      expect(mine.every((r) => r.payoutCents === 1850)).toBe(true);
+
+      const support = await staffLogin('support');
+      await api().post(`/api/v1/admin/draws/reviews/${mine[0].entryId}/approve`).set(auth(support.token)).expect(403);
+      await api().post(`/api/v1/admin/draws/reviews/${mine[0].entryId}/approve`).set(auth(finance.token)).expect(200);
+      await api().post(`/api/v1/admin/draws/reviews/${mine[1].entryId}/reject`).set(auth(finance.token)).send({ reason: 'contrôle' }).expect(200);
+      await api().post(`/api/v1/admin/draws/reviews/${mine[1].entryId}/approve`).set(auth(finance.token)).expect(409);
+      expect(await balance(player.token)).toBe(10_000 - 4000 + 1850 + 1000);
+      expect([(await ticket(player.token, low.code)).status, (await ticket(player.token, high.code)).status]).toContain('won');
+
+      await api()
+        .put('/api/v1/admin/draws/lucky_six/settings')
+        .set(auth(admin.token))
+        .send({ config: { ...settings.config, positionCoefficients: [10000, 7500, 5000, 2500, 1000, 500, 300, 200, 150, 100, 90, 80, 70, 60, 50, 40, 30, 25, 20, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1] } })
+        .expect(400);
+      await api().put('/api/v1/admin/draws/lucky_six/settings').set(auth(admin.token)).send({ config: settings.config }).expect(200);
+    });
+
+    it('laisse le super-admin annuler un tirage à venir, mises rendues', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 5000);
+      const t = (await buy(player.token, { game: 'lucky_ten', bet: { type: 'first_color', color: 'blue' }, stakeCents: 2000, draws: 1, idempotencyKey: 'dix-annule-01' }).expect(201)).body;
+      const finance = await staffLogin('finance');
+      const admin = await staffLogin('super_admin');
+      const drawId = t.entries[0].drawId;
+      await api().post(`/api/v1/admin/draws/${drawId}/cancel`).set(auth(finance.token)).send({ reason: 'panne' }).expect(403);
+      await api().post(`/api/v1/admin/draws/${drawId}/cancel`).set(auth(admin.token)).send({ reason: 'panne' }).expect(204);
+      await api().post(`/api/v1/admin/draws/${drawId}/cancel`).set(auth(admin.token)).send({ reason: 'panne' }).expect(409);
+      expect((await ticket(player.token, t.code)).status).toBe('refunded');
+      expect(await balance(player.token)).toBe(5000);
+    });
+
+    it('interdit de modifier la graine ou le résultat d’un tirage', async () => {
+      const { rows } = await db.query<{ id: number }>(`SELECT id FROM draws WHERE status = 'settled' LIMIT 1`);
+      await expect(db.query(`UPDATE draws SET balls = '{1}' WHERE id = $1`, [rows[0].id])).rejects.toThrow(/sealed/);
+      await expect(db.query(`UPDATE draws SET server_seed = 'x' WHERE status = 'scheduled'`)).rejects.toThrow(/sealed/);
+      await expect(db.query('DELETE FROM draws')).rejects.toThrow(/append-only/);
+      await expect(db.query('DELETE FROM tickets')).rejects.toThrow(/append-only/);
     });
   });
 
@@ -536,14 +832,19 @@ describe('API (e2e)', () => {
       const day = dashboard.body[0];
       expect(day.bets).toBeGreaterThan(0);
       expect(day.ggrCents).toBe(day.stakesCents - day.payoutsCents);
-      expect(day.kenoGgrCents + day.rouletteGgrCents).toBe(day.ggrCents);
+      const games = Object.values(day.games) as { stakesCents: number; ggrCents: number }[];
+      expect(games).toHaveLength(5);
+      expect(games.reduce((sum, g) => sum + g.ggrCents, 0)).toBe(day.ggrCents);
+      expect(games.reduce((sum, g) => sum + g.stakesCents, 0)).toBe(day.stakesCents);
+      expect(day.games.keno.bets).toBeGreaterThan(0);
+      expect(day.games.roulette.bets).toBeGreaterThan(0);
 
       const spins = await api()
         .get(`/api/v1/admin/exports/spins?from=${today}&to=${today}`)
         .set(auth(auditor.token))
         .expect(200);
       expect(spins.text.split('\n')[0]).toBe(
-        'id,user_id,created_at,number,total_stake_cents,total_payout_cents,covers_all,bets,seed_id,nonce,settings_version',
+        'id,user_id,created_at,variant,number,total_stake_cents,total_payout_cents,covers_all,bets,seed_id,nonce,settings_version',
       );
 
       const csv = await api()

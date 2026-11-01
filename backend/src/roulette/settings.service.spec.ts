@@ -1,12 +1,13 @@
-import { BET_TYPES } from './rules';
+import { betTypesOf } from './rules';
 import { RouletteSettingsInput, validateRouletteSettings } from './settings.service';
 
 const valid: RouletteSettingsInput = {
   chipValuesCents: [1000, 2500, 5000],
-  betLimits: Object.fromEntries(BET_TYPES.map((t) => [t, { minCents: 1000, maxCents: 50000 }])) as RouletteSettingsInput['betLimits'],
+  betLimits: Object.fromEntries(betTypesOf('european').map((t) => [t, { minCents: 1000, maxCents: 50000 }])),
   maxTotalStakeCents: 5_000_000,
   maxPayoutCents: 100_000_000,
   laPartage: false,
+  topLineEnabled: false,
 };
 
 describe('validateRouletteSettings', () => {
@@ -34,5 +35,17 @@ describe('validateRouletteSettings', () => {
   it('refuse des plafonds absents et une Partage non booléenne', () => {
     const errors = validateRouletteSettings({ ...valid, maxTotalStakeCents: 0, maxPayoutCents: -1, laPartage: 'oui' as never });
     expect(errors).toHaveLength(3);
+  });
+
+  it('réserve La Partage à l’européenne et la top line à l’américaine', () => {
+    const american = {
+      ...valid,
+      betLimits: Object.fromEntries(betTypesOf('american').map((t) => [t, { minCents: 1000, maxCents: 50000 }])),
+      topLineEnabled: true,
+    };
+    expect(validateRouletteSettings(american, 'american')).toEqual([]);
+    expect(validateRouletteSettings({ ...american, laPartage: true }, 'american')[0]).toMatch(/Partage/);
+    expect(validateRouletteSettings({ ...valid, topLineEnabled: true }, 'european')[0]).toMatch(/top line/);
+    expect(validateRouletteSettings(valid, 'american')[0]).toMatch(/^top_line/);
   });
 });
