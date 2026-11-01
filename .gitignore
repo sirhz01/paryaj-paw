@@ -6,3 +6,4 @@ coverage/
 
 # Base PGlite de npm run demo
 backend/.demo-db/
+backend/.demo-db-secrets.json

@@ -22,3 +22,26 @@ describe('loadConfig : code TOTP du back-office', () => {
     expect(() => loadConfig({ NODE_ENV: 'development', STAFF_TOTP: 'non' })).toThrow(/on ou off/);
   });
 });
+
+describe('loadConfig : secrets de signature', () => {
+  it('utilise les secrets fournis quand ils sont assez longs', () => {
+    const c = loadConfig({ NODE_ENV: 'development', ...SECRETS });
+    expect(c.jwtSecret).toBe(SECRETS.JWT_SECRET);
+    expect(c.staffJwtSecret).toBe(SECRETS.STAFF_JWT_SECRET);
+  });
+
+  it("ne tombe jamais sur un secret en dur (un dépôt public n'en divulgue aucun)", () => {
+    const c = loadConfig({ NODE_ENV: 'development' });
+    for (const s of [c.jwtSecret, c.staffJwtSecret, c.agentJwtSecret, c.otpPepper]) {
+      expect(s).toMatch(/^[0-9a-f]{64}$/);
+      expect(s).not.toContain('dev-only');
+    }
+    // Trois secrets distincts, pas un seul réutilisé partout.
+    expect(new Set([c.jwtSecret, c.staffJwtSecret, c.agentJwtSecret]).size).toBe(3);
+  });
+
+  it('exige de vrais secrets en production', () => {
+    expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow(/32 caractères en production/);
+    expect(() => loadConfig({ NODE_ENV: 'production', ...SECRETS })).not.toThrow();
+  });
+});

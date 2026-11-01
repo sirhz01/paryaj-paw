@@ -2,6 +2,9 @@ import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+
+import { randomBytes } from 'node:crypto';
 import { createStaff } from '../admin/staff';
 import { otpauthUrl, totpAt, totpCounter } from '../admin/totp';
 import { AppModule, configureApp } from '../app.module';
@@ -35,9 +38,32 @@ async function demoStaff(db: Database) {
   return accounts;
 }
 
+/**
+ * Secrets de signature de la démo, propres à cette machine : tirés au hasard à la première exécution et
+ * gardés dans le dossier de données (hors dépôt). Les jetons restent valides d'un redémarrage à l'autre,
+ * sans jamais exposer un secret connu publiquement.
+ */
+function demoSecrets(dataDir: string): Record<string, string> {
+  const names = ['JWT_SECRET', 'STAFF_JWT_SECRET', 'AGENT_JWT_SECRET', 'OTP_PEPPER'];
+  // À côté du dossier PGlite, pas dedans (PGlite gère son dossier et refuse un fichier étranger).
+  const file = `${dataDir}-secrets.json`;
+  const saved: Record<string, string> = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+  let changed = false;
+  for (const name of names) {
+    if (!saved[name] || saved[name].length < 32) {
+      saved[name] = randomBytes(32).toString('hex');
+      changed = true;
+    }
+  }
+  if (changed) writeFileSync(file, JSON.stringify(saved, null, 2), { mode: 0o600 });
+  return saved;
+}
+
 async function main() {
   loadEnvFile();
+  const dataDir = process.env.DEMO_DATA_DIR ?? '.demo-db';
   const config = loadConfig({
+    ...demoSecrets(dataDir),
     ...process.env,
     NODE_ENV: 'development',
     PAYMENTS_FAKE: 'true',
@@ -45,7 +71,7 @@ async function main() {
     // Pages ouvertes en double-cliquant (file://) : le navigateur envoie « Origin: null ». Démo seulement.
     CORS_ORIGINS: [process.env.CORS_ORIGINS, 'null'].filter(Boolean).join(','),
   });
-  const db = createPgliteDatabase(process.env.DEMO_DATA_DIR ?? '.demo-db');
+  const db = createPgliteDatabase(dataDir);
   const applied = await migrate(db);
   const accounts = await demoStaff(db);
 
