@@ -67,6 +67,7 @@ Pour régénérer les icônes à partir d'une image : `npm run icon` (utilise `i
 1. Lancer l'application ; saisir l'adresse du serveur de la boutique (le port par défaut est 3000), puis **Enregistrer**.
 2. Menu **Boutique** : Accueil, Caisse, Changer de serveur. Menu **Écrans TV** : Roulette, Keno, Lucky Six, Lucky X.
 3. Raccourcis : `F` ou `F11` plein écran, `Ctrl+1` caisse, `Ctrl+2..5` écrans TV, `Ctrl+Shift+S` changer de serveur.
+4. Écran TV sur un second écran (HDMI en mode « Étendre ») : menu **Écrans TV → … sur le 2e écran**. La caisse reste sur le portable ; **Fermer l’écran TV** ferme cette fenêtre.
 
 Le même serveur sert tous les terminaux de la boutique : installer l'application sur chaque poste et pointer
 chacun vers la même adresse.

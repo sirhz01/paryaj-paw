@@ -5,7 +5,7 @@
  * il ne contient ni jeu ni base de données. Par défaut il ouvre le serveur local (localhost:3000) ;
  * l'adresse peut être changée via le menu « Boutique → Changer de serveur… ». Tout le calcul reste sur le serveur.
  */
-const { app, BrowserWindow, Menu, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, shell, dialog, screen } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 
@@ -61,6 +61,44 @@ function loadServerPage(page = '') {
   return win.loadURL(`${serverUrl()}/${page}`);
 }
 
+/**
+ * Écran TV dans sa propre fenêtre, sur le 2e écran (HDMI en mode « Étendre ») : la caisse reste sur le portable.
+ * Avec un seul écran, la fenêtre s'ouvre normalement (pas de plein écran qui cacherait la caisse).
+ */
+let tvWin;
+function openTvWindow(page) {
+  const server = readConfig().server;
+  if (!server) return win.loadFile('config.html');
+  const url = `${server}/${page}`;
+  if (tvWin && !tvWin.isDestroyed()) {
+    tvWin.loadURL(url);
+    tvWin.focus();
+    return;
+  }
+  const primary = screen.getPrimaryDisplay();
+  const external = screen.getAllDisplays().find((d) => d.id !== primary.id);
+  const target = external || primary;
+  tvWin = new BrowserWindow({
+    x: target.bounds.x + (external ? 0 : 60),
+    y: target.bounds.y + (external ? 0 : 60),
+    width: external ? target.bounds.width : 1100,
+    height: external ? target.bounds.height : 650,
+    backgroundColor: '#0c1016',
+    autoHideMenuBar: true,
+    webPreferences: { contextIsolation: true, nodeIntegration: false, spellcheck: false },
+  });
+  if (external) tvWin.setFullScreen(true);
+  // F = plein écran, comme sur les écrans TV du front.
+  tvWin.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && (input.key === 'F' || input.key === 'f') && !input.control && !input.meta) {
+      tvWin.setFullScreen(!tvWin.isFullScreen());
+      event.preventDefault();
+    }
+  });
+  tvWin.on('closed', () => { tvWin = null; });
+  tvWin.loadURL(url);
+}
+
 function setFullScreen(on) {
   if (win) win.setFullScreen(on);
 }
@@ -84,7 +122,11 @@ function buildMenu() {
         label: t.label,
         accelerator: `CmdOrCtrl+${i + 2}`,
         click: () => { loadServerPage(t.page); setFullScreen(true); },
-      })),
+      })).concat([
+        { type: 'separator' },
+        ...TV_PAGES.map((t) => ({ label: `${t.label} sur le 2e écran`, click: () => openTvWindow(t.page) })),
+        { label: 'Fermer l’écran TV', click: () => { if (tvWin && !tvWin.isDestroyed()) tvWin.close(); } },
+      ]),
     },
     {
       label: 'Affichage',
