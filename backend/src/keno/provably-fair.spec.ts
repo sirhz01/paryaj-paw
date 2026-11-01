@@ -1,4 +1,5 @@
-import { DRAW_SIZE, GRID_SIZE, countHits, drawNumbers, hashServerSeed } from './provably-fair';
+import { hashServerSeed } from '../fairness/provably-fair';
+import { DRAW_SIZE, GRID_SIZE, countHits, drawNumbers } from './provably-fair';
 
 describe('drawNumbers', () => {
   it('tire 20 numéros distincts entre 1 et 80', () => {

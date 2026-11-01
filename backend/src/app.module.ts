@@ -19,11 +19,13 @@ import { AccountModule } from './account/account.module';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { AuditService } from './common/audit.service';
+import { PlayRulesService } from './common/play-rules.service';
 import { AppError } from './common/errors';
 import { AppConfig, CONFIG } from './config';
 import { DATABASE, Database, PgDatabase } from './database/db';
 import { KenoModule } from './keno/keno.module';
 import { PaymentsModule } from './payments/payments.module';
+import { RouletteModule } from './roulette/roulette.module';
 import { WalletModule } from './wallet/wallet.module';
 
 @Global()
@@ -38,8 +40,9 @@ class CoreModule implements OnApplicationShutdown {
         { provide: CONFIG, useValue: config },
         { provide: DATABASE, useFactory: () => new PgDatabase(config.databaseUrl) },
         AuditService,
+        PlayRulesService,
       ],
-      exports: [CONFIG, DATABASE, AuditService],
+      exports: [CONFIG, DATABASE, AuditService, PlayRulesService],
     };
   }
 
@@ -76,6 +79,7 @@ export class AppModule {
         WalletModule,
         PaymentsModule,
         KenoModule,
+        RouletteModule,
         AdminModule,
       ],
       controllers: [HealthController],

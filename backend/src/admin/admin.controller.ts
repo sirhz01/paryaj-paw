@@ -14,13 +14,28 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Type } from 'class-transformer';
-import { IsEmail, IsIn, IsInt, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEmail,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Response } from 'express';
 import { CurrentStaff, Roles, StaffGuard, StaffPrincipal } from '../common/auth';
 import { AppError } from '../common/errors';
 import { Paytable, MAX_PICKS_LIMIT } from '../keno/paytable';
 import { KenoSettingsService } from '../keno/settings.service';
 import { PaymentStatus, PaymentsService } from '../payments/payments.service';
+import { BetType } from '../roulette/rules';
+import { BetLimit, RouletteSettingsService } from '../roulette/settings.service';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminService, EXPORT_KINDS, ExportKind } from './admin.service';
 
@@ -66,6 +81,26 @@ class SettingsDto {
 
   @IsObject()
   paytable!: Paytable;
+}
+
+class RouletteSettingsDto {
+  @IsArray()
+  @IsInt({ each: true })
+  chipValuesCents!: number[];
+
+  @IsObject()
+  betLimits!: Record<BetType, BetLimit>;
+
+  @IsInt()
+  @Min(1)
+  maxTotalStakeCents!: number;
+
+  @IsInt()
+  @Min(1)
+  maxPayoutCents!: number;
+
+  @IsBoolean()
+  laPartage!: boolean;
 }
 
 class PlayersQuery {
@@ -126,7 +161,8 @@ export class AdminAuthController {
 export class AdminController {
   constructor(
     private readonly admin: AdminService,
-    private readonly settings: KenoSettingsService,
+    private readonly kenoSettings: KenoSettingsService,
+    private readonly rouletteSettings: RouletteSettingsService,
     private readonly payments: PaymentsService,
   ) {}
 
@@ -135,15 +171,32 @@ export class AdminController {
     return this.admin.dashboard(q.from, q.to);
   }
 
-  @Get('settings')
-  async getSettings() {
-    return { current: await this.settings.current(), history: await this.settings.history() };
+  @Get('keno/settings')
+  async getKenoSettings() {
+    return { current: await this.kenoSettings.current(), history: await this.kenoSettings.history() };
   }
 
-  @Put('settings')
+  @Put('keno/settings')
   @Roles('super_admin')
-  updateSettings(@CurrentStaff() staff: StaffPrincipal, @Body() dto: SettingsDto) {
-    return this.settings.update(staff.id, dto);
+  updateKenoSettings(@CurrentStaff() staff: StaffPrincipal, @Body() dto: SettingsDto) {
+    return this.kenoSettings.update(staff.id, dto);
+  }
+
+  @Get('roulette/settings')
+  async getRouletteSettings() {
+    return { current: await this.rouletteSettings.current(), history: await this.rouletteSettings.history() };
+  }
+
+  @Put('roulette/settings')
+  @Roles('super_admin')
+  updateRouletteSettings(@CurrentStaff() staff: StaffPrincipal, @Body() dto: RouletteSettingsDto) {
+    return this.rouletteSettings.update(staff.id, dto);
+  }
+
+  @Get('roulette/alerts')
+  @Roles('super_admin', 'finance', 'auditor')
+  rouletteAlerts(@Query() q: RangeQuery) {
+    return this.admin.rouletteAlerts(q.from, q.to);
   }
 
   @Get('players')

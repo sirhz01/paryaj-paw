@@ -1,25 +1,14 @@
 import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
-  IsInt,
-  IsOptional,
-  IsString,
-  Matches,
-  Max,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 import { CurrentPlayer, PlayerGuard, PlayerPrincipal } from '../common/auth';
+import { IDEMPOTENCY_KEY, RotateSeedDto, VerifyDto } from '../fairness/dto';
+import { hashServerSeed } from '../fairness/provably-fair';
+import { SeedsService } from '../fairness/seeds.service';
 import { KenoService } from './keno.service';
 import { MAX_PICKS_LIMIT, rtpByPicks } from './paytable';
-import { drawNumbers, hashServerSeed } from './provably-fair';
-import { SeedsService } from './seeds.service';
+import { drawNumbers } from './provably-fair';
 import { KenoSettingsService } from './settings.service';
-
-const IDEMPOTENCY_KEY = /^[A-Za-z0-9_-]{8,64}$/;
 
 class BetDto {
   @IsArray()
@@ -60,25 +49,6 @@ class LimitQuery {
   @Min(1)
   @Max(50)
   limit?: number;
-}
-
-class RotateSeedDto {
-  @IsOptional()
-  @Matches(/^[A-Za-z0-9_-]{1,64}$/)
-  clientSeed?: string;
-}
-
-class VerifyDto {
-  @IsString()
-  @MaxLength(128)
-  serverSeed!: string;
-
-  @Matches(/^[A-Za-z0-9_-]{1,64}$/)
-  clientSeed!: string;
-
-  @IsInt()
-  @Min(0)
-  nonce!: number;
 }
 
 @Controller('keno')
@@ -141,19 +111,19 @@ export class KenoController {
   @Get('seeds')
   @UseGuards(PlayerGuard)
   activeSeed(@CurrentPlayer() player: PlayerPrincipal) {
-    return this.seeds.active(player.id);
+    return this.seeds.active(player.id, 'keno');
   }
 
   @Get('seeds/revealed')
   @UseGuards(PlayerGuard)
   revealedSeeds(@CurrentPlayer() player: PlayerPrincipal) {
-    return this.seeds.revealed(player.id);
+    return this.seeds.revealed(player.id, 'keno');
   }
 
   @Post('seeds/rotate')
   @HttpCode(200)
   @UseGuards(PlayerGuard)
   rotateSeed(@CurrentPlayer() player: PlayerPrincipal, @Body() dto: RotateSeedDto) {
-    return this.seeds.rotate(player.id, dto.clientSeed);
+    return this.seeds.rotate(player.id, 'keno', dto.clientSeed);
   }
 }

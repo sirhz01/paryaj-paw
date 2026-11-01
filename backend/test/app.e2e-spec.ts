@@ -10,7 +10,7 @@ import { loadConfig } from '../src/config';
 import { DATABASE, Database } from '../src/database/db';
 import { migrate } from '../src/database/migrate';
 import { DEFAULT_PAYTABLE } from '../src/keno/paytable';
-import { hashServerSeed } from '../src/keno/provably-fair';
+import { hashServerSeed } from '../src/fairness/provably-fair';
 import { createTestDatabase } from './pglite-database';
 
 class CapturingSms implements SmsSender {
@@ -261,6 +261,189 @@ describe('API (e2e)', () => {
     });
   });
 
+  describe('roulette', () => {
+    type SpinBet = { type: string; numbers: number[]; amountCents: number; returnCents: number };
+    const spin = (token: string, body: object) => api().post('/api/v1/roulette/spins').set(auth(token)).send(body);
+    /** Gain attendu, calculé sans le moteur : 36 / numéros couverts si la mise gagne. */
+    const expectedReturn = (bet: SpinBet, number: number) =>
+      bet.numbers.includes(number) ? (bet.amountCents * 36) / bet.numbers.length : 0;
+
+    it('publie la table de paiement, le RTP et les annonces de la piste', async () => {
+      const res = await api().get('/api/v1/roulette/config').expect(200);
+      expect(res.body).toMatchObject({ laPartage: false, payouts: { straight: 35, split: 17, dozen: 2, red: 1 } });
+      expect(res.body.rtpPercent.straight).toBeCloseTo(97.297, 3);
+      expect(res.body.wheelOrder).toHaveLength(37);
+      const voisins = res.body.racetrack.voisins_du_zero as { amountCents: number }[];
+      expect(voisins.reduce((sum, b) => sum + b.amountCents, 0)).toBe(9);
+    });
+
+    it('débite toutes les mises, paie les gagnantes et garde le solde égal au journal', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 500_000);
+      let expected = 500_000;
+      for (let i = 0; i < 10; i++) {
+        const res = await spin(player.token, {
+          bets: [
+            { type: 'straight', numbers: [17], amountCents: 1000 },
+            { type: 'split', numbers: [20, 17], amountCents: 1000 },
+            { type: 'red', amountCents: 2000 },
+            { type: 'dozen', index: 2, amountCents: 1000 },
+            { type: 'voisins_du_zero', amountCents: 1000 },
+          ],
+          idempotencyKey: `tour-${i}-abcdef`,
+        }).expect(201);
+        const s = res.body;
+        expect(s.totalStakeCents).toBe(1000 + 1000 + 2000 + 1000 + 9000);
+        expect(s.color).toBe(s.number === 0 ? 'green' : [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36].includes(s.number) ? 'red' : 'black');
+        for (const bet of s.bets as SpinBet[]) expect(bet.returnCents).toBe(expectedReturn(bet, s.number));
+        expect(s.totalPayoutCents).toBe((s.bets as SpinBet[]).reduce((sum, b) => sum + expectedReturn(b, s.number), 0));
+        expected += s.totalPayoutCents - s.totalStakeCents;
+        expect(s.netCents).toBe(s.totalPayoutCents - s.totalStakeCents);
+        expect(s.balanceCents).toBe(expected);
+      }
+      const { rows } = await db.query<{ total: number }>(
+        'SELECT sum(amount_cents)::bigint AS total FROM ledger_entries WHERE user_id = $1',
+        [player.id],
+      );
+      expect(rows[0].total).toBe(expected);
+
+      const stats = await api().get('/api/v1/roulette/stats').set(auth(player.token)).expect(200);
+      expect(stats.body.spins).toBe(10);
+      expect(stats.body.colors.red + stats.body.colors.black + stats.body.colors.green).toBe(10);
+    });
+
+    it('rejoue un tour envoyé deux fois au lieu de le doubler', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 10_000);
+      const body = { bets: [{ type: 'odd', amountCents: 2000 }], idempotencyKey: 'meme-tour-0001' };
+      const [first, second] = await Promise.all([spin(player.token, body), spin(player.token, body)]);
+      expect(first.status).toBe(201);
+      expect(second.body.spinId).toBe(first.body.spinId);
+      expect(await balance(player.token)).toBe(10_000 + first.body.netCents);
+      expect((await api().get('/api/v1/roulette/spins').set(auth(player.token)).expect(200)).body).toHaveLength(1);
+    });
+
+    it('refuse une position inexistante, une mise hors limites et un total trop élevé', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 100_000);
+      const code = async (bets: object[], status = 400) =>
+        (await spin(player.token, { bets, idempotencyKey: 'refus-0001' }).expect(status)).body.code;
+
+      expect(await code([{ type: 'split', numbers: [1, 5], amountCents: 1000 }])).toBe('INVALID_BET');
+      expect(await code([{ type: 'straight', numbers: [5], amountCents: 999 }])).toBe('BET_OUT_OF_RANGE');
+      expect(
+        await code([
+          { type: 'straight', numbers: [5], amountCents: 30000 },
+          { type: 'straight', numbers: [5], amountCents: 30000 },
+        ]),
+      ).toBe('BET_OUT_OF_RANGE');
+      expect(
+        await code(['red', 'black', 'even', 'odd'].map((type) => ({ type, amountCents: 1_500_000 }))),
+      ).toBe('TOTAL_STAKE_TOO_HIGH');
+      expect(await code([{ type: 'high', amountCents: 200_000 }])).toBe('INSUFFICIENT_FUNDS');
+      expect(await balance(player.token)).toBe(100_000);
+    });
+
+    it('permet de vérifier un tour après la rotation des graines, séparées de celles du Keno', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 10_000);
+      const kenoSeed = (await api().get('/api/v1/keno/seeds').set(auth(player.token)).expect(200)).body;
+      const rouletteSeed = (await api().get('/api/v1/roulette/seeds').set(auth(player.token)).expect(200)).body;
+      expect(rouletteSeed.serverSeedHash).not.toBe(kenoSeed.serverSeedHash);
+
+      const played = (await spin(player.token, { bets: [{ type: 'low', amountCents: 1000 }], idempotencyKey: 'verif-tour-01' }).expect(201)).body;
+      expect(played.serverSeedHash).toBe(rouletteSeed.serverSeedHash);
+      const rotated = await api().post('/api/v1/roulette/seeds/rotate').set(auth(player.token)).send({}).expect(200);
+      expect(hashServerSeed(rotated.body.previous.serverSeed)).toBe(played.serverSeedHash);
+
+      const verified = await api()
+        .post('/api/v1/roulette/verify')
+        .send({ serverSeed: rotated.body.previous.serverSeed, clientSeed: played.clientSeed, nonce: played.nonce })
+        .expect(200);
+      expect(verified.body).toMatchObject({ number: played.number, color: played.color });
+      expect((await api().get('/api/v1/keno/seeds').set(auth(player.token)).expect(200)).body.serverSeedHash).toBe(
+        kenoSeed.serverSeedHash,
+      );
+    });
+
+    it("joue en mode automatique et applique la limite de perte commune aux jeux", async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 100_000);
+      const res = await api()
+        .post('/api/v1/roulette/autoplay')
+        .set(auth(player.token))
+        .send({ bets: [{ type: 'red', amountCents: 1000 }], rounds: 20, stopOnLossCents: 3000, idempotencyKey: 'auto-tour-01' })
+        .expect(201);
+      const { spins, netCents } = res.body as { spins: { netCents: number }[]; netCents: number };
+      expect(netCents).toBe(spins.reduce((sum, s) => sum + s.netCents, 0));
+      expect(await balance(player.token)).toBe(100_000 + netCents);
+
+      const lost = Math.max(0, -netCents);
+      await api()
+        .put('/api/v1/me/limits')
+        .set(auth(player.token))
+        .send({ dailyLossLimitCents: lost + 500, dailyDepositLimitCents: null })
+        .expect(200);
+      const limited = await spin(player.token, { bets: [{ type: 'red', amountCents: 1000 }], idempotencyKey: 'limite-tour-01' }).expect(403);
+      expect(limited.body.code).toBe('LOSS_LIMIT_REACHED');
+      const keno = await bet(player.token, { picks: [1], stakeCents: 1000, idempotencyKey: 'limite-keno-01' }).expect(403);
+      expect(keno.body.code).toBe('LOSS_LIMIT_REACHED');
+    });
+
+    it('signale au back-office les tours qui couvrent tout le tapis', async () => {
+      const player = await registerPlayer();
+      await deposit(player.token, 10_000);
+      const covering = (
+        await spin(player.token, {
+          bets: [
+            { type: 'red', amountCents: 1000 },
+            { type: 'black', amountCents: 1000 },
+            { type: 'straight', numbers: [0], amountCents: 1000 },
+          ],
+          idempotencyKey: 'tout-le-tapis-01',
+        }).expect(201)
+      ).body;
+
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Port-au-Prince' });
+      const finance = await staffLogin('finance');
+      const alerts = await api()
+        .get(`/api/v1/admin/roulette/alerts?from=${today}&to=${today}`)
+        .set(auth(finance.token))
+        .expect(200);
+      expect(alerts.body).toEqual(
+        expect.arrayContaining([expect.objectContaining({ spinId: covering.spinId, userId: player.id, totalStakeCents: 3000 })]),
+      );
+      const support = await staffLogin('support');
+      await api().get(`/api/v1/admin/roulette/alerts?from=${today}&to=${today}`).set(auth(support.token)).expect(403);
+    });
+
+    it('active La Partage depuis le back-office (super-admin seulement)', async () => {
+      const admin = await staffLogin('super_admin');
+      const current = (await api().get('/api/v1/admin/roulette/settings').set(auth(admin.token)).expect(200)).body.current;
+      const input = {
+        chipValuesCents: current.chipValuesCents,
+        betLimits: current.betLimits,
+        maxTotalStakeCents: current.maxTotalStakeCents,
+        maxPayoutCents: current.maxPayoutCents,
+        laPartage: true,
+      };
+      const finance = await staffLogin('finance');
+      await api().put('/api/v1/admin/roulette/settings').set(auth(finance.token)).send(input).expect(403);
+      const invalid = await api()
+        .put('/api/v1/admin/roulette/settings')
+        .set(auth(admin.token))
+        .send({ ...input, chipValuesCents: [5000, 1000] })
+        .expect(400);
+      expect(invalid.body.code).toBe('INVALID_SETTINGS');
+
+      const updated = await api().put('/api/v1/admin/roulette/settings').set(auth(admin.token)).send(input).expect(200);
+      expect(updated.body).toMatchObject({ version: current.version + 1, laPartage: true });
+      const config = (await api().get('/api/v1/roulette/config').expect(200)).body;
+      expect(config.laPartage).toBe(true);
+      expect(config.rtpPercent.red).toBeCloseTo(98.649, 3);
+    });
+  });
+
   describe('paiements et back-office', () => {
     it('exige le KYC puis traite les retraits selon le seuil de validation', async () => {
       const player = await registerPlayer();
@@ -316,7 +499,7 @@ describe('API (e2e)', () => {
     it('réserve les paramètres au super-admin et refuse un RTP hors plage', async () => {
       const auditor = await staffLogin('auditor');
       const admin = await staffLogin('super_admin');
-      const current = (await api().get('/api/v1/admin/settings').set(auth(auditor.token)).expect(200)).body.current;
+      const current = (await api().get('/api/v1/admin/keno/settings').set(auth(auditor.token)).expect(200)).body.current;
       const input = {
         minStakeCents: current.minStakeCents,
         maxStakeCents: current.maxStakeCents,
@@ -325,16 +508,16 @@ describe('API (e2e)', () => {
         paytable: current.paytable,
       };
 
-      await api().put('/api/v1/admin/settings').set(auth(auditor.token)).send(input).expect(403);
+      await api().put('/api/v1/admin/keno/settings').set(auth(auditor.token)).send(input).expect(403);
       const invalid = await api()
-        .put('/api/v1/admin/settings')
+        .put('/api/v1/admin/keno/settings')
         .set(auth(admin.token))
         .send({ ...input, paytable: { ...input.paytable, '1': [0, 3] } })
         .expect(400);
       expect(invalid.body.code).toBe('INVALID_SETTINGS');
 
       const updated = await api()
-        .put('/api/v1/admin/settings')
+        .put('/api/v1/admin/keno/settings')
         .set(auth(admin.token))
         .send({ ...input, minStakeCents: 500 })
         .expect(200);
@@ -353,6 +536,15 @@ describe('API (e2e)', () => {
       const day = dashboard.body[0];
       expect(day.bets).toBeGreaterThan(0);
       expect(day.ggrCents).toBe(day.stakesCents - day.payoutsCents);
+      expect(day.kenoGgrCents + day.rouletteGgrCents).toBe(day.ggrCents);
+
+      const spins = await api()
+        .get(`/api/v1/admin/exports/spins?from=${today}&to=${today}`)
+        .set(auth(auditor.token))
+        .expect(200);
+      expect(spins.text.split('\n')[0]).toBe(
+        'id,user_id,created_at,number,total_stake_cents,total_payout_cents,covers_all,bets,seed_id,nonce,settings_version',
+      );
 
       const csv = await api()
         .get(`/api/v1/admin/exports/bets?from=${today}&to=${today}`)

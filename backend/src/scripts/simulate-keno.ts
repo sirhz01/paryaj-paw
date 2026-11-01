@@ -1,11 +1,12 @@
 import { parseArgs } from 'node:util';
 import { DEFAULT_PAYTABLE, hitProbability, rtpPercent } from '../keno/paytable';
-import { DRAW_SIZE, GRID_SIZE, drawNumbers, newClientSeed, newServerSeed } from '../keno/provably-fair';
+import { newClientSeed, newServerSeed } from '../fairness/provably-fair';
+import { DRAW_SIZE, GRID_SIZE, drawNumbers } from '../keno/provably-fair';
 
 /**
  * Critères d'acceptation : RTP mesuré proche du RTP théorique (± 0,5 point dans le cahier
  * des charges, ± 3 erreurs types statistiquement) et fréquence uniforme de chaque numéro (khi-deux).
- * npm run simulate -- --rounds 10000000
+ * npm run simulate:keno -- --rounds 10000000
  */
 function main() {
   const { values } = parseArgs({ options: { rounds: { type: 'string', default: '1000000' } } });

@@ -1,11 +1,11 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { AppError } from '../common/errors';
-import { SQL_HAITI_DAY_START } from '../common/haiti';
+import { PlayRulesService } from '../common/play-rules.service';
 import { DATABASE, Database, Queryable, isUniqueViolation } from '../database/db';
+import { SeedsService } from '../fairness/seeds.service';
 import { WalletService } from '../wallet/wallet.service';
 import { payoutCents } from './paytable';
 import { GRID_SIZE, countHits, drawNumbers } from './provably-fair';
-import { SeedsService } from './seeds.service';
 import { KenoSettingsService } from './settings.service';
 
 export interface BetRequest {
@@ -58,6 +58,7 @@ export class KenoService {
     private readonly wallet: WalletService,
     private readonly seeds: SeedsService,
     private readonly settings: KenoSettingsService,
+    private readonly playRules: PlayRulesService,
   ) {}
 
   /**
@@ -80,10 +81,10 @@ export class KenoService {
         const replay = await this.findByKey(tx, userId, req.idempotencyKey);
         if (replay) return replay;
 
-        await this.checkCanPlay(tx, userId, req.stakeCents);
+        await this.playRules.check(tx, userId, req.stakeCents);
         if (balance < req.stakeCents) throw new AppError('INSUFFICIENT_FUNDS');
 
-        const seed = await this.seeds.takeNonce(tx, userId);
+        const seed = await this.seeds.takeNonce(tx, userId, 'keno');
         const drawn = drawNumbers(seed.serverSeed, seed.clientSeed, seed.nonce);
         const hits = countHits(picks, drawn);
         const multiplier = settings.paytable[String(picks.length)][hits];
@@ -156,7 +157,7 @@ export class KenoService {
 
   async recentBets(userId: number, limit: number): Promise<Omit<BetResult, 'balanceCents'>[]> {
     const { rows } = await this.db.query<Omit<BetResult, 'balanceCents'>>(
-      `SELECT ${BET_COLUMNS} FROM keno_bets b JOIN keno_seeds s ON s.id = b.seed_id
+      `SELECT ${BET_COLUMNS} FROM keno_bets b JOIN game_seeds s ON s.id = b.seed_id
         WHERE b.user_id = $1 ORDER BY b.id DESC LIMIT $2`,
       [userId, limit],
     );
@@ -185,7 +186,7 @@ export class KenoService {
       `SELECT ${BET_COLUMNS},
               (SELECT l.balance_after_cents FROM ledger_entries l
                 WHERE l.ref_type = 'keno_bet' AND l.ref_id = b.id::text ORDER BY l.id DESC LIMIT 1) AS "balanceCents"
-         FROM keno_bets b JOIN keno_seeds s ON s.id = b.seed_id
+         FROM keno_bets b JOIN game_seeds s ON s.id = b.seed_id
         WHERE b.user_id = $1 AND b.idempotency_key = $2`,
       [userId, key],
     );
@@ -200,24 +201,5 @@ export class KenoService {
       new Set(picks).size === picks.length;
     if (!valid) throw new AppError('INVALID_PICKS', HttpStatus.BAD_REQUEST, { maxPicks });
     return [...picks].sort((a, b) => a - b);
-  }
-
-  /** Compte bloqué, auto-exclusion et limite de perte du jour (la mise compte comme perte possible). */
-  private async checkCanPlay(tx: Queryable, userId: number, stakeCents: number): Promise<void> {
-    const { rows } = await tx.query<{ status: string; excluded: boolean; limit: number | null; lost_today: number }>(
-      `SELECT u.status,
-              COALESCE(u.self_excluded_until > now(), false) AS excluded,
-              u.daily_loss_limit_cents AS "limit",
-              (SELECT COALESCE(SUM(stake_cents - payout_cents), 0)::bigint FROM keno_bets
-                WHERE user_id = u.id AND created_at >= ${SQL_HAITI_DAY_START}) AS lost_today
-         FROM users u WHERE u.id = $1`,
-      [userId],
-    );
-    const user = rows[0];
-    if (user.status === 'blocked') throw new AppError('ACCOUNT_BLOCKED', HttpStatus.FORBIDDEN);
-    if (user.excluded) throw new AppError('SELF_EXCLUDED', HttpStatus.FORBIDDEN);
-    if (user.limit !== null && user.lost_today + stakeCents > user.limit) {
-      throw new AppError('LOSS_LIMIT_REACHED', HttpStatus.FORBIDDEN, { dailyLossLimitCents: user.limit });
-    }
   }
 }
