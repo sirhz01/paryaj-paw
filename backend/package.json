@@ -1,0 +1,48 @@
+{
+  "name": "paryaj-paw-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API du jeu Keno : comptes, portefeuille HTG, tirages vérifiables, back-office",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "nest start --watch",
+    "migrate": "node dist/scripts/migrate.js",
+    "staff:create": "node dist/scripts/create-staff.js",
+    "simulate": "node dist/scripts/simulate.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --runInBand"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.6",
+    "@nestjs/core": "11.1.6",
+    "@nestjs/jwt": "11.0.0",
+    "@nestjs/platform-express": "11.1.6",
+    "@nestjs/throttler": "6.4.0",
+    "argon2": "0.44.0",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.2",
+    "helmet": "8.1.0",
+    "pg": "8.16.3",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.7",
+    "@nestjs/cli": "11.0.10",
+    "@nestjs/testing": "11.1.6",
+    "@types/express": "5.0.3",
+    "@types/jest": "29.5.14",
+    "@types/node": "24.3.0",
+    "@types/pg": "8.15.5",
+    "@types/supertest": "6.0.3",
+    "jest": "29.7.0",
+    "supertest": "7.1.4",
+    "ts-jest": "29.4.4",
+    "typescript": "5.9.3"
+  }
+}
