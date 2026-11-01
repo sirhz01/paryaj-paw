@@ -24,6 +24,7 @@
     <button data-tab="report" class="on">Rapport</button>
     <button data-tab="settings">Réglages</button>
     <button data-tab="rates">Taux de gain</button>
+    <button data-tab="cashiers" id="tabCashiers">Caissiers</button>
   </nav>
 
   <main class="wrap">
@@ -98,6 +99,23 @@
         <h2>Retour au joueur (RTP) par ligne</h2>
         <p class="hint">Cible du cahier des charges : 90 à 95 %. En rouge : au-dessus de 100 % (refusé). En orange : hors de la cible.</p>
         <table class="tbl" id="rtpTbl"></table>
+      </div>
+    </section>
+
+    <section id="tab-cashiers" class="pane hidden">
+      <div class="card">
+        <h2>Caissiers</h2>
+        <p class="hint">Chaque caissier se connecte à la caisse avec son <b>e-mail</b> et son <b>mot de passe</b>.
+          Un caissier ne peut se connecter que si vous l’avez <b>autorisé</b> : créez le compte, cliquez
+          « Autoriser » quand il prend son service, puis « Bloquer » quand il a fini — sa session est coupée aussitôt.</p>
+        <form id="cashForm" class="cashnew">
+          <label>E-mail <input type="email" id="cEmail" autocomplete="off" required></label>
+          <label>Mot de passe <input type="text" id="cPass" autocomplete="off" minlength="8" placeholder="8 caractères minimum" required></label>
+          <label>Caisse attribuée <select id="cTerm"></select></label>
+          <button class="primary" type="submit">Créer le caissier</button>
+        </form>
+        <div class="msg" id="cashMsg"></div>
+        <table class="tbl" id="cashTbl"></table>
       </div>
     </section>
   </main>

@@ -195,16 +195,63 @@ PP.ready.then(function () {
       + list.map((r) => `<tr><td>${GAMES[r.game] || esc(r.game)}</td><td>${esc(r.line)}</td><td class="${cls(r.rtpPercent)}">${r.rtpPercent.toFixed(2)} %</td></tr>`).join('') + '</tbody>';
   }
 
+  /* ---------- Caissiers ---------- */
+  function cashTermOptions() {
+    return ['<option value="">— aucune —</option>'].concat(terminals.map((t) => `<option>${esc(t)}</option>`)).join('');
+  }
+  async function loadCashiers() {
+    $('cTerm').innerHTML = cashTermOptions();
+    try {
+      const list = await A.call('GET', '/admin/cashiers');
+      $('cashTbl').innerHTML = '<thead><tr><th>E-mail</th><th>Caisse</th><th>Accès</th><th>Actions</th></tr></thead><tbody>'
+        + (list.length ? list.map((c) => {
+          const badge = c.active ? '<span class="tag ok">Autorisé</span>' : '<span class="tag off">Bloqué</span>';
+          const lock = c.locked ? ' <span class="tag off">verrouillé</span>' : '';
+          return `<tr data-id="${c.id}" data-email="${esc(c.email)}"><td>${esc(c.email)}</td><td>${esc(c.terminal || '—')}</td>`
+            + `<td>${badge}${lock}</td><td class="acts"><button class="ghost" data-act="${c.active ? 'block' : 'allow'}">${c.active ? 'Bloquer' : 'Autoriser'}</button>`
+            + `<button class="ghost" data-act="pass">Mot de passe</button></td></tr>`;
+        }).join('') : '<tr><td colspan="4">Aucun caissier. Créez-en un ci-dessus.</td></tr>') + '</tbody>';
+    } catch (e) { $('cashTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
+  }
+  $('cashForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const r = await A.call('POST', '/admin/cashiers', { email: $('cEmail').value.trim(), password: $('cPass').value, terminal: $('cTerm').value || undefined });
+      const totp = PP.STAFF_TOTP && r.totpSecret ? ` Code d’authentification à configurer dans son application : ${r.totpSecret}` : '';
+      flash($('cashMsg'), 'Caissier créé (bloqué). Cliquez « Autoriser » pour lui ouvrir l’accès.' + totp, true);
+      $('cEmail').value = ''; $('cPass').value = '';
+      loadCashiers();
+    } catch (err) { flash($('cashMsg'), err.code === 'EMAIL_TAKEN' ? 'Cet e-mail est déjà utilisé.' : errorText(err), false); }
+  });
+  $('cashTbl').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const tr = b.closest('tr'), id = tr.dataset.id, email = tr.dataset.email, act = b.dataset.act;
+    try {
+      if (act === 'allow' || act === 'block') {
+        await A.call('PATCH', `/admin/cashiers/${id}/access`, { active: act === 'allow' });
+        flash($('cashMsg'), `${email} ${act === 'allow' ? 'autorisé' : 'bloqué'}.`, true);
+      } else {
+        const pass = prompt(`Nouveau mot de passe pour ${email} (8 caractères minimum) :`);
+        if (!pass) return;
+        await A.call('PATCH', `/admin/cashiers/${id}/password`, { password: pass });
+        flash($('cashMsg'), `Mot de passe de ${email} changé ; ses sessions sont coupées.`, true);
+      }
+      loadCashiers();
+    } catch (err) { flash($('cashMsg'), errorText(err), false); }
+  });
+
   /* ---------- Démarrage ---------- */
   async function start() {
     role = roleOf();
     $('logoutBtn').classList.remove('hidden');
     $('who').textContent = 'Rôle : ' + role + (canEdit() ? '' : ' (consultation seulement)');
+    $('tabCashiers').classList.toggle('hidden', !canEdit());
     try {
       const r = await A.call('GET', '/admin/shop/settings');
       settings = r.settings;
       $('shopName').textContent = settings.pointOfSale;
       fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
+      if (canEdit()) loadCashiers();
     } catch (e) {
       if (e.status !== 401) { A.logout(); showLogin(e.status === 403 ? 'Ce compte n’a pas accès à l’administration (compte propriétaire requis).' : A.message(e)); }
       return;
