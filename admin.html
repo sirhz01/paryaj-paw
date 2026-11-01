@@ -73,6 +73,11 @@
           <label>Gain à faire valider par un responsable (seuil) <input id="fApproval" type="number" min="1" step="any" required></label>
         </div>
         <label class="chk"><input type="checkbox" id="fTop"> Roulette : activer le pari « Top line » (0, 00, 1, 2, 3)</label>
+        <h2>Temps de chaque jeu (secondes)</h2>
+        <p class="hint">Mises ouvertes · tirage · résultat. Un changement s’applique à partir de <b>demain 00:00</b> (heure d’Haïti) : les tours et les tickets d’aujourd’hui ne sont pas touchés.
+          Le tirage ne peut pas être plus court que l’animation de l’écran TV (minimum affiché). Les écrans TV et la caisse se rechargent seuls à minuit.</p>
+        <div class="tmgrid" id="timings"></div>
+        <p class="hint" id="timingsPlan"></p>
         <div class="msg" id="setMsg"></div>
         <button class="primary save" type="submit">Enregistrer les réglages</button>
       </form>

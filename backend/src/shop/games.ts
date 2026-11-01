@@ -7,7 +7,9 @@ export const SHOP_GAMES = ['roulette', 'keno', 'luckysix', 'luckyx'] as const;
 export type ShopGame = (typeof SHOP_GAMES)[number];
 
 /** Durées en secondes. Un cycle = mises + tirage + résultat. */
-export const TIMINGS: Record<ShopGame, { bet: number; draw: number; result: number }> = {
+export type Timings = Record<ShopGame, { bet: number; draw: number; result: number }>;
+
+export const TIMINGS: Timings = {
   roulette: { bet: 25, draw: 11, result: 8 },
   keno: { bet: 20, draw: 30, result: 8 },
   luckysix: { bet: 30, draw: 32, result: 12 },
@@ -315,6 +317,30 @@ export function validatePaytables(paytables: ShopPaytables): string[] {
 
   for (const { game, line, rtpPercent } of rtpReport(paytables, true)) {
     if (rtpPercent > 100) errors.push(`${game} ${line} : RTP de ${rtpPercent} % (plus de 100 %)`);
+  }
+  return errors;
+}
+
+/**
+ * Contrôle les durées saisies : entiers en secondes. Le tirage ne peut pas être plus court que l'animation de l'écran TV
+ * (valeur par défaut), les mises et le résultat ont des bornes raisonnables.
+ */
+export function validateTimings(t: unknown): string[] {
+  const errors: string[] = [];
+  if (typeof t !== 'object' || t === null) return ['durées invalides'];
+  for (const game of SHOP_GAMES) {
+    const g = (t as Record<string, { bet?: unknown; draw?: unknown; result?: unknown }>)[game];
+    if (!g) {
+      errors.push(`${game} : durées manquantes`);
+      continue;
+    }
+    const check = (name: 'bet' | 'draw' | 'result', min: number, max: number, label: string) => {
+      const v = g[name];
+      if (!Number.isInteger(v) || (v as number) < min || (v as number) > max) errors.push(`${game} : ${label} entre ${min} et ${max} secondes`);
+    };
+    check('bet', 10, 300, 'mises');
+    check('draw', TIMINGS[game].draw, 120, 'tirage');
+    check('result', 5, 120, 'résultat');
   }
   return errors;
 }

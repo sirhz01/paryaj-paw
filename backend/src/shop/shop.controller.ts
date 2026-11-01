@@ -21,7 +21,7 @@ import { CurrentStaff, Roles, StaffGuard, StaffPrincipal } from '../common/auth'
 import { AppError } from '../common/errors';
 import { AppConfig, CONFIG } from '../config';
 import { IDEMPOTENCY_KEY } from '../fairness/dto';
-import { CLOSE_MARGIN_SECONDS, NUMBER_GAMES, SHOP_GAMES, ShopGame, ShopPaytables, TIMINGS, WHEEL_ORDER } from './games';
+import { CLOSE_MARGIN_SECONDS, NUMBER_GAMES, SHOP_GAMES, ShopGame, ShopPaytables, Timings, WHEEL_ORDER } from './games';
 import { DAY_FORMAT, RoundsService } from './rounds.service';
 import { ShopSettingsService } from './settings.service';
 import { TicketsService } from './tickets.service';
@@ -166,6 +166,11 @@ class ShopSettingsDto {
 
   @IsObject()
   paytables!: ShopPaytables;
+
+  /** Durées des tours par jeu ; absentes, les durées actuelles sont conservées. */
+  @IsOptional()
+  @IsObject()
+  timings?: Timings;
 }
 
 function gameOf(value: string): ShopGame {
@@ -198,7 +203,8 @@ export class ShopController {
       maxTicketCents: s.maxTicketCents,
       topLineEnabled: s.topLineEnabled,
       closeMarginSeconds: CLOSE_MARGIN_SECONDS,
-      timings: TIMINGS,
+      // Durées du jour : un changement de réglage s'applique à partir du lendemain (les écrans se rechargent à minuit).
+      timings: this.settings.timingsOn(this.rounds.today()),
       grids: NUMBER_GAMES,
       wheelOrder: WHEEL_ORDER,
       paytables: s.paytables,
@@ -282,6 +288,7 @@ export class ShopAdminController {
   constructor(
     private readonly settings: ShopSettingsService,
     private readonly tickets: TicketsService,
+    private readonly rounds: RoundsService,
   ) {}
 
   /** Paramètres actifs et RTP de chaque ligne de gains. */
@@ -289,14 +296,14 @@ export class ShopAdminController {
   @Roles('super_admin', 'finance', 'auditor')
   async current() {
     const s = await this.settings.current();
-    return { settings: s, rtp: this.settings.rtp(s) };
+    return { settings: s, rtp: this.settings.rtp(s), timings: this.settings.timingsPlan(this.rounds.today()) };
   }
 
   @Put('settings')
   @Roles('super_admin')
   async update(@CurrentStaff() staff: StaffPrincipal, @Body() dto: ShopSettingsDto) {
     const s = await this.settings.update(staff.id, dto);
-    return { settings: s, rtp: this.settings.rtp(s) };
+    return { settings: s, rtp: this.settings.rtp(s), timings: this.settings.timingsPlan(this.rounds.today()) };
   }
 
   @Get('dashboard')

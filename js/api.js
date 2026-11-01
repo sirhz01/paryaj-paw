@@ -62,6 +62,8 @@
     PP.offset = cfg.serverTime - (t0 + t1) / 2;
     apply(cfg);
     PP.online = true;
+    // Les durées des jeux changent à minuit (jour suivant) : la page se recharge alors pour les prendre.
+    setTimeout(() => location.reload(), Math.max(1000, PP.dayEnd(PP.dayStartOfKey(PP.dayKey(PP.now()))) - PP.now() + 3000));
   })()).catch((e) => { console.info('Mode démo (tirages simulés, tickets locaux) :', e.message); });
 
   /* ---------- Résultats des tours ---------- */

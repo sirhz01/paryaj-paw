@@ -10,7 +10,7 @@ PP.ready.then(function () {
   const today = () => PP.dayKey(Date.now() + (PP.offset || 0));
   const addDays = (day, n) => { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
-  let settings = null, role = '', terminals = [];
+  let settings = null, role = '', terminals = [], timingPlan = null;
 
   function roleOf() {
     try { return JSON.parse(atob(A.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role || ''; } catch (e) { return ''; }
@@ -105,6 +105,27 @@ PP.ready.then(function () {
   });
   $('termAdd').addEventListener('click', () => { terminals.push('CAISSE #' + (terminals.length + 1)); renderTerminals(); });
 
+  /* ---------- Temps de chaque jeu ---------- */
+  const MIN_DRAW = { roulette: 11, keno: 30, luckysix: 32, luckyx: 24 };
+  const tmText = (t) => Object.keys(GAMES).map((g) => GAMES[g] + ' ' + t[g].bet + '/' + t[g].draw + '/' + t[g].result).join(' · ');
+  function renderTimings(t) {
+    $('timings').innerHTML = '<div class="tmrow tmhead"><span></span><span>Mises</span><span>Tirage (min.)</span><span>Résultat</span></div>'
+      + Object.keys(GAMES).map((g) => '<div class="tmrow"><b>' + GAMES[g] + '</b>'
+        + '<input type="number" min="10" max="300" step="1" id="tm:' + g + ':bet" value="' + t[g].bet + '" aria-label="' + GAMES[g] + ' : durée des mises">'
+        + '<span class="tmdraw"><input type="number" min="' + MIN_DRAW[g] + '" max="120" step="1" id="tm:' + g + ':draw" value="' + t[g].draw + '" aria-label="' + GAMES[g] + ' : durée du tirage"><small>' + MIN_DRAW[g] + '</small></span>'
+        + '<input type="number" min="5" max="120" step="1" id="tm:' + g + ':result" value="' + t[g].result + '" aria-label="' + GAMES[g] + ' : durée du résultat"></div>').join('');
+    $('timings').querySelectorAll('input').forEach((el) => { el.disabled = !canEdit(); });
+    if (timingPlan) {
+      $('timingsPlan').textContent = 'Aujourd’hui (mises/tirage/résultat) : ' + tmText(timingPlan.today)
+        + (JSON.stringify(timingPlan.today) === JSON.stringify(timingPlan.tomorrow) ? '. Demain : pareil.' : '. Demain : ' + tmText(timingPlan.tomorrow) + '.');
+    }
+  }
+  const readTimings = () => {
+    const out = {};
+    for (const g of Object.keys(GAMES)) out[g] = { bet: Number($('tm:' + g + ':bet').value), draw: Number($('tm:' + g + ':draw').value), result: Number($('tm:' + g + ':result').value) };
+    return out;
+  };
+
   function fillSettings(s) {
     $('fPos').value = s.pointOfSale; $('fIssuer').value = s.issuer;
     terminals = s.terminals.slice(); renderTerminals();
@@ -112,6 +133,7 @@ PP.ready.then(function () {
     $('fMin').value = htg(s.minStakeCents); $('fMax').value = htg(s.maxStakeCents); $('fTicket').value = htg(s.maxTicketCents);
     $('fPayout').value = htg(s.maxPayoutCents); $('fApproval').value = htg(s.approvalThresholdCents);
     $('fTop').checked = s.topLineEnabled;
+    renderTimings(s.timings);
     document.querySelectorAll('#setForm input, #setForm .save').forEach((el) => { if (!el.closest('.terms')) el.disabled = !canEdit(); });
   }
 
@@ -119,8 +141,8 @@ PP.ready.then(function () {
     const { version, createdAt, ...base } = settings;
     try {
       const r = await A.call('PUT', '/admin/shop/settings', { ...base, ...patch });
-      settings = r.settings; fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
-      flash(msgEl, 'Enregistré (version ' + settings.version + '). Les écrans et la caisse le prennent au prochain rechargement.', true);
+      timingPlan = r.timings; settings = r.settings; fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
+      flash(msgEl, 'Enregistré (version ' + settings.version + '). Les écrans et la caisse le prennent au prochain rechargement ; les nouveaux temps de jeu à partir de demain 00:00.', true);
     } catch (e) { flash(msgEl, errorText(e), false); }
   }
   $('setForm').addEventListener('submit', (e) => {
@@ -131,7 +153,7 @@ PP.ready.then(function () {
     save({
       pointOfSale: $('fPos').value.trim(), issuer: $('fIssuer').value.trim(), terminals: names, stakesCents: stakes,
       minStakeCents: toCents($('fMin').value), maxStakeCents: toCents($('fMax').value), maxTicketCents: toCents($('fTicket').value),
-      maxPayoutCents: toCents($('fPayout').value), approvalThresholdCents: toCents($('fApproval').value), topLineEnabled: $('fTop').checked,
+      maxPayoutCents: toCents($('fPayout').value), approvalThresholdCents: toCents($('fApproval').value), topLineEnabled: $('fTop').checked, timings: readTimings(),
     }, $('setMsg'));
   });
 
@@ -265,7 +287,7 @@ PP.ready.then(function () {
     $('tabCashiers').classList.toggle('hidden', !canEdit());
     try {
       const r = await A.call('GET', '/admin/shop/settings');
-      settings = r.settings;
+      timingPlan = r.timings; settings = r.settings;
       $('shopName').textContent = settings.pointOfSale;
       fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
       if (canEdit()) loadCashiers();

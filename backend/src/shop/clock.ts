@@ -1,5 +1,5 @@
 import { HAITI_TIME_ZONE } from '../common/haiti';
-import { ShopGame, TIMINGS } from './games';
+import { ShopGame, TIMINGS, Timings } from './games';
 
 /** Horloge injectable : les tests la remplacent pour avancer dans les tours. */
 export const SHOP_CLOCK = Symbol('SHOP_CLOCK');
@@ -50,6 +50,16 @@ export function dayStartMs(day: string): number {
   return guess;
 }
 
+/**
+ * Durées de chaque jeu pour un jour donné. Par défaut les valeurs du code ; le service des réglages branche ici
+ * les durées versionnées (appliquées à partir du jour suivant leur création).
+ */
+let timingsProvider: (day: string) => Timings = () => TIMINGS;
+export function setTimingsProvider(fn: (day: string) => Timings): void {
+  timingsProvider = fn;
+}
+const timingsOf = (game: ShopGame, day: string) => timingsProvider(day)[game];
+
 export type Phase = 'bet' | 'draw' | 'result';
 
 export interface RoundState {
@@ -68,19 +78,19 @@ export interface RoundState {
   nextStartMs: number;
 }
 
-export function cycleSeconds(game: ShopGame): number {
-  const { bet, draw, result } = TIMINGS[game];
+export function cycleSeconds(game: ShopGame, day?: string): number {
+  const { bet, draw, result } = day ? timingsOf(game, day) : TIMINGS[game];
   return bet + draw + result;
 }
 
 /** Nombre de tours complets dans le jour ; le reste de la journée prolonge le dernier résultat. */
 export function roundsInDay(game: ShopGame, day: string): number {
-  return Math.floor((dayStartMs(nextDayKey(day)) - dayStartMs(day)) / (cycleSeconds(game) * 1000));
+  return Math.floor((dayStartMs(nextDayKey(day)) - dayStartMs(day)) / (cycleSeconds(game, day) * 1000));
 }
 
 export function roundWindow(game: ShopGame, day: string, round: number) {
-  const { bet, draw } = TIMINGS[game];
-  const cycle = cycleSeconds(game) * 1000;
+  const { bet, draw } = timingsOf(game, day);
+  const cycle = cycleSeconds(game, day) * 1000;
   const startMs = dayStartMs(day) + (round - 1) * cycle;
   return {
     startMs,
@@ -92,10 +102,10 @@ export function roundWindow(game: ShopGame, day: string, round: number) {
 
 export function stateAt(game: ShopGame, ms: number): RoundState {
   const day = dayKeyOf(ms);
-  const cycle = cycleSeconds(game) * 1000;
+  const cycle = cycleSeconds(game, day) * 1000;
   const round = Math.min(Math.floor((ms - dayStartMs(day)) / cycle) + 1, roundsInDay(game, day));
   const w = roundWindow(game, day, round);
-  const { bet, draw } = TIMINGS[game];
+  const { bet, draw } = timingsOf(game, day);
   const elapsed = ms - w.startMs;
   let phase: Phase, pt: number, dur: number;
   if (elapsed < bet * 1000) {
