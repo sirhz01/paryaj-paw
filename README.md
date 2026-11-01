@@ -6,7 +6,7 @@ Plateforme de jeux en ligne en HTG (roulette américaine, Keno 20/80, Lucky Six,
 | --- | --- | --- |
 | [backend/](backend/) | API NestJS + PostgreSQL : comptes, portefeuille, 4 jeux, tirages programmés, points de vente (agents), boutique (tours, tickets, caisse), paiements, back-office | Premier jalon |
 | [index.html](index.html) | Front-end boutique (HTML/JS pur) : écrans TV Roulette, Keno, Lucky Six, Lucky X et caisse | Démo |
-| `web/` | Site web React | À venir |
+| [web/](web/) | Site web des joueurs (React + Vite) : compte, portefeuille, jeux en ligne | Premier jalon (compte/portefeuille faits, jeux à venir) |
 | [desktop/](desktop/) | Application Windows de la boutique (caisse + écrans TV), en Tauri 2 et Electron | Premier jalon |
 | `mobile/` | Application Android | À venir |
 
