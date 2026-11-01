@@ -19,13 +19,13 @@
       }
       x += 1;
     }
-    return `<svg class="bc" viewBox="0 0 ${x} 40" preserveAspectRatio="none" aria-label="${text}">${bars}</svg>`;
+    return `<svg class="bc" viewBox="0 0 ${x} 40" preserveAspectRatio="none" aria-label="${PP.esc(text)}">${bars}</svg>`;
   }
 
   const row = (a, b, cls = '') => `<div class="r ${cls}"><span>${a}</span><span>${b}</span></div>`;
   const head = (title, t) => `
     <img class="logo" src="assets/logo.jpg" alt="La Référence Paryaj Paw">
-    <div class="shop">Point de vente: ${PP.SHOP.pointDeVente}<br>Périphérique: ${t.caisse}<br>Émetteur: ${PP.SHOP.emetteur}</div>
+    <div class="shop">Point de vente: ${PP.esc(PP.SHOP.pointDeVente)}<br>Périphérique: ${PP.esc(t.caisse)}<br>Émetteur: ${PP.esc(PP.SHOP.emetteur)}</div>
     <div class="title">${title}</div>
     <hr>
     ${row('Délivré', PP.dateTime(t.time))}

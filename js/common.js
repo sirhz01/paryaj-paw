@@ -99,6 +99,8 @@
   };
 
   /* ---------- Formats ---------- */
+  /** Échappe un texte venant des réglages ou du serveur avant de l'insérer dans du HTML. */
+  PP.esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   PP.money = (n) => Number(n).toFixed(2) + ' HTG';
   PP.clock = (sec) => { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
   PP.short = (n) => n >= 1000 ? (n / 1000).toString().replace(/\.0$/, '') + 'K' : String(n);

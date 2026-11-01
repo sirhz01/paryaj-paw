@@ -83,6 +83,7 @@ async function main() {
   const logger = new Logger('Démo');
   if (applied.length) logger.log(`Migrations appliquées : ${applied.join(', ')}`);
   logger.log(`Boutique : http://localhost:${config.port}/  (caisse : /caisse.html, API : /api/v1)`);
+  logger.warn('DÉMO : comptes et mot de passe publics. Ne jamais ouvrir ce serveur sur Internet (tunnel, redirection de port) ; pour la mise en ligne, utiliser deploy/setup-vps.sh.');
   logger.log('Sur le réseau local, ouvrir les écrans avec l’adresse IP de cette machine.');
   for (const a of accounts) {
     logger.log(`${a.role} : ${a.email} / ${DEMO_PASSWORD} — application d'authentification : ${otpauthUrl(a.secret, a.email)}`);

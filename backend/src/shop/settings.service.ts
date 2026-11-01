@@ -20,6 +20,9 @@ export interface ShopSettings {
   createdAt: Date;
 }
 
+/** Nom d'une caisse : imprimé sur les tickets et affiché dans la caisse, donc sans balisage. */
+const TERMINAL_NAME = /^[\p{L}\p{N} #._-]{1,32}$/u;
+
 export type ShopSettingsInput = Omit<ShopSettings, 'version' | 'createdAt'>;
 
 const COLUMNS = `version, point_of_sale AS "pointOfSale", issuer, terminals, stakes_cents AS "stakesCents",
@@ -58,7 +61,9 @@ export class ShopSettingsService {
   update(staffId: number, input: ShopSettingsInput): Promise<ShopSettings> {
     const errors = validatePaytables(input.paytables);
     const ints = (list: unknown[]) => list.every((v) => Number.isSafeInteger(v) && (v as number) > 0);
-    if (!input.terminals.length || input.terminals.some((t) => !t.trim() || t.length > 32)) errors.push('caisses invalides');
+    if (!input.terminals.length || input.terminals.some((t) => !TERMINAL_NAME.test(t))) errors.push('caisses invalides (lettres, chiffres, espace, # . _ - seulement, 32 caractères au plus)');
+    if (new Set(input.terminals).size !== input.terminals.length) errors.push('deux caisses portent le même nom');
+    if (/[<>]/.test(input.pointOfSale + input.issuer)) errors.push('nom du point de vente ou émetteur : caractères < et > interdits');
     if (!input.stakesCents.length || !ints(input.stakesCents)) errors.push('mises rapides invalides');
     if (input.stakesCents.some((s) => s < input.minStakeCents || s > input.maxStakeCents)) {
       errors.push('mise rapide hors des limites');

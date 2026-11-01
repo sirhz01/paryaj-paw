@@ -17,7 +17,7 @@ PP.ready.then(function () {
   /* ---------- En-tête ---------- */
   $('shopName').textContent = PP.SHOP.pointDeVente;
   if (online) {
-    $('caisseSel').innerHTML = PP.SHOP.terminals.map((t) => `<option>${t}</option>`).join('');
+    $('caisseSel').innerHTML = PP.SHOP.terminals.map((t) => `<option>${PP.esc(t)}</option>`).join('');
     $('stake').min = PP.LIMITS.min; $('stake').step = PP.LIMITS.min;
   } else $('demoBanner').classList.remove('hidden');
   const savedCaisse = localStorage.getItem('pp.caisse');
