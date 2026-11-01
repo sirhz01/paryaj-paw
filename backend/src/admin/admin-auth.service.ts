@@ -58,7 +58,7 @@ export class AdminAuthService {
     const expiresIn = staff.role === 'cashier' ? CASHIER_TOKEN_TTL_SECONDS : STAFF_TOKEN_TTL_SECONDS;
     const accessToken = await this.jwt.signAsync(
       { sub: String(staff.id), typ: 'staff', role: staff.role },
-      { secret: this.config.staffJwtSecret, expiresIn },
+      { secret: this.config.staffJwtSecret, expiresIn, algorithm: 'HS256' },
     );
     return { accessToken, expiresIn, role: staff.role };
   }

@@ -109,7 +109,7 @@ export class AuthService {
   private async issueTokens(tx: Queryable, userId: number): Promise<TokenPair> {
     const accessToken = await this.jwt.signAsync(
       { sub: String(userId), typ: 'player' },
-      { secret: this.config.jwtSecret, expiresIn: this.config.accessTokenTtlSeconds },
+      { secret: this.config.jwtSecret, expiresIn: this.config.accessTokenTtlSeconds, algorithm: 'HS256' },
     );
     const refreshToken = randomBytes(32).toString('base64url');
     await tx.query(

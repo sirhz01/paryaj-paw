@@ -1,4 +1,5 @@
-import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { StrongPassword } from '../common/password';
 import { OtpPurpose } from './otp.service';
 
 export type Language = 'ht' | 'fr' | 'en';
@@ -20,8 +21,7 @@ export class RegisterDto {
   otp!: string;
 
   @IsString()
-  @MinLength(8)
-  @MaxLength(128)
+  @StrongPassword()
   password!: string;
 
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
@@ -59,7 +59,6 @@ export class ResetPasswordDto {
   otp!: string;
 
   @IsString()
-  @MinLength(8)
-  @MaxLength(128)
+  @StrongPassword()
   newPassword!: string;
 }

@@ -1,11 +1,12 @@
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 import { MAX_MONEY_CENTS } from '../common/money';
 import { AgentWalletService } from '../agents/agent-wallet.service';
 import { AgentsService } from '../agents/agents.service';
 import { CurrentStaff, Roles, StaffGuard, StaffPrincipal } from '../common/auth';
 import { AppError } from '../common/errors';
+import { StrongPassword } from '../common/password';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -18,8 +19,7 @@ class CreateAgentDto {
   phone!: string;
 
   @IsString()
-  @MinLength(8)
-  @MaxLength(128)
+  @StrongPassword()
   password!: string;
 
   @IsOptional()
