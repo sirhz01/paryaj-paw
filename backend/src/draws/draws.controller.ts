@@ -257,3 +257,14 @@ export class TicketsController {
     return this.tickets.byCode(player.id, code);
   }
 }
+
+/** Public : le porteur d'un ticket vendu au guichet vérifie son résultat en scannant le QR. */
+@Controller('public/tickets')
+export class PublicTicketsController {
+  constructor(private readonly tickets: TicketsService) {}
+
+  @Get(':code')
+  check(@Param('code') code: string) {
+    return this.tickets.agentTicket(code);
+  }
+}

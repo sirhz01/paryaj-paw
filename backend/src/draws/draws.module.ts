@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
+import { AgentWalletModule } from '../agents/agent-wallet.module';
 import { WalletModule } from '../wallet/wallet.module';
-import { DrawsController, TicketsController } from './draws.controller';
+import { DrawsController, PublicTicketsController, TicketsController } from './draws.controller';
 import { DrawEventsService } from './events.service';
 import { DrawScheduler } from './scheduler.service';
 import { SettlementService } from './settlement.service';
@@ -8,9 +9,9 @@ import { DrawSettingsService } from './settings.service';
 import { TicketsService } from './tickets.service';
 
 @Module({
-  imports: [WalletModule],
-  controllers: [DrawsController, TicketsController],
+  imports: [WalletModule, AgentWalletModule],
+  controllers: [DrawsController, TicketsController, PublicTicketsController],
   providers: [DrawSettingsService, DrawEventsService, SettlementService, DrawScheduler, TicketsService],
-  exports: [DrawSettingsService, DrawScheduler, SettlementService],
+  exports: [DrawSettingsService, DrawScheduler, SettlementService, TicketsService],
 })
 export class DrawsModule {}

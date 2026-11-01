@@ -1,4 +1,5 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
+import { createHmac, randomInt } from 'node:crypto';
 import { AuditService } from '../common/audit.service';
 import { AppError } from '../common/errors';
 import { SQL_HAITI_DAY_START } from '../common/haiti';
@@ -28,6 +29,14 @@ export interface PaymentRequest {
   idempotencyKey: string;
 }
 
+/** Durée de validité d'un code de retrait au guichet. */
+const PICKUP_CODE_TTL_HOURS = 24;
+
+/** Empreinte d'un code de retrait : liée au joueur, jamais stockée en clair. */
+export function pickupCodeHash(pepper: string, userId: number, code: string): string {
+  return createHmac('sha256', pepper).update(`pickup:${userId}:${code}`).digest('hex');
+}
+
 const COLUMNS = `id, user_id AS "userId", direction, provider, amount_cents AS "amountCents", status,
   provider_ref AS "providerRef", failure_reason AS "failureReason", created_at AS "createdAt", updated_at AS "updatedAt"`;
 
@@ -44,6 +53,8 @@ export class PaymentsService {
   ) {}
 
   async deposit(userId: number, req: PaymentRequest): Promise<Payment & { redirectUrl?: string }> {
+    // Au guichet, c'est l'agent qui enregistre le dépôt (POST /agent/deposits).
+    if (req.provider === 'agent') throw new AppError('PROVIDER_UNAVAILABLE', HttpStatus.SERVICE_UNAVAILABLE, { provider: 'agent' });
     const provider = this.provider(req.provider);
     const replay = await this.findByKey(userId, req.idempotencyKey);
     if (replay) return replay;
@@ -100,9 +111,12 @@ export class PaymentsService {
     });
   }
 
-  /** Débite tout de suite ; au-dessus du seuil, le retrait attend la validation de la finance. */
+  /**
+   * Débite tout de suite ; au-dessus du seuil, le retrait attend la validation de la finance.
+   * Avec `agent`, le joueur génère ensuite un code de retrait et touche le liquide au guichet.
+   */
   async withdraw(userId: number, req: PaymentRequest): Promise<Payment> {
-    this.provider(req.provider);
+    if (req.provider !== 'agent') this.provider(req.provider);
     const replay = await this.findByKey(userId, req.idempotencyKey);
     if (replay) return replay;
 
@@ -176,9 +190,44 @@ export class PaymentsService {
     });
   }
 
+  /** Code à présenter au guichet avec son numéro de téléphone ; un nouveau code remplace le précédent. */
+  async issuePickupCode(userId: number, paymentId: number): Promise<{ code: string; expiresAt: Date }> {
+    const payment = await this.find(paymentId, userId);
+    if (payment.provider !== 'agent' || payment.direction !== 'withdrawal') {
+      throw new AppError('PAYMENT_NOT_FOUND', HttpStatus.NOT_FOUND);
+    }
+    if (payment.status !== 'processing') throw new AppError('PAYMENT_NOT_READY_FOR_PICKUP', HttpStatus.CONFLICT, { status: payment.status });
+    const code = randomInt(0, 100_000_000).toString().padStart(8, '0');
+    const { rows } = await this.db.query<{ expires_at: Date }>(
+      `UPDATE payments SET pickup_code_hash = $2, pickup_expires_at = now() + make_interval(hours => $3::int), updated_at = now()
+        WHERE id = $1 RETURNING pickup_expires_at AS expires_at`,
+      [paymentId, pickupCodeHash(this.config.otpPepper, userId, code), PICKUP_CODE_TTL_HOURS],
+    );
+    return { code, expiresAt: rows[0].expires_at };
+  }
+
+  /** Retrait au guichet pas encore touché : annulé par le joueur, montant rendu au portefeuille. */
+  cancelWithdrawal(userId: number, paymentId: number): Promise<Payment> {
+    return this.db.transaction(async (tx) => {
+      const { rows } = await tx.query<Payment>(
+        `UPDATE payments SET status = 'failed', failure_reason = 'cancelled_by_player', pickup_code_hash = NULL, updated_at = now()
+          WHERE id = $1 AND user_id = $2 AND provider = 'agent' AND direction = 'withdrawal'
+            AND status IN ('processing', 'awaiting_approval')
+          RETURNING ${COLUMNS}`,
+        [paymentId, userId],
+      );
+      const payment = rows[0];
+      if (!payment) throw new AppError('PAYMENT_NOT_CANCELLABLE', HttpStatus.CONFLICT);
+      await this.wallet.lock(tx, userId);
+      await this.wallet.post(tx, userId, 'withdrawal_refund', payment.amountCents, { type: 'payment', id: payment.id });
+      return payment;
+    });
+  }
+
   private async executePayout(paymentId: number): Promise<Payment> {
     const payment = await this.find(paymentId);
-    if (payment.status !== 'processing') return payment;
+    // Retrait au guichet : il reste en traitement jusqu'à ce qu'un agent remette le liquide.
+    if (payment.status !== 'processing' || payment.provider === 'agent') return payment;
     const { phone } = await this.user(payment.userId);
 
     let result: Awaited<ReturnType<PaymentProvider['payout']>>;

@@ -16,6 +16,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AccountModule } from './account/account.module';
+import { AgentsModule } from './agents/agents.module';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { AuditService } from './common/audit.service';
@@ -84,6 +85,7 @@ export class AppModule {
         KenoModule,
         RouletteModule,
         DrawsModule,
+        AgentsModule,
         AdminModule,
       ],
       controllers: [HealthController],

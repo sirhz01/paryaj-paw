@@ -53,4 +53,17 @@ export class PaymentsController {
   withdraw(@CurrentPlayer() player: PlayerPrincipal, @Body() dto: PaymentDto) {
     return this.payments.withdraw(player.id, dto);
   }
+
+  /** Retrait au guichet : code à donner à l'agent avec son numéro de téléphone (valable 24 h). */
+  @Post('withdrawals/:id/pickup-code')
+  @HttpCode(200)
+  pickupCode(@CurrentPlayer() player: PlayerPrincipal, @Param('id', ParseIntPipe) id: number) {
+    return this.payments.issuePickupCode(player.id, id);
+  }
+
+  @Post('withdrawals/:id/cancel')
+  @HttpCode(200)
+  cancel(@CurrentPlayer() player: PlayerPrincipal, @Param('id', ParseIntPipe) id: number) {
+    return this.payments.cancelWithdrawal(player.id, id);
+  }
 }

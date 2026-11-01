@@ -6,6 +6,7 @@ export interface AppConfig {
   databaseUrl: string;
   jwtSecret: string;
   staffJwtSecret: string;
+  agentJwtSecret: string;
   otpPepper: string;
   accessTokenTtlSeconds: number;
   refreshTokenTtlDays: number;
@@ -13,6 +14,8 @@ export interface AppConfig {
   trustProxy: boolean;
   withdrawalApprovalThresholdCents: number;
   fakePayments: boolean;
+  /** Début de l'adresse encodée dans le QR des tickets (le code est ajouté) ; vide : le QR contient le code seul. */
+  ticketQrBaseUrl: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -46,6 +49,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl: env.DATABASE_URL ?? 'postgres://keno:keno@localhost:5432/keno',
     jwtSecret: secret('JWT_SECRET'),
     staffJwtSecret: secret('STAFF_JWT_SECRET'),
+    agentJwtSecret: secret('AGENT_JWT_SECRET'),
     otpPepper: secret('OTP_PEPPER'),
     accessTokenTtlSeconds: integer('ACCESS_TOKEN_TTL_SECONDS', 900),
     refreshTokenTtlDays: integer('REFRESH_TOKEN_TTL_DAYS', 30),
@@ -53,5 +57,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     trustProxy: env.TRUST_PROXY === 'true',
     withdrawalApprovalThresholdCents: integer('WITHDRAWAL_APPROVAL_THRESHOLD_CENTS', 1_000_000),
     fakePayments,
+    ticketQrBaseUrl: env.TICKET_QR_BASE_URL ?? '',
   };
 }

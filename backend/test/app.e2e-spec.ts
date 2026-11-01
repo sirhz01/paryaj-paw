@@ -740,6 +740,201 @@ describe('API (e2e)', () => {
     });
   });
 
+  describe('points de vente (agents)', () => {
+    type Entry = { scheduledAt: string; drawId: number };
+    const runAt = async (at: number) => {
+      clock.current = at;
+      await app.get(DrawScheduler).tick();
+    };
+    const agentBalance = async (token: string) =>
+      (await api().get('/api/v1/agent/me').set(auth(token)).expect(200)).body.balanceCents as number;
+    const sell = (token: string, body: object) =>
+      api().post('/api/v1/agent/tickets').set(auth(token)).send({ customerIsAdult: true, ...body });
+    const redeem = (token: string, code: string) => api().post(`/api/v1/agent/tickets/${code}/redeem`).set(auth(token));
+
+    async function createAgent(overrides: object = {}) {
+      const admin = await staffLogin('super_admin');
+      const phone = `+5094${6_000_000 + ++seq}`;
+      const agent = (
+        await api()
+          .post('/api/v1/admin/agents')
+          .set(auth(admin.token))
+          .send({ name: 'Boutik Jacmel', phone, password: PASSWORD, location: 'Jacmel', ticketCommissionBp: 500, depositCommissionBp: 100, creditLimitCents: 0, ...overrides })
+          .expect(201)
+      ).body;
+      const login = await api().post('/api/v1/agent/auth/login').send({ phone, password: PASSWORD }).expect(200);
+      return { ...agent, phone, token: login.body.accessToken as string, adminToken: admin.token };
+    }
+
+    async function topUp(agentId: number, amountCents: number) {
+      const finance = await staffLogin('finance');
+      await api()
+        .post(`/api/v1/admin/agents/${agentId}/float`)
+        .set(auth(finance.token))
+        .send({ direction: 'topup', amountCents, reference: 'reçu de versement' })
+        .expect(200);
+    }
+
+    it('réserve la création des agents au super-admin et leur donne un code PV', async () => {
+      const support = await staffLogin('support');
+      await api()
+        .post('/api/v1/admin/agents')
+        .set(auth(support.token))
+        .send({ name: 'X', phone: '+50946999999', password: PASSWORD, ticketCommissionBp: 500, depositCommissionBp: 100, creditLimitCents: 0 })
+        .expect(403);
+      const agent = await createAgent();
+      expect(agent.code).toMatch(/^PV\d{4}$/);
+      expect(agent).toMatchObject({ status: 'active', balanceCents: 0, ticketCommissionBp: 500 });
+      await api().post('/api/v1/agent/auth/login').send({ phone: agent.phone, password: 'mauvais-mdp' }).expect(401);
+    });
+
+    it('vend sur le crédit, verse la commission au règlement et paie le gagnant au guichet une seule fois', async () => {
+      const agent = await createAgent();
+      await topUp(agent.id, 50_000);
+      expect(await agentBalance(agent.token)).toBe(50_000);
+
+      const evenBody = { game: 'lucky_six', bet: { type: 'first_even' }, stakeCents: 1000, draws: 2, idempotencyKey: 'pv-pair-0001' };
+      const noAttestation = await api().post('/api/v1/agent/tickets').set(auth(agent.token)).send(evenBody).expect(400);
+      expect(noAttestation.body.code).toBe('VALIDATION_ERROR');
+      const even = (await sell(agent.token, evenBody).expect(201)).body;
+      const odd = (await sell(agent.token, { ...evenBody, bet: { type: 'first_odd' }, idempotencyKey: 'pv-impair-01' }).expect(201)).body;
+      expect(even).toMatchObject({ agent: { code: agent.code, name: 'Boutik Jacmel' }, qrPayload: even.code, cashoutCents: 0, redemption: null });
+      expect(await agentBalance(agent.token)).toBe(46_000);
+      expect((await sell(agent.token, evenBody).expect(201)).body.code).toBe(even.code);
+      expect(await agentBalance(agent.token)).toBe(46_000);
+
+      expect((await api().get(`/api/v1/public/tickets/${even.code}`).expect(200)).body.status).toBe('pending');
+      expect((await redeem(agent.token, even.code).expect(409)).body.code).toBe('TICKET_NOT_SETTLED');
+
+      const [first, second] = (even.entries as Entry[]).map((e) => Date.parse(e.scheduledAt));
+      await runAt(first + 1000);
+      await runAt(second + 1000);
+      // 4 participations × 10 HTG × 5 % de commission.
+      expect(await agentBalance(agent.token)).toBe(46_000 + 200);
+
+      const tickets = await Promise.all(
+        [even, odd].map(async (t) => (await api().get(`/api/v1/agent/tickets/${t.code}`).set(auth(agent.token)).expect(200)).body),
+      );
+      // À chaque tirage, une seule des deux mises gagne (1,85 × 10 HTG).
+      expect(tickets[0].cashoutCents + tickets[1].cashoutCents).toBe(2 * 1850);
+
+      const cashier = await createAgent();
+      for (const t of tickets) {
+        if (t.cashoutCents === 0) {
+          expect((await redeem(cashier.token, t.code).expect(409)).body.code).toBe('TICKET_NOT_WINNING');
+          continue;
+        }
+        const paid = (await redeem(cashier.token, t.code).expect(200)).body;
+        expect(paid.redemption).toMatchObject({ amountCents: t.cashoutCents, agentCode: cashier.code });
+        expect((await redeem(agent.token, t.code).expect(409)).body.code).toBe('TICKET_ALREADY_PAID');
+      }
+      expect(await agentBalance(cashier.token)).toBe(2 * 1850);
+      expect(await agentBalance(agent.token)).toBe(46_200);
+      expect((await api().get('/api/v1/agent/tickets').set(auth(agent.token)).expect(200)).body).toHaveLength(2);
+    });
+
+    it('refuse une vente au-delà du crédit et rend au guichet la mise d’un tirage annulé', async () => {
+      const agent = await createAgent({ creditLimitCents: 2000 });
+      const t = (await sell(agent.token, { game: 'lucky_ten', bet: { type: 'more_odd' }, stakeCents: 2000, draws: 1, idempotencyKey: 'pv-credit-01' }).expect(201)).body;
+      expect(await agentBalance(agent.token)).toBe(-2000);
+      const refused = await sell(agent.token, { game: 'lucky_ten', bet: { type: 'more_odd' }, stakeCents: 100, draws: 1, idempotencyKey: 'pv-credit-02' }).expect(400);
+      expect(refused.body.code).toBe('INSUFFICIENT_FLOAT');
+
+      const lower = await api().patch(`/api/v1/admin/agents/${agent.id}`).set(auth(agent.adminToken)).send({ creditLimitCents: 0 }).expect(409);
+      expect(lower.body.code).toBe('CREDIT_LIMIT_BELOW_DEBT');
+
+      await api().post(`/api/v1/admin/draws/${t.entries[0].drawId}/cancel`).set(auth(agent.adminToken)).send({ reason: 'panne' }).expect(204);
+      const refunded = (await api().get(`/api/v1/public/tickets/${t.code}`).expect(200)).body;
+      expect(refunded).toMatchObject({ status: 'refunded', cashoutCents: 2000 });
+      await redeem(agent.token, t.code).expect(200);
+      expect(await agentBalance(agent.token)).toBe(0);
+    });
+
+    it('dépose sur le compte d’un joueur et touche la commission de dépôt', async () => {
+      const agent = await createAgent();
+      await topUp(agent.id, 20_000);
+      const player = await registerPlayer();
+      const body = { phone: player.phone, amountCents: 5000, idempotencyKey: 'pv-depot-0001' };
+      const deposit = (await api().post('/api/v1/agent/deposits').set(auth(agent.token)).send(body).expect(201)).body;
+      expect(deposit).toMatchObject({ status: 'completed', provider: 'agent', agentId: agent.id, amountCents: 5000 });
+      expect((await api().post('/api/v1/agent/deposits').set(auth(agent.token)).send(body).expect(201)).body.id).toBe(deposit.id);
+      expect(await balance(player.token)).toBe(5000);
+      expect(await agentBalance(agent.token)).toBe(20_000 - 5000 + 50);
+
+      const unknown = await api().post('/api/v1/agent/deposits').set(auth(agent.token)).send({ ...body, phone: '+50949999999' }).expect(404);
+      expect(unknown.body.code).toBe('PLAYER_NOT_FOUND');
+      const history = (await api().get('/api/v1/payments').set(auth(player.token)).expect(200)).body;
+      expect(history[0]).toMatchObject({ provider: 'agent', direction: 'deposit' });
+    });
+
+    it('remet un retrait en liquide contre le code généré par le joueur', async () => {
+      const agent = await createAgent();
+      const player = await registerPlayer();
+      await deposit(player.token, 10_000);
+      const support = await staffLogin('support');
+      await api().patch(`/api/v1/admin/players/${player.id}`).set(auth(support.token)).send({ kycStatus: 'verified' }).expect(200);
+
+      const online = await api().post('/api/v1/payments/deposits').set(auth(player.token)).send({ provider: 'agent', amountCents: 1000, idempotencyKey: 'depot-guichet' }).expect(503);
+      expect(online.body.code).toBe('PROVIDER_UNAVAILABLE');
+
+      const withdrawal = (await api().post('/api/v1/payments/withdrawals').set(auth(player.token)).send({ provider: 'agent', amountCents: 3000, idempotencyKey: 'retrait-pv-01' }).expect(201)).body;
+      expect(withdrawal.status).toBe('processing');
+      expect(await balance(player.token)).toBe(7000);
+      const { code } = (await api().post(`/api/v1/payments/withdrawals/${withdrawal.id}/pickup-code`).set(auth(player.token)).expect(200)).body;
+      expect(code).toMatch(/^\d{8}$/);
+
+      const wrong = code === '00000000' ? '11111111' : '00000000';
+      expect((await api().post('/api/v1/agent/withdrawals/pickup').set(auth(agent.token)).send({ phone: player.phone, code: wrong }).expect(400)).body.code).toBe('PICKUP_CODE_INVALID');
+      const paid = (await api().post('/api/v1/agent/withdrawals/pickup').set(auth(agent.token)).send({ phone: player.phone, code }).expect(200)).body;
+      expect(paid).toMatchObject({ status: 'completed', agentId: agent.id });
+      expect(await agentBalance(agent.token)).toBe(3000);
+      await api().post('/api/v1/agent/withdrawals/pickup').set(auth(agent.token)).send({ phone: player.phone, code }).expect(400);
+
+      const second = (await api().post('/api/v1/payments/withdrawals').set(auth(player.token)).send({ provider: 'agent', amountCents: 2000, idempotencyKey: 'retrait-pv-02' }).expect(201)).body;
+      expect(await balance(player.token)).toBe(5000);
+      await api().post(`/api/v1/payments/withdrawals/${second.id}/cancel`).set(auth(player.token)).expect(200);
+      await api().post(`/api/v1/payments/withdrawals/${second.id}/cancel`).set(auth(player.token)).expect(409);
+      expect(await balance(player.token)).toBe(7000);
+    });
+
+    it('bloque un agent : plus de vente ni de connexion', async () => {
+      const agent = await createAgent();
+      await topUp(agent.id, 5000);
+      await api().patch(`/api/v1/admin/agents/${agent.id}`).set(auth(agent.adminToken)).send({ status: 'blocked' }).expect(200);
+      const sale = await sell(agent.token, { game: 'lucky_six', bet: { type: 'first_low' }, stakeCents: 1000, draws: 1, idempotencyKey: 'pv-bloque-01' }).expect(403);
+      expect(sale.body.code).toBe('AGENT_BLOCKED');
+      expect((await api().post('/api/v1/agent/auth/login').send({ phone: agent.phone, password: PASSWORD }).expect(403)).body.code).toBe('AGENT_BLOCKED');
+    });
+
+    it('résume l’activité du jour pour l’agent et pour le back-office', async () => {
+      const agent = await createAgent();
+      await topUp(agent.id, 10_000);
+      await sell(agent.token, { game: 'lucky_ten', bet: { type: 'first_even' }, stakeCents: 1000, draws: 1, idempotencyKey: 'pv-resume-01' }).expect(201);
+      const player = await registerPlayer();
+      await api().post('/api/v1/agent/deposits').set(auth(agent.token)).send({ phone: player.phone, amountCents: 2000, idempotencyKey: 'pv-resume-02' }).expect(201);
+
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Port-au-Prince' });
+      const mine = (await api().get(`/api/v1/agent/summary?from=${today}&to=${today}`).set(auth(agent.token)).expect(200)).body;
+      expect(mine).toMatchObject({
+        ticketsSold: 1,
+        ticketSalesCents: 1000,
+        playerDepositsCents: 2000,
+        commissionsCents: 20,
+        floatTopupsCents: 10_000,
+        netCashCents: 3000,
+      });
+      expect(mine.agent.balanceCents).toBe(10_000 - 1000 - 2000 + 20);
+
+      const auditor = await staffLogin('auditor');
+      const theirs = (await api().get(`/api/v1/admin/agents/${agent.id}/summary?from=${today}&to=${today}`).set(auth(auditor.token)).expect(200)).body;
+      expect(theirs.netCashCents).toBe(3000);
+      expect((await api().get(`/api/v1/admin/agents/${agent.id}/ledger`).set(auth(auditor.token)).expect(200)).body).toHaveLength(4);
+      expect((await api().get(`/api/v1/admin/agents?search=${agent.code}`).set(auth(auditor.token)).expect(200)).body[0].id).toBe(agent.id);
+      const csv = await api().get(`/api/v1/admin/exports/agent_ledger?from=${today}&to=${today}`).set(auth(auditor.token)).expect(200);
+      expect(csv.text.split('\n')[0]).toBe('id,agent_id,created_at,kind,amount_cents,balance_after_cents,ref_type,ref_id');
+    });
+  });
+
   describe('paiements et back-office', () => {
     it('exige le KYC puis traite les retraits selon le seuil de validation', async () => {
       const player = await registerPlayer();

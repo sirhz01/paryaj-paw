@@ -4,8 +4,8 @@ import { AppError } from '../common/errors';
 import { HAITI_TIME_ZONE } from '../common/haiti';
 import { DATABASE, Database } from '../database/db';
 
-export type ExportKind = 'bets' | 'spins' | 'tickets' | 'draws' | 'ledger' | 'payments';
-export const EXPORT_KINDS: ExportKind[] = ['bets', 'spins', 'tickets', 'draws', 'ledger', 'payments'];
+export type ExportKind = 'bets' | 'spins' | 'tickets' | 'draws' | 'ledger' | 'agent_ledger' | 'payments';
+export const EXPORT_KINDS: ExportKind[] = ['bets', 'spins', 'tickets', 'draws', 'ledger', 'agent_ledger', 'payments'];
 
 /** Jeux suivis par le tableau de bord. */
 export const DASHBOARD_GAMES = ['keno', 'roulette', 'american_roulette', 'lucky_six', 'lucky_ten'] as const;
@@ -22,8 +22,8 @@ const EXPORT_QUERIES: Record<ExportKind, string> = {
            FROM keno_bets WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
   spins: `SELECT id, user_id, created_at, variant, number, total_stake_cents, total_payout_cents, covers_all, bets, seed_id, nonce, settings_version
             FROM roulette_spins WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
-  tickets: `SELECT e.id AS entry_id, t.code, t.user_id, t.game, t.created_at, e.draw_id, t.bet, e.stake_cents, e.status,
-                   e.payout_cents, e.settled_at, e.reviewed_by
+  tickets: `SELECT e.id AS entry_id, t.code, t.user_id, t.agent_id, t.game, t.created_at, e.draw_id, t.bet, e.stake_cents, e.status,
+                   e.payout_cents, e.commission_cents, e.settled_at, e.reviewed_by
               FROM ticket_entries e JOIN tickets t ON t.id = e.ticket_id
              WHERE ${IN_RANGE} ORDER BY e.id LIMIT ${MAX_EXPORT_ROWS + 1}`,
   draws: `SELECT id, game, scheduled_at, status, balls, server_seed_hash,
@@ -31,7 +31,9 @@ const EXPORT_QUERIES: Record<ExportKind, string> = {
             FROM draws WHERE ${IN_RANGE.replaceAll('created_at', 'scheduled_at')} ORDER BY scheduled_at LIMIT ${MAX_EXPORT_ROWS + 1}`,
   ledger: `SELECT id, user_id, created_at, kind, amount_cents, balance_after_cents, ref_type, ref_id
              FROM ledger_entries WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
-  payments: `SELECT id, user_id, created_at, updated_at, direction, provider, amount_cents, status, provider_ref, failure_reason, reviewed_by
+  agent_ledger: `SELECT id, agent_id, created_at, kind, amount_cents, balance_after_cents, ref_type, ref_id
+                   FROM agent_ledger WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
+  payments: `SELECT id, user_id, agent_id, created_at, updated_at, direction, provider, amount_cents, status, provider_ref, failure_reason, reviewed_by
                FROM payments WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
 };
 
