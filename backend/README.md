@@ -1,6 +1,6 @@
 # Back-end Paryaj Paw — 5 jeux
 
-API NestJS + PostgreSQL pour le web, l'Android et l'application desktop. Un seul compte, un seul portefeuille en HTG et un seul back-office pour :
+API NestJS + PostgreSQL pour le web, l'Android, l'application desktop et l'application des points de vente. Un seul compte, un seul portefeuille en HTG et un seul back-office pour :
 
 | Jeu | Type | Tirage |
 | --- | --- | --- |
@@ -37,7 +37,7 @@ En développement, les codes SMS s'affichent dans la console et le fournisseur d
 ## Tests et simulation
 
 ```bash
-npm test                                   # 146 tests, dont le parcours complet sur un PostgreSQL en mémoire
+npm test                                   # 153 tests, dont le parcours complet sur un PostgreSQL en mémoire
 npm run build
 npm run simulate:keno -- --rounds 10000000
 npm run simulate:roulette -- --spins 10000000 --variant european   # ou american
@@ -58,6 +58,8 @@ Les simulations mesurent le RTP de chaque pari et l'uniformité des numéros (kh
 | Tirage programmé | Graine tirée à la création du tirage, hash publié avant l'ouverture des mises, graine révélée après le tirage. Résultat = HMAC-SHA256(graine, « jeu:numéro du tirage »). Graine, horaire et résultat sont figés par un déclencheur SQL |
 | Planificateur | Dans l'API, chaque seconde : crée les prochains créneaux, tire à l'heure, règle les tickets par lots. Plusieurs instances possibles (`FOR UPDATE SKIP LOCKED`). Un tirage en retard de plus de 60 s est annulé et remboursé |
 | Gros gains | Au-dessus de `reviewThresholdCents`, un gain de ticket attend la validation de la finance avant d'être crédité |
+| Points de vente | Chaque agent a un crédit de vente (« float ») avec son journal append-only : il baisse quand l'agent encaisse du liquide (ticket vendu, dépôt d'un joueur) et monte quand il en décaisse (gain payé, retrait) ou touche une commission. La finance le recharge quand l'agent verse son liquide ; une limite de crédit autorise un solde négatif |
+| Commissions | En points de base, fixées par agent. Ventes : sur chaque mise réellement jouée, versée au règlement du tirage (rien sur une mise remboursée), au taux du jour de la vente. Dépôts : versée au moment du dépôt |
 | Paramètres | Versionnés par jeu ; un ticket est réglé avec la version en vigueur à son achat. RTP de chaque pari exigé entre 90 et 95 % (Keno, Lucky Six, Lucky 10) |
 | Jeu responsable | Compte bloqué, auto-exclusion et limite de perte du jour vérifiés avant chaque mise, tous jeux confondus |
 | Back-office | Comptes séparés, mot de passe + TOTP, rôles `super_admin`, `finance`, `support`, `auditor`, journal d'audit |
@@ -68,7 +70,7 @@ Les erreurs ont la forme `{ "code": "INSUFFICIENT_FUNDS", ... }` : les clients t
 
 ## Routes
 
-Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️ = jeton back-office. `{roulette}` = `roulette` (européenne) ou `american-roulette`.
+Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️ = jeton back-office, 🏪 = jeton agent. `{roulette}` = `roulette` (européenne) ou `american-roulette`.
 
 | Méthode | Route | Rôle |
 | --- | --- | --- |
@@ -105,7 +107,19 @@ Préfixe : `/api/v1`. 🔒 = jeton joueur (`Authorization: Bearer …`), 🛡️
 | POST | `/admin/draws/:drawId/cancel` 🛡️ | Annulation d'un tirage à venir, mises rendues (`super_admin`) |
 | GET, PATCH | `/admin/players` 🛡️ | Recherche, blocage, KYC, limites |
 | GET, POST | `/admin/withdrawals`, `…/:id/approve`, `…/:id/reject` 🛡️ | Validation des retraits au-dessus du seuil |
-| GET | `/admin/exports/{bets,spins,tickets,draws,ledger,payments}` 🛡️ | Exports CSV |
+| POST, GET, PATCH | `/admin/agents`, `/admin/agents/:id` 🛡️ | Création (code PV0001…), recherche, blocage, commissions, limite de crédit |
+| POST | `/admin/agents/:id/float` 🛡️ | Versement de l'agent (`topup`) ou paiement de son crédit (`withdrawal`), finance |
+| GET | `/admin/agents/:id/summary`, `/admin/agents/:id/ledger` 🛡️ | Activité d'un point de vente |
+| GET | `/admin/exports/{bets,spins,tickets,draws,ledger,agent_ledger,payments}` 🛡️ | Exports CSV |
+| POST | `/agent/auth/login` | Connexion d'un agent (téléphone + mot de passe, session de 12 h) |
+| GET | `/agent/me`, `/agent/summary?from=&to=`, `/agent/ledger` 🏪 | Crédit, rapport du jour (ventes, gains payés, dépôts, retraits, commissions, liquide attendu) |
+| POST | `/agent/tickets` 🏪 | Vente d'un ticket Lucky Six ou Lucky 10 (`customerIsAdult: true` obligatoire) ; renvoie le code et le contenu du QR |
+| GET | `/agent/tickets`, `/agent/tickets/:code` 🏪 | Ventes de l'agent ; ticket présenté au guichet et montant dû |
+| POST | `/agent/tickets/:code/redeem` 🏪 | Paiement d'un ticket gagnant, par n'importe quel agent, une seule fois |
+| POST | `/agent/deposits` 🏪 | Dépôt en liquide sur le compte d'un joueur (par son téléphone) |
+| POST | `/agent/withdrawals/pickup` 🏪 | Remise d'un retrait en liquide (téléphone + code du joueur) |
+| GET | `/public/tickets/:code` | Résultat d'un ticket vendu au guichet, pour le porteur qui scanne le QR (public) |
+| POST | `/payments/withdrawals/:id/pickup-code`, `/payments/withdrawals/:id/cancel` 🔒 | Retrait au guichet : code valable 24 h, annulation tant qu'il n'est pas touché |
 
 ## Mise de roulette
 
@@ -140,10 +154,17 @@ Types : `straight`, `split`, `street`, `corner`, `top_line` (américaine : 0, 00
 
 Couleurs : `red`, `green`, `blue`, `purple`, `brown`, `yellow`, `orange`, `black` ; le numéro n a la couleur (n − 1) mod 8.
 
+## Point de vente
+
+1. Vente : l'agent encaisse le liquide et appelle `POST /agent/tickets` ; il imprime le code et le QR (`qrPayload`, préfixé par `TICKET_QR_BASE_URL` si elle est définie).
+2. Le porteur suit son ticket en scannant le QR (`GET /public/tickets/:code`), sans compte.
+3. Paiement : dans n'importe quel point de vente, l'agent scanne le ticket ; une fois tous les tirages réglés, `POST /agent/tickets/:code/redeem` lui indique la somme à remettre (gains, plus les mises d'un tirage annulé ou d'un gros gain refusé) et la rend à son crédit.
+4. Retrait d'un joueur : il demande un retrait `provider: "agent"` dans l'application, génère un code, et le donne au guichet avec son téléphone.
+
 ## Reste à faire
 
 - Connecteurs MonCash et NatCash (interface prête dans `src/payments/providers/provider.ts`) et fournisseur SMS réel.
-- Points de vente : comptes agents, vente de tickets, commissions (F-05, F-15) ; le code de ticket est prêt pour le QR.
 - Envoi des pièces KYC (aujourd'hui le statut est changé par le support).
 - Notifications SMS et push (dépôt, retrait, ticket gagnant).
+- Délai de péremption des tickets gagnants non réclamés au guichet (à fixer avec l'autorité).
 - Relais Redis pour le direct et WebSocket du solde si plusieurs instances.

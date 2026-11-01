@@ -1,5 +1,6 @@
-export type ProviderName = 'moncash' | 'natcash' | 'fake';
-export const PROVIDER_NAMES: ProviderName[] = ['moncash', 'natcash', 'fake'];
+/** `agent` : retrait en liquide au guichet d'un point de vente (pas de fournisseur externe). */
+export type ProviderName = 'moncash' | 'natcash' | 'fake' | 'agent';
+export const PROVIDER_NAMES: ProviderName[] = ['moncash', 'natcash', 'fake', 'agent'];
 
 export const PAYMENT_PROVIDERS = Symbol('PAYMENT_PROVIDERS');
 
