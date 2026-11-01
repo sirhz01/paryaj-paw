@@ -67,7 +67,14 @@ function loadServerPage(page = '') {
  */
 let tvWin;
 const hasExternalDisplay = () => screen.getAllDisplays().length > 1;
-function openTvWindow(page) {
+/** Écran TV ouvert automatiquement au démarrage et au branchement du 2e écran : le dernier choisi, sinon Keno. */
+const tvPageSaved = () => readConfig().tvPage || TV_PAGES[1].page;
+function autoOpenTv() {
+  if (readConfig().tvAuto !== false && hasExternalDisplay()) openTvWindow(tvPageSaved(), false);
+}
+
+function openTvWindow(page, remember = true) {
+  if (remember) writeConfig({ tvPage: page });
   const server = readConfig().server;
   if (!server) return win.loadFile('config.html');
   const url = `${server}/${page}`;
@@ -130,6 +137,15 @@ function buildMenu() {
         },
       })).concat([
         { type: 'separator' },
+        {
+          label: 'Ouvrir l’écran TV automatiquement',
+          type: 'checkbox',
+          checked: readConfig().tvAuto !== false,
+          click: (item) => {
+            writeConfig({ tvAuto: item.checked });
+            if (item.checked) autoOpenTv();
+          },
+        },
         { label: 'Fermer l’écran TV', click: () => { if (tvWin && !tvWin.isDestroyed()) tvWin.close(); } },
       ]),
     },
@@ -220,6 +236,12 @@ ipcMain.handle('config:save', (_e, raw) => {
 
 app.whenReady().then(() => {
   createWindow();
+  // Écran TV automatique : au démarrage, puis dès que la TV (HDMI) est branchée ; fermé si elle est débranchée.
+  win.webContents.once('did-finish-load', () => setTimeout(autoOpenTv, 800));
+  screen.on('display-added', () => setTimeout(autoOpenTv, 1500));
+  screen.on('display-removed', () => {
+    if (!hasExternalDisplay() && tvWin && !tvWin.isDestroyed()) tvWin.close();
+  });
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
