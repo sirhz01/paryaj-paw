@@ -13,10 +13,23 @@ Deux versions sont fournies, au choix :
 | **Tauri 2** (`tauri/`) | ~5–10 Mo | Léger, utilise le WebView2 déjà présent sur Windows 10/11 ; c'est le choix du cahier des charges | Se construit sous Windows (Rust) |
 | **Electron** (`electron/`) | ~75 Mo | Se construit aussi depuis Linux ; très simple | Installateur plus gros |
 
-## Obtenir l'installateur `.exe` sans machine Windows
+## Obtenir l'installateur `.exe` Electron
 
-Un `.exe` ne se produit pas de façon fiable depuis Linux. Le dépôt contient un workflow GitHub Actions
-qui construit les deux installateurs sur un runner Windows.
+Deux chemins, au choix :
+
+**A. Depuis Linux, sans machine Windows ni wine** — un script emballe le `.exe` avec le `makensis`
+fourni par electron-builder :
+
+```bash
+cd desktop/electron
+npm install
+./build-win-installer.sh   # → desktop/electron/release/ParyajPawBoutik-0.1.0-setup.exe
+```
+
+L'installateur ainsi produit n'est **pas signé** (avertissement SmartScreen à la première ouverture ;
+cliquer « Informations complémentaires → Exécuter quand même »). Pour un `.exe` signé, utiliser le chemin B.
+
+**B. Via GitHub Actions (runner Windows)** — construit *aussi* la version Tauri et permet la signature :
 
 0. Mettre le workflow en place une fois : copier `desktop/ci/desktop.yml` dans `.github/workflows/desktop.yml`
    (depuis le site GitHub : **Add file → Create new file**, nom `.github/workflows/desktop.yml`, coller le contenu).
@@ -26,13 +39,16 @@ qui construit les deux installateurs sur un runner Windows.
 
 ## Construire soi-même
 
-### Electron (Windows, macOS ou Linux)
+### Electron (Windows ou macOS)
 
 ```bash
 cd desktop/electron
 npm install
 npm run dist          # → desktop/electron/release/ParyajPawBoutik-0.1.0-setup.exe
 ```
+
+Sous **Linux**, `npm run dist` échoue (electron-builder réclame wine pour signer) : utiliser
+`./build-win-installer.sh` ci-dessus, qui saute l'étape de signature et emballe avec makensis.
 
 ### Tauri 2 (sous Windows)
 
@@ -73,4 +89,7 @@ dans `tauri.conf.json`. Le certificat est à obtenir auprès d'une autorité (co
 - Les installateurs ne sont pas encore signés : Windows affichera un avertissement SmartScreen tant qu'un
   certificat n'est pas configuré.
 - La version Tauri n'a pas pu être compilée sur la machine de développement (Linux) ; elle se construit sur
-  Windows via le workflow ci-dessus. La version Electron, elle, est vérifiée.
+  Windows via le workflow ci-dessus. La version Electron, elle, est construite et vérifiée : l'installateur
+  `release/ParyajPawBoutik-0.1.0-setup.exe` (~81 Mo) est produit par `./build-win-installer.sh`. Il n'est
+  pas versionné (dossier `release/` ignoré par git) ; le copier sur une clé USB / le réseau pour l'installer
+  sur les postes Windows de la boutique.

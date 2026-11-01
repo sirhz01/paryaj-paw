@@ -23,11 +23,27 @@
     "appId": "ht.paryajpaw.boutik",
     "productName": "Paryaj Paw Boutik",
     "artifactName": "ParyajPawBoutik-${version}-setup.${ext}",
-    "directories": { "output": "release", "buildResources": "build" },
-    "files": ["main.js", "preload.js", "config.html", "build/icon.*"],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "config.html",
+      "build/icon.*"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "icon": "build/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
@@ -37,6 +53,12 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Paryaj Paw Boutik"
     },
-    "publish": [{ "provider": "github", "owner": "sirhz01", "repo": "paryaj-paw" }]
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "sirhz01",
+        "repo": "paryaj-paw"
+      }
+    ]
   }
 }
