@@ -179,13 +179,8 @@ function createWindow() {
     },
   });
 
-  // F = plein écran (comme les écrans TV du front) ; F11 géré par Electron.
-  win.webContents.on('before-input-event', (event, input) => {
-    if (input.type === 'keyDown' && (input.key === 'F' || input.key === 'f') && !input.control && !input.meta) {
-      win.setFullScreen(!win.isFullScreen());
-      event.preventDefault();
-    }
-  });
+  // F11 géré par Electron ; la touche F est gérée par les pages TV elles-mêmes (js/common.js). On ne l'intercepte
+  // pas ici : le scanner de la caisse « tape » les codes de tickets, qui peuvent contenir un F.
 
   // Les liens « ouvrir ailleurs » partent dans le navigateur par défaut, pas dans une fenêtre sans menu.
   win.webContents.setWindowOpenHandler(({ url }) => {

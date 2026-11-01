@@ -138,7 +138,8 @@
   };
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'f' || e.key === 'F') {
+    // Pas dans un champ : un scanner ou le caissier tape des codes qui contiennent des F.
+    if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
       if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen();
     }
   });
