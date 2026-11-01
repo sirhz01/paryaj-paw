@@ -3,35 +3,60 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>La Référence Paryaj Paw</title>
-  <link rel="icon" href="assets/logo.jpg">
+  <title>La Référence Paryaj Paw – Roulette, Keno, Lucky Six et Lucky X</title>
+  <meta name="description" content="Écrans de jeux en direct et caisse : American Roulette, Keno 20/80, Lucky Six et Lucky X, avec tirages vérifiables.">
+  <link rel="icon" href="assets/icon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <meta name="theme-color" content="#14285f">
+  <link rel="canonical" href="%ORIGIN%/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="La Référence Paryaj Paw">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="La Référence Paryaj Paw – Roulette, Keno, Lucky Six et Lucky X">
+  <meta property="og:description" content="Écrans de jeux en direct et caisse : American Roulette, Keno 20/80, Lucky Six et Lucky X, avec tirages vérifiables.">
+  <meta property="og:url" content="%ORIGIN%/">
+  <meta property="og:image" content="%ORIGIN%/assets/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="La Référence Paryaj Paw">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="La Référence Paryaj Paw – Roulette, Keno, Lucky Six et Lucky X">
+  <meta name="twitter:description" content="Écrans de jeux en direct et caisse : American Roulette, Keno 20/80, Lucky Six et Lucky X, avec tirages vérifiables.">
+  <meta name="twitter:image" content="%ORIGIN%/assets/og-image.jpg">
+  <link rel="preload" as="image" href="assets/logo.jpg">
   <style>
-    :root { --navy: #14285f; --red: #c8261f; --ink: #1c2433; --muted: #66748b; }
+    :root { --navy: #14285f; --red: #c8261f; --ink: #1c2433; --muted: #475569; }
     * { box-sizing: border-box; margin: 0; }
     body { min-height: 100vh; font: 16px/1.4 'Segoe UI', system-ui, Arial, sans-serif; color: var(--ink); background: linear-gradient(160deg, #f4f7fd, #dfe7f6); }
     header { text-align: center; padding: 2rem 1rem 1rem; }
-    header img { width: min(30rem, 88vw); display: block; margin: 0 auto; }
+    header img { width: min(30rem, 88vw); height: auto; display: block; margin: 0 auto; }
     header p { color: var(--muted); margin-top: .4rem; }
     main { max-width: 62rem; margin: 0 auto; padding: 1rem 1rem 3rem; }
     h2 { font-size: .9rem; letter-spacing: .12em; text-transform: uppercase; color: var(--navy); margin: 1.6rem 0 .8rem; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
-    a.card { display: block; border-radius: 12px; padding: 1.2rem 1.1rem; color: #fff; text-decoration: none; min-height: 7.5rem; box-shadow: 0 2px 8px rgba(20, 40, 90, .2); transition: transform .15s; }
+    a.card { display: block; border-radius: 12px; padding: 1.1rem 1.1rem 1.1rem 1.3rem; color: var(--ink); background: #fff; border-left: .5rem solid var(--navy); text-decoration: none; min-height: 6.5rem; box-shadow: 0 1px 6px rgba(20, 40, 90, .15); transition: transform .15s; }
+    a.card:focus-visible, a.cta:focus-visible, footer a:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
     a.card:hover { transform: translateY(-3px); }
     a.card b { display: block; font-size: 1.3rem; margin-bottom: .3rem; }
-    a.card span { font-size: .85rem; opacity: .85; }
-    .roulette { background: linear-gradient(150deg, #14573a, #05180f); }
-    .keno { background: linear-gradient(150deg, #1b3fd8, #060f45); }
-    .lucky, .luckyx { background: linear-gradient(150deg, #0e86cf, #061c40); }
-    .caisse { background: linear-gradient(150deg, #c8261f, #6e0f0b); }
+    a.card span { font-size: .9rem; color: var(--muted); }
+    .roulette { border-color: #14573a; }
+    .keno { border-color: #1b3fd8; }
+    .lucky, .luckyx { border-color: #0e86cf; }
+    .hero { text-align: center; padding: .5rem 0 1rem; }
+    a.cta { display: inline-block; padding: 1rem 2.4rem; border-radius: 12px; background: #b3211b; color: #fff; font-size: 1.2rem; font-weight: 700; text-decoration: none; box-shadow: 0 3px 10px rgba(179, 33, 27, .35); }
+    a.cta:hover { background: #8f1a15; }
+    footer a { color: var(--navy); }
+    footer button { font: inherit; background: none; border: 0; color: var(--navy); text-decoration: underline; cursor: pointer; padding: 0; }
     footer { text-align: center; color: var(--muted); font-size: .8rem; padding-bottom: 2rem; }
   </style>
 </head>
 <body>
   <header>
-    <img src="assets/logo.jpg" alt="La Référence Paryaj Paw">
+    <img src="assets/logo.jpg" alt="La Référence Paryaj Paw" width="1080" height="393">
     <p>Écrans de jeux et caisse</p>
   </header>
   <main>
+    <div class="hero"><a class="cta" href="caisse.html">Ouvrir la caisse</a></div>
     <h2>Écrans TV (touche F = plein écran)</h2>
     <div class="grid">
       <a class="card roulette" href="roulette.html"><b>American Roulette</b><span>La roue passe au centre au lancement</span></a>
@@ -39,11 +64,8 @@
       <a class="card lucky" href="luckysix.html"><b>Lucky Six</b><span>35 boules sur 48</span></a>
       <a class="card luckyx" href="luckyx.html"><b>Lucky X</b><span>20 boules sur 50</span></a>
     </div>
-    <h2>Caisse</h2>
-    <div class="grid">
-      <a class="card caisse" href="caisse.html"><b>Caisse</b><span>Vendre, imprimer les tickets (logo inclus) et décaisser</span></a>
-    </div>
   </main>
-  <footer>Démonstration front-end : tirages simulés dans le navigateur, à remplacer par le serveur.</footer>
+  <footer>Démonstration front-end : tirages simulés dans le navigateur, à remplacer par le serveur.<br><a href="cgu.html">Conditions générales d’utilisation</a> · <a href="rgpd.html">Confidentialité (RGPD)</a> · <button type="button" onclick="PPConsent.reset()">Gérer les cookies</button></footer>
+  <script src="js/consent.js" defer></script>
 </body>
 </html>

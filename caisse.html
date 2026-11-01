@@ -3,8 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Caisse – Paryaj Paw</title>
-  <link rel="icon" href="assets/logo.jpg">
+  <title>Caisse – La Référence Paryaj Paw</title>
+  <meta name="description" content="Caisse du point de vente : vente et décaissement des tickets.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/icon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <meta name="theme-color" content="#14285f">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="La Référence Paryaj Paw">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="Caisse – La Référence Paryaj Paw">
+  <meta property="og:description" content="Caisse du point de vente : vente et décaissement des tickets.">
+  <meta property="og:url" content="%ORIGIN%/caisse.html">
+  <meta property="og:image" content="%ORIGIN%/assets/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="La Référence Paryaj Paw">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Caisse – La Référence Paryaj Paw">
+  <meta name="twitter:description" content="Caisse du point de vente : vente et décaissement des tickets.">
+  <meta name="twitter:image" content="%ORIGIN%/assets/og-image.jpg">
   <link rel="stylesheet" href="css/caisse.css">
 </head>
 <body>
@@ -53,7 +71,7 @@
         <h2>Ticket en cours</h2>
         <div id="slip" class="slip"></div>
         <div class="chips" id="chips"></div>
-        <label class="stake">Mise (HTG) <input id="stake" type="number" min="25" step="25" value="100"></label>
+        <label class="stake">Mise (HTG) <input id="stake" type="number" inputmode="numeric" min="25" max="100000" step="25" value="100" required></label>
         <div class="total"><span>Total</span><b id="total">0.00 HTG</b></div>
         <div id="msg" class="msg"></div>
         <div class="actions"><button class="primary" id="printBtn">🖨 Imprimer le ticket</button><button class="ghost" id="resetBtn">Vider</button></div>
@@ -61,7 +79,7 @@
 
       <section class="card">
         <h2>Décaisser un ticket</h2>
-        <div class="payrow"><input id="payId" placeholder="ID de ticket" autocomplete="off" maxlength="12"><button id="checkBtn" class="primary">Vérifier</button></div>
+        <div class="payrow"><input id="payId" placeholder="ID de ticket" aria-label="ID de ticket" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" minlength="4" pattern="[A-Za-z0-9-]{4,12}" required><button id="checkBtn" class="primary">Vérifier</button></div>
         <div id="payMsg" class="msg"></div>
         <button id="payBtn" class="primary hidden">Payer et imprimer le décaissement</button>
       </section>

@@ -23,6 +23,7 @@ import { AuditService } from './common/audit.service';
 import { CLOCK, systemClock } from './common/clock';
 import { PlayRulesService } from './common/play-rules.service';
 import { AppError } from './common/errors';
+import { forceHttps } from './common/https';
 import { AppConfig, CONFIG } from './config';
 import { DATABASE, Database, PgDatabase } from './database/db';
 import { DrawsModule } from './draws/draws.module';
@@ -100,7 +101,8 @@ export class AppModule {
 export function configureApp(app: INestApplication, config: AppConfig): void {
   const express = app as NestExpressApplication;
   if (config.trustProxy) express.set('trust proxy', 1);
-  express.use(helmet());
+  if (config.forceHttps) express.use(forceHttps);
+  express.use(helmet({ hsts: config.forceHttps ? { maxAge: 31_536_000, includeSubDomains: true } : false }));
   express.enableCors({ origin: config.corsOrigins, credentials: false });
   express.setGlobalPrefix('api/v1');
   express.useGlobalPipes(

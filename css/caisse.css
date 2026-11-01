@@ -91,3 +91,5 @@ button { font: inherit; cursor: pointer; }
 .login h2 { text-align: center; margin: 0; }
 .login label { display: grid; gap: .25rem; font-weight: 600; font-size: .85rem; }
 .login input { padding: .55rem; border: 1px solid var(--line); border-radius: 8px; font-size: 1rem; }
+
+@media (max-width: 600px) { .grid { padding: 0 .6rem .8rem; } .nums { grid-template-columns: repeat(5, 1fr); } .rt { overflow-x: auto; } .payrow { flex-wrap: wrap; } }

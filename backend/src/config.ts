@@ -12,6 +12,8 @@ export interface AppConfig {
   refreshTokenTtlDays: number;
   corsOrigins: string[];
   trustProxy: boolean;
+  /** Redirige tout HTTP vers HTTPS et envoie HSTS (par défaut : en production). Derrière un proxy TLS, TRUST_PROXY=true. */
+  forceHttps: boolean;
   /** Dossier du front-end de la boutique à servir avec l'API ; vide = non servi. */
   frontDir: string;
   withdrawalApprovalThresholdCents: number;
@@ -57,6 +59,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     refreshTokenTtlDays: integer('REFRESH_TOKEN_TTL_DAYS', 30),
     corsOrigins: (env.CORS_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean),
     trustProxy: env.TRUST_PROXY === 'true',
+    forceHttps: env.FORCE_HTTPS ? env.FORCE_HTTPS === 'true' : production,
     frontDir: env.FRONT_DIR ?? '',
     withdrawalApprovalThresholdCents: integer('WITHDRAWAL_APPROVAL_THRESHOLD_CENTS', 1_000_000),
     fakePayments,
