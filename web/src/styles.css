@@ -320,11 +320,167 @@ select:focus {
   font-size: 0.8rem;
 }
 
+/* ---- Jeux ---- */
+.game-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.game-head h1 {
+  margin: 0;
+}
+
+/* Keno */
+.keno-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 0.35rem;
+}
+.keno-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    transform 0.08s ease,
+    background 0.12s ease;
+}
+.keno-cell:hover {
+  border-color: var(--gold);
+}
+.keno-cell.picked {
+  background: var(--accent);
+  border-color: #6ea0ff;
+  color: #fff;
+}
+.keno-cell.drawn {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+.keno-cell.hit {
+  background: var(--green);
+  border-color: #58e08c;
+  color: #06230f;
+}
+
+.keno-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+.inline input {
+  width: 7rem;
+}
+.chips {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.chip {
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+.chip.on {
+  background: var(--gold);
+  color: #1a1407;
+  border-color: var(--gold);
+}
+
+.keno-result {
+  border-width: 2px;
+}
+.keno-result.won {
+  border-color: var(--green);
+}
+.keno-result.lost {
+  border-color: var(--line);
+}
+.result-main {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.result-main strong {
+  font-size: 1.2rem;
+}
+.win {
+  color: var(--green);
+  font-weight: 700;
+}
+.drawn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.drawn-ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.drawn-ball.hit {
+  background: var(--green);
+  color: #06230f;
+  border-color: #58e08c;
+}
+.pay-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+.pay-item {
+  color: var(--muted);
+}
+.pay-item b {
+  color: var(--gold);
+}
+
 @media (max-width: 560px) {
   .wallet-forms {
     grid-template-columns: 1fr;
   }
   .hero h1 {
     font-size: 1.45rem;
+  }
+  .keno-grid {
+    gap: 0.25rem;
+  }
+  .keno-cell {
+    font-size: 0.8rem;
+    border-radius: 6px;
   }
 }

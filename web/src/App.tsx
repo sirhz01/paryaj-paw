@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Account from './pages/Account';
 import GamePlaceholder from './pages/GamePlaceholder';
+import Keno from './pages/games/Keno';
 import Lobby from './pages/Lobby';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -28,6 +29,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Account />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="play/keno"
+          element={
+            <ProtectedRoute>
+              <Keno />
             </ProtectedRoute>
           }
         />

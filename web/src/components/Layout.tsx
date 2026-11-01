@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { WALLET_EVENT } from '../bus';
 import { htg } from '../money';
 
 export default function Layout() {
@@ -9,20 +10,26 @@ export default function Layout() {
   const navigate = useNavigate();
   const [balance, setBalance] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!authed) {
+  const refresh = useCallback(() => {
+    if (!api.isAuthed) {
       setBalance(null);
       return;
     }
-    let active = true;
     api
       .wallet()
-      .then((w) => active && setBalance(w.balanceCents))
+      .then((w) => setBalance(w.balanceCents))
       .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [authed]);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [authed, refresh]);
+
+  // Un pari ou un paiement émet WALLET_EVENT : on rafraîchit le solde affiché.
+  useEffect(() => {
+    window.addEventListener(WALLET_EVENT, refresh);
+    return () => window.removeEventListener(WALLET_EVENT, refresh);
+  }, [refresh]);
 
   return (
     <div className="app">

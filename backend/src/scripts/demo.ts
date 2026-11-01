@@ -5,10 +5,12 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { randomBytes } from 'node:crypto';
+import * as argon2 from 'argon2';
 import { createStaff } from '../admin/staff';
 import { otpauthUrl, totpAt, totpCounter } from '../admin/totp';
 import { AppModule, configureApp } from '../app.module';
 import { StaffRole } from '../common/auth';
+import { normalizeHaitiPhone } from '../common/haiti';
 import { loadConfig } from '../config';
 import { Database } from '../database/db';
 import { migrate } from '../database/migrate';
@@ -27,6 +29,30 @@ const DEMO_STAFF: { email: string; role: StaffRole }[] = [
   { email: 'caisse@demo.local', role: 'cashier' },
   { email: 'admin@demo.local', role: 'super_admin' },
 ];
+// Joueur de démonstration pour le site web (React) : téléphone + mot de passe, avec un solde de départ.
+const DEMO_PLAYER_PHONE = '34000000';
+const DEMO_PLAYER_START_CENTS = 1_000_000; // 10 000 HTG
+
+/** Crée (une fois) un joueur de démo avec un solde, pour tester le site web. Renvoie son téléphone normalisé. */
+async function demoPlayer(db: Database): Promise<string> {
+  const phone = normalizeHaitiPhone(DEMO_PLAYER_PHONE)!;
+  const existing = await db.query<{ id: number }>('SELECT id FROM users WHERE phone = $1', [phone]);
+  if (existing.rows[0]) return phone;
+  const passwordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
+  const { rows } = await db.query<{ id: number }>(
+    `INSERT INTO users (phone, password_hash, full_name, birth_date, language)
+     VALUES ($1, $2, 'Joueur Démo', '1995-01-01', 'ht') RETURNING id`,
+    [phone, passwordHash],
+  );
+  const id = rows[0].id;
+  await db.query('INSERT INTO wallets (user_id, balance_cents) VALUES ($1, $2)', [id, DEMO_PLAYER_START_CENTS]);
+  await db.query(
+    `INSERT INTO ledger_entries (user_id, kind, amount_cents, balance_after_cents, ref_type, ref_id)
+     VALUES ($1, 'deposit', $2, $2, 'demo', '0')`,
+    [id, DEMO_PLAYER_START_CENTS],
+  );
+  return phone;
+}
 
 async function demoStaff(db: Database) {
   const accounts: { email: string; role: StaffRole; secret: string }[] = [];
@@ -74,6 +100,7 @@ async function main() {
   const db = createPgliteDatabase(dataDir);
   const applied = await migrate(db);
   const accounts = await demoStaff(db);
+  const playerPhone = await demoPlayer(db);
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(config, db));
   configureApp(app, config);
@@ -88,6 +115,7 @@ async function main() {
   for (const a of accounts) {
     logger.log(`${a.role} : ${a.email} / ${DEMO_PASSWORD} — application d'authentification : ${otpauthUrl(a.secret, a.email)}`);
   }
+  logger.log(`Joueur (site web React) : ${playerPhone} / ${DEMO_PASSWORD} — solde de départ ${DEMO_PLAYER_START_CENTS / 100} HTG — démarrer le site : cd web && npm run dev`);
   if (!config.staffTotpRequired) {
     logger.warn('Code à 6 chiffres désactivé (STAFF_TOTP=off) : connexion avec e-mail et mot de passe seulement.');
     return;
