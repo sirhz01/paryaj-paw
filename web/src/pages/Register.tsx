@@ -87,7 +87,7 @@ export default function Register() {
           <h1>Finaliser l’inscription</h1>
           {info && <p className="info">{info}</p>}
           <label>
-            Code reçu par SMS
+            Code reçu par e-mail
             <input inputMode="numeric" maxLength={6} placeholder="6 chiffres" value={otp} onChange={(e) => setOtp(e.target.value)} required />
           </label>
           <label>
