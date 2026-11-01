@@ -34,7 +34,10 @@ export function serveFront(app: NestExpressApplication, dir: string): void {
 
   app.use(compression());
   for (const sub of ASSET_DIRS) {
-    app.useStaticAssets(join(root, sub), { prefix: `/${sub}`, dotfiles: 'deny', index: false, maxAge: ONE_DAY });
+    // css et js changent à chaque mise à jour : max-age=0 force la revalidation (ETag) pour ne jamais
+    // servir un ancien script ; les images (assets) changent rarement et restent en cache un jour.
+    const maxAge = sub === 'assets' ? ONE_DAY : 0;
+    app.useStaticAssets(join(root, sub), { prefix: `/${sub}`, dotfiles: 'deny', index: false, maxAge });
   }
 
   const html = (name: string, req: Request): string =>
