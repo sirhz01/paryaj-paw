@@ -21,7 +21,10 @@ body.keno .stage { background: radial-gradient(110% 100% at 50% 20%, #1b3fd8 0%,
 body.luckysix:not([data-phase='bet']) .ls-board { display: grid; }
 .ls-top { display: grid; grid-template-columns: 1fr 12rem 1fr; align-items: center; height: 12rem; }
 .ls-top .cap { font-size: .75rem; letter-spacing: .12em; color: #cfe6ff; margin-bottom: .4rem; }
-.ls-top .row { display: flex; gap: .5rem; }
+.ls-top .row { display: flex; flex-wrap: nowrap; gap: .5rem; }
+/* Les 5 pre-numbers : en ligne, collés au tambour (et non au bord gauche de l'écran). */
+.ls-top > div:first-child { justify-self: end; margin-right: .8rem; }
+.ls-top > div:first-child .ball { width: 3.4rem; height: 3.4rem; font-size: 1.5rem; }
 .drumbox { position: relative; width: 12rem; height: 12rem; }
 .drumbox canvas { width: 100%; height: 100%; }
 .drumbox .cur { position: absolute; right: -4.6rem; top: 50%; transform: translateY(-50%); }
