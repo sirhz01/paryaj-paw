@@ -62,19 +62,19 @@ describe('roulette américaine', () => {
 
   it('paie selon la table standard et perd sur 0 et 00 pour les chances simples', () => {
     const win = (key: string, n: string) => lineWin('roulette', rouletteLine(key, 10000, true)!, { n }, PAYTABLES);
-    expect(win('n:17', '17')).toBe(360000);
-    expect(win('n:00', '00')).toBe(360000);
+    expect(win('n:17', '17')).toBe(152000);
+    expect(win('n:00', '00')).toBe(152000);
     expect(win('n:17', '18')).toBe(0);
-    expect(win('st:19', '21')).toBe(120000);
-    expect(win('six:1', '6')).toBe(60000);
-    expect(win('col:2', '14')).toBe(30000);
-    expect(win('doz:2', '13')).toBe(30000);
-    expect(win('red', '1')).toBe(20000);
+    expect(win('st:19', '21')).toBe(50700);
+    expect(win('six:1', '6')).toBe(25300);
+    expect(win('col:2', '14')).toBe(12700);
+    expect(win('doz:2', '13')).toBe(12700);
+    expect(win('red', '1')).toBe(8400);
     expect(win('red', '0')).toBe(0);
     expect(win('even', '00')).toBe(0);
-    expect(win('low', '18')).toBe(20000);
+    expect(win('low', '18')).toBe(8400);
     expect(win('high', '18')).toBe(0);
-    expect(win('basket', '00')).toBe(70000);
+    expect(win('basket', '00')).toBe(30400);
     expect(win('basket', '4')).toBe(0);
   });
 
@@ -95,11 +95,11 @@ describe('roulette américaine', () => {
 
   it('calcule la cote et le gain possible côté serveur', () => {
     const l = rouletteLine('doz:1', 2500, true)!;
-    expect(l).toMatchObject({ label: 'Douzaine 1', odds: 3, possibleCents: 7500, picks: ['DOUZAINE 1'] });
+    expect(l).toMatchObject({ label: 'Douzaine 1', odds: 1.27, possibleCents: 3175, picks: ['DOUZAINE 1'] });
     expect(rouletteLine('n:5', 100, true)!.picks).toEqual(['5']);
   });
 
-  it('accepte les chevaux (17:1) et les carrés (8:1) standard, y compris avec 0 et 00', () => {
+  it('accepte les chevaux et les carrés standard, y compris avec 0 et 00', () => {
     // Chevaux : horizontal 1-4, vertical 1-2, et les chevaux du zéro ; 1-5 n'est pas un cheval.
     expect(rouletteKeyNumbers('sp:1-4')).toEqual(['1', '4']);
     expect(rouletteKeyNumbers('sp:1-2')).toEqual(['1', '2']);
@@ -113,17 +113,16 @@ describe('roulette américaine', () => {
     expect(rouletteKeyNumbers('co:3')).toBeNull();
     expect(rouletteKeyNumbers('co:33')).toBeNull();
     const win = (key: string, n: string) => lineWin('roulette', rouletteLine(key, 10000, true)!, { n }, PAYTABLES);
-    expect(win('sp:1-4', '4')).toBe(180000); // 17:1 + mise
+    expect(win('sp:1-4', '4')).toBe(76000); // RTP 40 % : 7,6× la mise
     expect(win('sp:1-4', '2')).toBe(0);
-    expect(win('co:1', '5')).toBe(90000); //  8:1 + mise
+    expect(win('co:1', '5')).toBe(38000); // RTP 40 % : 3,8× la mise
     expect(win('co:1', '3')).toBe(0);
     expect(rouletteLine('sp:1-4', 100, true)!.picks).toEqual(['1', '4']);
   });
 
-  it('avantage maison 5,26 % sur les mises intérieures (sauf top line à 7,89 %)', () => {
+  it('avantage maison 60 % (RTP 40 %) sur chaque mise de la roue', () => {
     const rtp = (line: string) => rtpReport(PAYTABLES, true).find((r) => r.game === 'roulette' && r.line === line)!.rtpPercent;
-    for (const line of ['straight', 'split', 'street', 'corner', 'six']) expect(rtp(line)).toBeCloseTo(94.74, 2);
-    expect(rtp('top line')).toBeCloseTo(92.11, 2); // pari à 5 numéros (0,00,1,2,3) : la pire mise de la roue
+    for (const line of ['straight', 'split', 'street', 'corner', 'six', 'top line']) expect(rtp(line)).toBeCloseTo(40, 0);
   });
 });
 
@@ -183,7 +182,7 @@ describe('Lucky X', () => {
 describe('ticketWin', () => {
   it('additionne les lignes puis applique le plafond de gain', () => {
     const lines = [rouletteLine('n:1', 10000, true)!, rouletteLine('red', 10000, true)!];
-    expect(ticketWin('roulette', lines, { n: '1' }, PAYTABLES, 10_000_000)).toBe(380000);
+    expect(ticketWin('roulette', lines, { n: '1' }, PAYTABLES, 10_000_000)).toBe(160400);
     expect(ticketWin('roulette', lines, { n: '1' }, PAYTABLES, 100000)).toBe(100000);
   });
 });
@@ -237,10 +236,10 @@ describe('tirage vérifiable', () => {
 describe('RTP', () => {
   const rtp = (game: string, line: string) => rtpReport(PAYTABLES, true).find((r) => r.game === game && r.line === line)!.rtpPercent;
 
-  it('roulette américaine : 94,74 % partout, 92,11 % sur le top line', () => {
-    expect(rtp('roulette', 'straight')).toBeCloseTo(94.74, 2);
-    expect(rtp('roulette', 'chance simple')).toBeCloseTo(94.74, 2);
-    expect(rtp('roulette', 'top line')).toBeCloseTo(92.11, 2);
+  it('roulette américaine : RTP 40 % (avantage maison 60 %) sur chaque mise', () => {
+    expect(rtp('roulette', 'straight')).toBeCloseTo(40, 0);
+    expect(rtp('roulette', 'chance simple')).toBeCloseTo(40, 0);
+    expect(rtp('roulette', 'top line')).toBeCloseTo(40, 0);
   });
 
   it('calcule exactement les lignes Keno, Lucky Six et Lucky X', () => {
