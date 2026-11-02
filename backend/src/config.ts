@@ -74,7 +74,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 
   const staffTotp = env.STAFF_TOTP ?? 'on';
   if (staffTotp !== 'on' && staffTotp !== 'off') throw new Error('STAFF_TOTP : on ou off');
-  if (production && staffTotp === 'off') throw new Error('STAFF_TOTP=off est interdit en production (2FA obligatoire)');
 
   return {
     env: nodeEnv,
