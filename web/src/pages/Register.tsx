@@ -121,7 +121,7 @@ export default function Register() {
             {busy ? 'Création…' : 'Créer mon compte'}
           </button>
           <button type="button" className="btn ghost" onClick={() => setStep(1)}>
-            ← Changer d’adresse
+            <i className="fa-solid fa-arrow-left" aria-hidden="true"></i> Changer d’adresse
           </button>
         </form>
       )}

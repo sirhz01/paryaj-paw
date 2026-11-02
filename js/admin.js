@@ -92,7 +92,7 @@ PP.ready.then(function () {
 
   /* ---------- Réglages ---------- */
   function renderTerminals() {
-    $('terms').innerHTML = terminals.map((t, i) => `<div class="t"><input value="${esc(t)}" maxlength="32" data-i="${i}" aria-label="Nom de la caisse ${i + 1}"><button type="button" data-del="${i}" title="Retirer">✕</button></div>`).join('');
+    $('terms').innerHTML = terminals.map((t, i) => `<div class="t"><input value="${esc(t)}" maxlength="32" data-i="${i}" aria-label="Nom de la caisse ${i + 1}"><button type="button" data-del="${i}" title="Retirer"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>`).join('');
     $('termCount').textContent = `(${terminals.length})`;
     $('terms').querySelectorAll('input,button').forEach((el) => { el.disabled = !canEdit(); });
     $('termAdd').disabled = !canEdit();

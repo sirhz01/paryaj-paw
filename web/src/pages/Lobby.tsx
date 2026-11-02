@@ -3,10 +3,10 @@ import { useAuth } from '../auth/AuthContext';
 import { usePageTitle } from '../seo';
 
 const GAMES = [
-  { key: 'american-roulette', name: 'Roulette Américaine', tag: '0 et 00 · 38 cases', icon: '🎡' },
-  { key: 'keno', name: 'Keno 20/80', tag: '20 boules tirées sur 80', icon: '🔢' },
-  { key: 'lucky-six', name: 'Lucky Six', tag: '35 boules sur 48', icon: '🎱' },
-  { key: 'lucky-x', name: 'Lucky X', tag: '20 boules sur 80', icon: '✨' },
+  { key: 'american-roulette', name: 'Roulette Américaine', tag: '0 et 00 · 38 cases', icon: 'fa-dharmachakra' },
+  { key: 'keno', name: 'Keno 20/80', tag: '20 boules tirées sur 80', icon: 'fa-table-cells' },
+  { key: 'lucky-six', name: 'Lucky Six', tag: '35 boules sur 48', icon: 'fa-dice-six' },
+  { key: 'lucky-x', name: 'Lucky X', tag: '20 boules sur 80', icon: 'fa-clover' },
 ];
 
 export default function Lobby() {
@@ -35,12 +35,14 @@ export default function Lobby() {
       <div className="games">
         {GAMES.map((g) => (
           <Link key={g.key} to={`/play/${g.key}`} className="game-card">
-            <span className="game-icon" aria-hidden>
-              {g.icon}
+            <span className="game-icon" aria-hidden="true">
+              <i className={`fa-solid ${g.icon}`}></i>
             </span>
             <span className="game-name">{g.name}</span>
             <span className="game-tag">{g.tag}</span>
-            <span className="game-play">Jouer →</span>
+            <span className="game-play">
+              Jouer <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            </span>
           </Link>
         ))}
       </div>

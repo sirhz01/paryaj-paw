@@ -178,7 +178,7 @@ PP.ready.then(function () {
   function renderSlip() {
     const lines = currentLines();
     $('slip').innerHTML = lines.length ? lines.map((l, i) => `
-      <div class="ln"><b>${l.label}</b><span>${PP.money(l.stake)}</span>${game === 'roulette' ? `<button data-i="${i}" title="Retirer">✕</button>` : '<span></span>'}
+      <div class="ln"><b>${l.label}</b><span>${PP.money(l.stake)}</span>${game === 'roulette' ? `<button data-i="${i}" title="Retirer"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>` : '<span></span>'}
         <small>${l.picks.join(' ')} · cote ${l.odds.toFixed(2)} · gain possible ${PP.money(l.possible)}</small></div>`).join('')
       : '<div class="empty">Aucune mise. Choisir sur le plateau.</div>';
     $('total').textContent = PP.money(lines.reduce((a, l) => a + l.stake, 0));

@@ -9,6 +9,7 @@
   <link rel="icon" href="assets/icon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="assets/icon-180.png">
   <meta name="theme-color" content="#14285f">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3w6A==" crossorigin="anonymous" referrerpolicy="no-referrer">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="La Référence Paryaj Paw">
   <meta property="og:locale" content="fr_FR">
@@ -57,12 +58,12 @@
         </div>
         <div id="rtable"></div>
         <p class="hint">Pari simple / Street / Six lignes : une touche. Cheval : deux numéros voisins. Carré : deux
-          numéros en diagonale. Recliquer une mise l'augmente ; retirer avec ✕ dans le ticket.</p>
+          numéros en diagonale. Recliquer une mise l'augmente ; retirer avec <i class="fa-solid fa-xmark" aria-hidden="true"></i> dans le ticket.</p>
       </div>
       <div id="boardNumbers" class="hidden">
         <div class="quick"><span id="needTxt"></span>
           <label>Choix rapide <select id="quickN"></select></label>
-          <button class="ghost" id="quickBtn">🎲 Générer</button>
+          <button class="ghost" id="quickBtn"><i class="fa-solid fa-dice" aria-hidden="true"></i> Générer</button>
           <button class="ghost" id="clearPicks">Effacer</button>
         </div>
         <div class="nums" id="nums"></div>
@@ -77,7 +78,7 @@
         <label class="stake">Mise (HTG) <input id="stake" type="number" inputmode="numeric" min="25" max="100000" step="25" value="100" required></label>
         <div class="total"><span>Total</span><b id="total">0.00 HTG</b></div>
         <div id="msg" class="msg"></div>
-        <div class="actions"><button class="primary" id="printBtn">🖨 Imprimer le ticket</button><button class="ghost" id="resetBtn">Vider</button></div>
+        <div class="actions"><button class="primary" id="printBtn"><i class="fa-solid fa-print" aria-hidden="true"></i> Imprimer le ticket</button><button class="ghost" id="resetBtn">Vider</button></div>
       </section>
 
       <section class="card">

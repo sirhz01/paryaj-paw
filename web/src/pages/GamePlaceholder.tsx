@@ -19,7 +19,7 @@ export default function GamePlaceholder() {
         <h1>{name}</h1>
         <p className="muted">L’interface de jeu arrive bientôt. Le compte, le portefeuille et les paiements sont déjà en place.</p>
         <Link to="/" className="btn ghost">
-          ← Retour au lobby
+          <i className="fa-solid fa-arrow-left" aria-hidden="true"></i> Retour au lobby
         </Link>
       </div>
     </div>

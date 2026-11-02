@@ -87,7 +87,7 @@ export default function Keno() {
       <div className="game-head">
         <h1>Keno 20/80</h1>
         <Link to="/" className="btn ghost">
-          ← Lobby
+          <i className="fa-solid fa-arrow-left" aria-hidden="true"></i> Lobby
         </Link>
       </div>
       <p className="muted">Choisissez de 1 à {maxPicks} numéros. 20 boules sont tirées sur 80. Plus vous trouvez de numéros, plus vous gagnez.</p>
@@ -115,7 +115,7 @@ export default function Keno() {
             {picks.length}/{maxPicks} numéros
           </span>
           <button className="btn ghost" onClick={quick}>
-            🎲 Aléatoire
+            <i className="fa-solid fa-dice" aria-hidden="true"></i> Aléatoire
           </button>
           <button className="btn ghost" onClick={() => { setPicks([]); setResult(null); }}>
             Effacer
