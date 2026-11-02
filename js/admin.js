@@ -20,7 +20,7 @@ PP.ready.then(function () {
   }
   const canEdit = () => role === 'super_admin';
   const flash = (el, text, ok) => { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); };
-  const HISTORY = { CASHIER_HAS_HISTORY: 'Ce caissier a déjà vendu ou payé des tickets : on ne peut pas le supprimer (l’historique reste). Utilisez « Bloquer ».', ADMIN_HAS_HISTORY: 'Cet administrateur a déjà agi dans le système : on ne peut pas le supprimer. Utilisez « Bloquer ».', CANNOT_DELETE_SELF: 'Vous ne pouvez pas supprimer votre propre compte.' };
+  const HISTORY = { CANNOT_DELETE_SELF: 'Vous ne pouvez pas supprimer votre propre compte.' };
   const errorText = (e) => HISTORY[e.code] || (e.code === 'INVALID_SETTINGS' && e.body.errors ? e.body.errors.join(' · ') : A.message(e));
 
   /* ---------- Connexion ---------- */
@@ -374,7 +374,7 @@ PP.ready.then(function () {
         flash($('admMsg'), b.dataset.act === 'allow' ? email + ' est autorisé.' : email + ' est bloqué ; sa session est coupée.', true);
       }
       loadAdmins();
-    } catch (err) { flash($('admMsg'), errorText(err), false); }
+    } catch (err) { flash($('admMsg'), errorText(err), false); if (b.dataset.act === 'del') alert('Suppression impossible : ' + errorText(err)); }
   });
 
   // Le propriétaire change son propre mot de passe : l'actuel est exigé ; on se reconnecte ensuite.
@@ -423,7 +423,7 @@ PP.ready.then(function () {
         flash($('cashMsg'), `Mot de passe de ${email} changé ; ses sessions sont coupées.`, true);
       }
       loadCashiers();
-    } catch (err) { flash($('cashMsg'), errorText(err), false); }
+    } catch (err) { flash($('cashMsg'), errorText(err), false); if (act === 'del') alert('Suppression impossible : ' + errorText(err)); }
   });
 
   /* ---------- Démarrage ---------- */

@@ -354,7 +354,7 @@ export class TicketsService {
   /** Derniers rapports de caissier, du plus récent au plus ancien. */
   async cashierReports(limit: number) {
     const { rows } = await this.db.query(
-      `SELECT r.id, s.email, r.terminal, r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
+      `SELECT r.id, regexp_replace(s.email, '#supprime-[0-9]+$', '') AS email, r.terminal, r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
               r.stakes_cents::bigint AS "stakesCents", r.payouts, r.payouts_cents::bigint AS "payoutsCents",
               r.opening_cents::bigint AS "openingCents", r.closing_cents::bigint AS "closingCents"
          FROM cashier_reports r JOIN staff s ON s.id = r.staff_id
@@ -399,7 +399,7 @@ export class TicketsService {
     );
     // Sessions de caissier terminées ce jour-là : argent déclaré au début et à la fin, écart avec l'attendu.
     const shifts = await this.db.query(
-      `SELECT s.email, r.terminal, r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
+      `SELECT regexp_replace(s.email, '#supprime-[0-9]+$', '') AS email, r.terminal, r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
               r.stakes_cents::bigint AS "stakesCents", r.payouts, r.payouts_cents::bigint AS "payoutsCents",
               r.opening_cents::bigint AS "openingCents", r.closing_cents::bigint AS "closingCents"
          FROM cashier_reports r JOIN staff s ON s.id = r.staff_id

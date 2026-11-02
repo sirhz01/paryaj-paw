@@ -30,7 +30,7 @@ export class AdminsService {
   ) {}
 
   list(): Promise<AdminView[]> {
-    return this.db.query<AdminView>(`SELECT ${VIEW} FROM staff WHERE role <> 'cashier' ORDER BY created_at`).then((r) => r.rows);
+    return this.db.query<AdminView>(`SELECT ${VIEW} FROM staff WHERE role <> 'cashier' AND deleted_at IS NULL ORDER BY created_at`).then((r) => r.rows);
   }
 
   /** Crée un administrateur actif : il peut se connecter tout de suite avec son e-mail et son mot de passe. */
@@ -72,16 +72,15 @@ export class AdminsService {
     await this.audit.log(adminId, 'admin.reset_password', { type: 'staff', id }, {});
   }
 
-  /** Supprime un administrateur (jamais soi-même). Refusé s'il a déjà agi dans le système (historique à conserver) : le bloquer suffit. */
+  /** Supprime un administrateur (jamais soi-même) : retiré des listes, bloqué, e-mail libéré ; l'historique est conservé. */
   async remove(adminId: number, id: number): Promise<void> {
     if (id === adminId) throw new AppError('CANNOT_DELETE_SELF', 400);
-    let rows: { email: string }[];
-    try {
-      ({ rows } = await this.db.query<{ email: string }>(`DELETE FROM staff WHERE id = $1 AND role <> 'cashier' RETURNING email`, [id]));
-    } catch (error) {
-      if ((error as { code?: string }).code === '23503') throw new AppError('ADMIN_HAS_HISTORY', 409);
-      throw error;
-    }
+    const { rows } = await this.db.query<{ email: string }>(
+      `UPDATE staff SET deleted_at = now(), active = false, token_version = token_version + 1,
+                email = email || '#supprime-' || id
+          WHERE id = $1 AND role <> 'cashier' AND deleted_at IS NULL RETURNING regexp_replace(email, '#supprime-[0-9]+$', '') AS email`,
+      [id],
+    );
     if (!rows[0]) throw new AppError('ADMIN_NOT_FOUND', 404);
     await this.audit.log(adminId, 'admin.delete', { type: 'staff', id }, { email: rows[0].email });
   }

@@ -27,7 +27,7 @@ export class CashiersService {
 
   list(): Promise<CashierView[]> {
     return this.db
-      .query<CashierView>(`SELECT ${VIEW} FROM staff WHERE role = 'cashier' ORDER BY created_at`)
+      .query<CashierView>(`SELECT ${VIEW} FROM staff WHERE role = 'cashier' AND deleted_at IS NULL ORDER BY created_at`)
       .then((r) => r.rows);
   }
 
@@ -72,17 +72,16 @@ export class CashiersService {
   }
 
   /**
-   * Supprime un compte caissier. Refusé s'il a déjà vendu ou payé des tickets (ou rendu un rapport) : l'historique doit
-   * rester intact ; il suffit alors de le bloquer.
+   * Supprime un compte caissier : il disparaît de la liste, ne peut plus se connecter et son e-mail est libéré.
+   * La ligne est conservée (marquée supprimée) pour garder l'historique des ventes et du journal d'audit.
    */
   async remove(adminId: number, id: number): Promise<void> {
-    let rows: { email: string }[];
-    try {
-      ({ rows } = await this.db.query<{ email: string }>(`DELETE FROM staff WHERE id = $1 AND role = 'cashier' RETURNING email`, [id]));
-    } catch (error) {
-      if ((error as { code?: string }).code === '23503') throw new AppError('CASHIER_HAS_HISTORY', 409);
-      throw error;
-    }
+    const { rows } = await this.db.query<{ email: string }>(
+      `UPDATE staff SET deleted_at = now(), active = false, token_version = token_version + 1,
+                email = email || '#supprime-' || id
+          WHERE id = $1 AND role = 'cashier' AND deleted_at IS NULL RETURNING regexp_replace(email, '#supprime-[0-9]+$', '') AS email`,
+      [id],
+    );
     if (!rows[0]) throw new AppError('CASHIER_NOT_FOUND', 404);
     await this.audit.log(adminId, 'cashier.delete', { type: 'staff', id }, { email: rows[0].email });
   }
