@@ -11,12 +11,14 @@ const dist = join(here, '..', 'dist');
 const site = (process.env.SITE_URL || 'https://paryajpaw.online').replace(/\/$/, '');
 const version = Date.now().toString(36);
 
-// index.html (joueurs) et les pages légales viennent de l'app React ; on ne copie que la boutique interne + écrans TV.
+// Boutique interne + écrans TV + administration (l'app joueurs React n'est plus construite).
 const PAGES = ['caisse', 'admin', 'roulette', 'keno', 'luckysix', 'luckyx', '404'];
 const DIRS = ['js', 'css', 'assets'];
 const FILES = ['admin.webmanifest', 'sw-admin.js'];
 
-if (!existsSync(dist)) { console.error('copy-shop: dist introuvable, lancer après vite build'); process.exit(1); }
+// Le site public n'expose plus l'app joueurs : seul l'accès administration est servi (admin.html devient la page d'accueil).
+// Aucun lien vers l'administration ni vers les jeux : on y accède en tapant l'adresse du site.
+mkdirSync(dist, { recursive: true });
 
 for (const dir of DIRS) {
   const src = join(repo, dir);
@@ -34,6 +36,13 @@ for (const name of PAGES) {
     .replace(/\b(src|href)="((?:js|css)\/[^"?]+)"/g, `$1="$2?v=${version}"`);
   mkdirSync(dirname(join(dist, `${name}.html`)), { recursive: true });
   writeFileSync(join(dist, `${name}.html`), html);
+}
+
+{
+  const admin = readFileSync(join(dist, 'admin.html'), 'utf8');
+  writeFileSync(join(dist, 'index.html'), admin);
+  writeFileSync(join(dist, 'robots.txt'), ['User-agent: *', 'Disallow: /', ''].join('\n'));
+  for (const f of ['icon-180.png', 'icon-32.png']) cpSync(join(repo, 'assets', f), join(dist, f));
 }
 
 console.log(`copy-shop: ${PAGES.length} pages + ${DIRS.join(', ')} copiés dans dist (site=${site}, v=${version})`);

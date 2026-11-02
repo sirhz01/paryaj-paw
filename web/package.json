@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/copy-shop.mjs",
+    "build": "node scripts/copy-shop.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
