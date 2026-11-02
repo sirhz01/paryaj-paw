@@ -6,7 +6,8 @@
       "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
     },
     "backend": {
-      "root": "backend"
+      "root": "backend",
+      "runtime": "container"
     }
   },
   "rewrites": [
