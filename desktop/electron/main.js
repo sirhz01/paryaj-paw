@@ -46,10 +46,10 @@ function normalizeServer(input) {
   return s.replace(/\/+$/, '');
 }
 
-// Serveur par défaut : l'application s'ouvre directement sur la boutique, sans demander d'adresse.
-// Convient quand le serveur tourne sur le même poste. Pour pointer un autre serveur (écran TV sur un
-// autre PC), utiliser « Boutique → Changer de serveur… ».
-const DEFAULT_SERVER = 'http://localhost:3000';
+// Serveur par défaut : le système en ligne (Vercel + base Neon). La caisse et le back-office travaillent
+// ainsi sur les mêmes comptes, paris et caisses que le site des joueurs. Pour pointer un serveur local
+// (démo sur ce poste), utiliser « Boutique → Changer de serveur… ».
+const DEFAULT_SERVER = 'https://paryajpaw.online';
 
 let win;
 
@@ -116,8 +116,9 @@ function buildMenu() {
     {
       label: 'Boutique',
       submenu: [
-        { label: 'Accueil', accelerator: 'CmdOrCtrl+H', click: () => { setFullScreen(false); loadServerPage(''); } },
         { label: 'Caisse', accelerator: 'CmdOrCtrl+1', click: () => { setFullScreen(false); loadServerPage('caisse.html'); } },
+        { label: 'Administration', accelerator: 'CmdOrCtrl+Shift+A', click: () => { setFullScreen(false); loadServerPage('admin.html'); } },
+        { label: 'Site des joueurs', accelerator: 'CmdOrCtrl+H', click: () => { setFullScreen(false); loadServerPage(''); } },
         { type: 'separator' },
         { label: 'Changer de serveur…', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.loadFile('config.html') },
         { type: 'separator' },
@@ -211,7 +212,8 @@ function createWindow() {
   });
 
   buildMenu();
-  loadServerPage('');
+  // L'app boutique s'ouvre sur la caisse ; le back-office est dans le menu « Boutique → Administration ».
+  loadServerPage('caisse.html');
 }
 
 // L'écran de configuration enregistre l'adresse du serveur et ouvre l'accueil.
@@ -230,7 +232,7 @@ ipcMain.handle('config:save', (_e, raw) => {
   const server = normalizeServer(raw);
   if (!server) return { ok: false };
   writeConfig({ server });
-  loadServerPage('');
+  loadServerPage('caisse.html');
   return { ok: true, server };
 });
 
