@@ -54,3 +54,16 @@ body.admin .login { background: #14285f; }
 @media (max-width: 560px) { .tmrow { grid-template-columns: 5.5rem repeat(4, 1fr); } }
 .tmrow input { padding: .45rem .55rem; border: 1px solid #c9d2e3; border-radius: 8px; font: inherit; background: #fff; }
 .tmdraw small { margin-top: .1rem; }
+
+/* Téléphone : rien ne doit dépasser de l'écran (onglets défilants, en-tête et tableaux contenus). */
+body.admin { overflow-x: hidden; }
+.admin .tabs { overflow-x: auto; padding-inline: .6rem; scrollbar-width: none; }
+.admin .tabs::-webkit-scrollbar { display: none; }
+.admin .tabs button { flex: 0 0 auto; padding: .6rem .9rem; white-space: nowrap; }
+.admin .card { overflow-x: auto; }
+@media (max-width: 560px) {
+  .admin .bar { flex-wrap: wrap; gap: .5rem; padding-inline: .6rem; }
+  .admin .bar .logo { height: 2.4rem; width: auto; }
+  .admin .bar .shop { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+  .admin .wrap { padding-inline: .5rem; }
+}
