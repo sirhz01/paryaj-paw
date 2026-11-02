@@ -12,7 +12,7 @@ const site = (process.env.SITE_URL || 'https://paryajpaw.online').replace(/\/$/,
 const version = Date.now().toString(36);
 
 // Boutique interne + écrans TV + administration (l'app joueurs React n'est plus construite).
-const PAGES = ['caisse', 'admin', 'roulette', 'keno', 'luckysix', 'luckyx', '404'];
+const PAGES = ['caisse', 'admin', 'roulette', 'keno', 'luckysix', 'luckyx', 'telecharger', '404'];
 const DIRS = ['js', 'css', 'assets'];
 const FILES = ['admin.webmanifest', 'sw-admin.js'];
 
