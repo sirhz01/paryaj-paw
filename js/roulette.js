@@ -29,6 +29,7 @@ PP.ready.then(function () {
     const f = INFOS[i];
     $('infoGrp').textContent = f.grp; $('infoName').textContent = f.name; $('infoCode').textContent = f.code;
     $('infoDesc').textContent = f.desc; $('infoWager').textContent = 'WAGER X ' + f.x.toFixed(2).replace('.', ',');
+    $('info').classList.add('on');   // la barre n'apparaît qu'une fois remplie : plus de barre vide au démarrage
     tableEl.classList.add('focus');
     const cells = new Set(f.keys.flatMap((k) => /^(st|six):/.test(k) ? R.keyNumbers(k).map((n) => 'n:' + n) : [k]));
     tableEl.querySelectorAll('.rc').forEach((c) => c.classList.toggle('hl', cells.has(c.dataset.key)));

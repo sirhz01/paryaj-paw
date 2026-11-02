@@ -30,6 +30,7 @@ body.roulette {
 .rc.side.win { background: #fff !important; color: #0c3d28; }
 .rc.side.win.is-red { background: #e03a32 !important; color: #fff; }
 
+.info:not(.on) { display: none; }
 .info { margin-top: 1.1rem; padding: .8rem 1rem; display: grid; grid-template-columns: 1fr auto; gap: .2rem 1rem; background: rgba(0, 0, 0, .38); border-left: .3rem solid var(--gold); transition: opacity .4s; }
 .info .grp { grid-column: 1 / -1; font-size: .8rem; font-weight: 700; color: #d9f2e3; letter-spacing: .1em; }
 .info .name { font-size: 2.6rem; font-weight: 800; color: var(--gold); line-height: 1; }
