@@ -273,6 +273,21 @@ PP.ready.then(function () {
       loadCashiers();
     } catch (err) { flash($('cashMsg'), err.code === 'EMAIL_TAKEN' ? 'Cet e-mail est déjà utilisé.' : errorText(err), false); }
   });
+
+  // Le propriétaire change son propre mot de passe : l'actuel est exigé ; on se reconnecte ensuite.
+  $('pwForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if ($('pwNew').value !== $('pwNew2').value) return flash($('pwMsg'), 'Les deux nouveaux mots de passe ne correspondent pas.', false);
+    try {
+      await A.call('PATCH', '/admin/auth/password', { currentPassword: $('pwCur').value, newPassword: $('pwNew').value });
+      flash($('pwMsg'), 'Mot de passe changé. Reconnexion…', true);
+      $('pwForm').reset();
+      setTimeout(() => { A.logout(); location.reload(); }, 1600);
+    } catch (err) {
+      flash($('pwMsg'), err.code === 'INVALID_CREDENTIALS' ? 'Mot de passe actuel incorrect.'
+        : err.code === 'VALIDATION_ERROR' ? 'Nouveau mot de passe trop faible (8 caractères minimum, évitez les suites et les mots courants).' : errorText(err), false);
+    }
+  });
   $('cashTbl').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id, email = tr.dataset.email, act = b.dataset.act;

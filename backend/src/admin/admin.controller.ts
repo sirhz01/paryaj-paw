@@ -31,6 +31,7 @@ import {
 import { Response } from 'express';
 import { CurrentStaff, Roles, StaffGuard, StaffPrincipal } from '../common/auth';
 import { AppError } from '../common/errors';
+import { StrongPassword } from '../common/password';
 import { Paytable, MAX_PICKS_LIMIT } from '../keno/paytable';
 import { KenoSettingsService } from '../keno/settings.service';
 import { PaymentStatus, PaymentsService } from '../payments/payments.service';
@@ -53,6 +54,16 @@ class StaffLoginDto {
   @IsOptional()
   @Matches(/^\d{6}$/)
   totp?: string;
+}
+
+class ChangePasswordDto {
+  @IsString()
+  @MaxLength(128)
+  currentPassword!: string;
+
+  @IsString()
+  @StrongPassword()
+  newPassword!: string;
 }
 
 class RangeQuery {
@@ -166,7 +177,15 @@ export class AdminController {
     private readonly kenoSettings: KenoSettingsService,
     private readonly rouletteSettings: RouletteSettingsService,
     private readonly payments: PaymentsService,
+    private readonly auth: AdminAuthService,
   ) {}
+
+  /** Le compte connecté change son propre mot de passe (l'actuel est exigé). Déconnecte les autres sessions. */
+  @Patch('auth/password')
+  @HttpCode(204)
+  changePassword(@CurrentStaff() staff: StaffPrincipal, @Body() dto: ChangePasswordDto) {
+    return this.auth.changePassword(staff.id, dto.currentPassword, dto.newPassword);
+  }
 
   @Get('dashboard')
   dashboard(@Query() q: RangeQuery) {

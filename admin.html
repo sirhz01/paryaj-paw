@@ -120,6 +120,19 @@
 
     <section id="tab-cashiers" class="pane hidden">
       <div class="card">
+        <h2>Mon mot de passe</h2>
+        <p class="hint">Changez le mot de passe de votre compte propriétaire pour en mettre un à vous.
+          Après le changement, vous serez déconnecté et devrez vous reconnecter avec le nouveau mot de passe
+          (le code d’authentification ne change pas).</p>
+        <form id="pwForm" class="cashnew">
+          <label>Mot de passe actuel <input type="password" id="pwCur" autocomplete="current-password" required></label>
+          <label>Nouveau mot de passe <input type="password" id="pwNew" autocomplete="new-password" minlength="8" placeholder="8 caractères minimum" required></label>
+          <label>Confirmer <input type="password" id="pwNew2" autocomplete="new-password" minlength="8" required></label>
+          <button class="primary" type="submit">Changer mon mot de passe</button>
+        </form>
+        <div class="msg" id="pwMsg"></div>
+      </div>
+      <div class="card">
         <h2>Caissiers</h2>
         <p class="hint">Chaque caissier se connecte à la caisse avec son <b>e-mail</b> et son <b>mot de passe</b>.
           Un caissier ne peut se connecter que si vous l’avez <b>autorisé</b> : créez le compte, cliquez

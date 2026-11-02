@@ -82,6 +82,29 @@ export class AdminAuthService {
     return { accessToken, expiresIn, role: staff.role, terminal: staff.terminal };
   }
 
+  /**
+   * Le membre du personnel change son propre mot de passe : l'actuel doit être fourni et correct.
+   * Coupe les autres sessions (token_version), donc l'utilisateur se reconnecte avec le nouveau mot de passe.
+   */
+  async changePassword(staffId: number, currentPassword: string, newPassword: string): Promise<void> {
+    const { rows } = await this.db.query<{ password_hash: string }>(
+      'SELECT password_hash FROM staff WHERE id = $1',
+      [staffId],
+    );
+    const staff = rows[0];
+    if (!staff) throw new AppError('STAFF_NOT_FOUND', HttpStatus.NOT_FOUND);
+    if (!(await argon2.verify(staff.password_hash, currentPassword))) {
+      throw new AppError('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
+    }
+    const passwordHash = await argon2.hash(newPassword, { type: argon2.argon2id });
+    await this.db.query(
+      `UPDATE staff SET password_hash = $2, token_version = token_version + 1, failed_logins = 0, locked_until = NULL
+         WHERE id = $1`,
+      [staffId, passwordHash],
+    );
+    await this.audit.log(staffId, 'staff.change_password', { type: 'staff', id: staffId }, {});
+  }
+
   /** Compte l'échec, bloque le compte au seuil, et le note dans le journal d'audit. */
   private async recordFailure(staffId: number, reason: 'password' | 'totp'): Promise<void> {
     const { rows } = await this.db.query<{ locked: boolean }>(
