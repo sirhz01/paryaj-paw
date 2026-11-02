@@ -5,7 +5,7 @@ import { AuditService } from '../common/audit.service';
 import { StaffRole } from '../common/auth';
 import { AppError } from '../common/errors';
 import { AppConfig, CONFIG } from '../config';
-import { DATABASE, Database } from '../database/db';
+import { DATABASE, Database, isUniqueViolation } from '../database/db';
 import { matchTotp } from './totp';
 
 const STAFF_TOKEN_TTL_SECONDS = 3600;
@@ -106,6 +106,27 @@ export class AdminAuthService {
       [staffId, passwordHash],
     );
     await this.audit.log(staffId, 'staff.change_password', { type: 'staff', id: staffId }, {});
+  }
+
+  /** Le membre du personnel change sa propre adresse e-mail de connexion (le mot de passe actuel est exigé). */
+  async changeEmail(staffId: number, currentPassword: string, newEmail: string): Promise<void> {
+    const { rows } = await this.db.query<{ password_hash: string }>(
+      'SELECT password_hash FROM staff WHERE id = $1',
+      [staffId],
+    );
+    const staff = rows[0];
+    if (!staff) throw new AppError('STAFF_NOT_FOUND', HttpStatus.NOT_FOUND);
+    if (!(await argon2.verify(staff.password_hash, currentPassword))) {
+      throw new AppError('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
+    }
+    const email = newEmail.trim().toLowerCase();
+    try {
+      await this.db.query('UPDATE staff SET email = $2 WHERE id = $1', [staffId, email]);
+    } catch (e) {
+      if (isUniqueViolation(e)) throw new AppError('EMAIL_TAKEN', HttpStatus.CONFLICT);
+      throw e;
+    }
+    await this.audit.log(staffId, 'staff.change_email', { type: 'staff', id: staffId }, { email });
   }
 
   /** Compte l'échec, bloque le compte au seuil, et le note dans le journal d'audit. */

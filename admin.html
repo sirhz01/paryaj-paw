@@ -134,6 +134,17 @@
         <div class="msg" id="pwMsg"></div>
       </div>
       <div class="card">
+        <h2>Mon e-mail</h2>
+        <p class="hint">Changez l’adresse e-mail de connexion de votre compte propriétaire. Le mot de passe actuel
+          est demandé. La session reste ouverte ; utilisez le nouvel e-mail à la prochaine connexion.</p>
+        <form id="emForm" class="cashnew">
+          <label>Nouvel e-mail <input type="email" id="emNew" autocomplete="email" required></label>
+          <label>Mot de passe actuel <input type="password" id="emPass" autocomplete="current-password" required></label>
+          <button class="primary" type="submit">Changer mon e-mail</button>
+        </form>
+        <div class="msg" id="emMsg"></div>
+      </div>
+      <div class="card">
         <h2>Caissiers</h2>
         <p class="hint">Chaque caissier se connecte à la caisse avec son <b>e-mail</b> et son <b>mot de passe</b>.
           Un caissier ne peut se connecter que si vous l’avez <b>autorisé</b> : créez le compte, cliquez

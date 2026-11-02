@@ -66,6 +66,15 @@ class ChangePasswordDto {
   newPassword!: string;
 }
 
+class ChangeEmailDto {
+  @IsString()
+  @MaxLength(128)
+  currentPassword!: string;
+
+  @IsEmail()
+  newEmail!: string;
+}
+
 class RangeQuery {
   @Matches(DAY)
   from!: string;
@@ -185,6 +194,13 @@ export class AdminController {
   @HttpCode(204)
   changePassword(@CurrentStaff() staff: StaffPrincipal, @Body() dto: ChangePasswordDto) {
     return this.auth.changePassword(staff.id, dto.currentPassword, dto.newPassword);
+  }
+
+  /** Le compte connecté change sa propre adresse e-mail (le mot de passe actuel est exigé). */
+  @Patch('auth/email')
+  @HttpCode(204)
+  changeEmail(@CurrentStaff() staff: StaffPrincipal, @Body() dto: ChangeEmailDto) {
+    return this.auth.changeEmail(staff.id, dto.currentPassword, dto.newEmail);
   }
 
   @Get('dashboard')

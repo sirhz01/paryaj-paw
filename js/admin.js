@@ -288,6 +288,20 @@ PP.ready.then(function () {
         : err.code === 'VALIDATION_ERROR' ? 'Nouveau mot de passe trop faible (8 caractères minimum, évitez les suites et les mots courants).' : errorText(err), false);
     }
   });
+
+  // Le propriétaire change sa propre adresse e-mail (le mot de passe actuel est exigé). La session reste ouverte.
+  $('emForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await A.call('PATCH', '/admin/auth/email', { currentPassword: $('emPass').value, newEmail: $('emNew').value.trim() });
+      flash($('emMsg'), 'E-mail changé. Utilisez-le à la prochaine connexion.', true);
+      $('emForm').reset();
+    } catch (err) {
+      flash($('emMsg'), err.code === 'INVALID_CREDENTIALS' ? 'Mot de passe actuel incorrect.'
+        : err.code === 'EMAIL_TAKEN' ? 'Cet e-mail est déjà utilisé.'
+        : err.code === 'VALIDATION_ERROR' ? 'Adresse e-mail invalide.' : errorText(err), false);
+    }
+  });
   $('cashTbl').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id, email = tr.dataset.email, act = b.dataset.act;
