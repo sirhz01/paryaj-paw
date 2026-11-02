@@ -264,7 +264,6 @@ PP.ready.then(function () {
     $('ls6Rates').innerHTML = p.luckysix.map((v, i) => rateBox('boule ' + (i + 6), 'l:' + i, v)).join('');
     $('lxRates').innerHTML = rateBox('1 numéro (6 premières boules)', 'x:single', p.luckyx.single)
       + Array.from({ length: 9 }, (_, i) => i + 2).map((n) => rateBox(n + ' boules', 'x:' + n, p.luckyx.tiers[n])).join('');
-    $('rateForm').querySelector('.save').disabled = !canEdit();
   }
   const ratesPatch = () => {
     const val = (name) => { const v = $('rateForm').elements[name].value; return v === '' ? 0 : Number(v); };
