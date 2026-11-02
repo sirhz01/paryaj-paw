@@ -37,12 +37,19 @@ function writeConfig(patch) {
   return next;
 }
 
-/** Normalise « 192.168.1.10 » ou « 192.168.1.10:3000 » en « http://192.168.1.10:3000 » (sans / final). */
+/**
+ * Normalise l'adresse du serveur (sans / final) :
+ *  - « 192.168.1.10 »        → « http://192.168.1.10:3000 »  (serveur local, port 3000 par défaut)
+ *  - « https://paryajpaw.online » → inchangé (HTTPS = port 443 par défaut ; ne jamais forcer :3000)
+ */
 function normalizeServer(input) {
   let s = String(input || '').trim();
   if (!s) return '';
   if (!/^https?:\/\//i.test(s)) s = 'http://' + s;
-  if (!/:\d+(\/|$)/.test(s.replace(/^https?:\/\//i, ''))) s = s.replace(/\/+$/, '') + ':3000';
+  const isHttps = /^https:\/\//i.test(s);
+  const hostAndPath = s.replace(/^https?:\/\//i, '');
+  // Port 3000 ajouté seulement pour un serveur local en http sans port ; en https on garde le port par défaut (443).
+  if (!isHttps && !/:\d+(\/|$)/.test(hostAndPath)) s = s.replace(/\/+$/, '') + ':3000';
   return s.replace(/\/+$/, '');
 }
 
