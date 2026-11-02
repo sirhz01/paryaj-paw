@@ -56,7 +56,10 @@ export class AdminAuthService {
     // le caissier sache qu'il attend l'autorisation du responsable, et non qu'il s'est trompé.
     if (!staff.active) throw new AppError('ACCOUNT_NOT_AUTHORIZED', HttpStatus.FORBIDDEN);
 
-    if (this.config.staffTotpRequired) {
+    // Le code à 6 chiffres n'est exigé que pour les comptes du back-office (propriétaire, finance…) ;
+    // les caissiers se connectent avec e-mail et mot de passe seulement (connexions fréquentes en service).
+    const totpRequired = this.config.staffTotpRequired && staff.role !== 'cashier';
+    if (totpRequired) {
       const counter = code === undefined ? null : matchTotp(staff.totp_secret, code);
       const accepted =
         counter !== null &&
@@ -73,7 +76,7 @@ export class AdminAuthService {
     }
 
     await this.db.query('UPDATE staff SET failed_logins = 0, locked_until = NULL WHERE id = $1', [staff.id]);
-    await this.audit.log(staff.id, 'staff.login', { type: 'staff', id: staff.id }, { totp: this.config.staffTotpRequired });
+    await this.audit.log(staff.id, 'staff.login', { type: 'staff', id: staff.id }, { totp: totpRequired });
     const expiresIn = staff.role === 'cashier' ? CASHIER_TOKEN_TTL_SECONDS : STAFF_TOKEN_TTL_SECONDS;
     const accessToken = await this.jwt.signAsync(
       { sub: String(staff.id), typ: 'staff', role: staff.role, tv: staff.token_version },

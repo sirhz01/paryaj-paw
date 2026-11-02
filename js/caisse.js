@@ -29,11 +29,9 @@ PP.ready.then(function () {
   const errText = (e) => (e && e.code === 'TICKET_NOT_FOUND') ? 'Ticket introuvable.' : PP.api.message(e);
   function needLogin() { $('login').classList.remove('hidden'); $('lgEmail').focus(); }
   PP.api.onExpire = needLogin;
-  // Code à 6 chiffres désactivé côté serveur (STAFF_TOTP=off, hors production) : champ caché.
-  if (online && PP.STAFF_TOTP === false) {
-    $('lgCode').required = false;
-    $('lgCode').closest('label').classList.add('hidden');
-  }
+  // Les caissiers se connectent sans code à 6 chiffres (réservé au propriétaire sur l'écran d'administration) : champ caché.
+  $('lgCode').required = false;
+  $('lgCode').closest('label').classList.add('hidden');
   /* Compte lié à une caisse : la liste est figée sur celle-là (le serveur refuse les autres). */
   function lockTerminal(name) {
     try { name ? sessionStorage.setItem('pp.terminal', name) : sessionStorage.removeItem('pp.terminal'); } catch (e) { /* stockage bloqué */ }
