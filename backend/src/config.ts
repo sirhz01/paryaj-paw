@@ -35,6 +35,11 @@ export interface AppConfig {
   resendApiKey: string;
   /** Expéditeur des e-mails (« Nom <adresse> »). */
   emailFrom: string;
+  /** SMTP (ex. Gmail) pour l'e-mail sans domaine : s'il est renseigné, il a la priorité sur Resend. */
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -91,5 +96,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     staffTotpRequired: staffTotp === 'on',
     resendApiKey: env.RESEND_API_KEY ?? '',
     emailFrom: env.EMAIL_FROM ?? 'Paryaj Paw <onboarding@resend.dev>',
+    smtpHost: env.SMTP_HOST ?? 'smtp.gmail.com',
+    smtpPort: integer('SMTP_PORT', 465),
+    smtpUser: env.SMTP_USER ?? '',
+    smtpPass: env.SMTP_PASS ?? '',
   };
 }

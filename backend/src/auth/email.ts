@@ -1,10 +1,42 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { createTransport, Transporter } from 'nodemailer';
 import { AppConfig, CONFIG } from '../config';
 
 export const EMAIL_SENDER = Symbol('EMAIL_SENDER');
 
 export interface EmailSender {
   send(to: string, subject: string, text: string): Promise<void>;
+}
+
+/**
+ * Envoie les e-mails par SMTP (ex. Gmail avec un « mot de passe d'application ») : solution sans domaine,
+ * capable d'écrire à n'importe quelle adresse. L'expéditeur est le compte SMTP lui-même (Gmail le réécrit
+ * de toute façon). Hors production, le code est aussi journalisé pour la démo.
+ */
+@Injectable()
+export class SmtpEmailSender implements EmailSender {
+  private readonly logger = new Logger('Email');
+  private readonly transport: Transporter;
+  private readonly from: string;
+
+  constructor(@Inject(CONFIG) private readonly config: AppConfig) {
+    this.transport = createTransport({
+      host: config.smtpHost,
+      port: config.smtpPort,
+      secure: config.smtpPort === 465,
+      auth: { user: config.smtpUser, pass: config.smtpPass },
+    });
+    this.from = `Paryaj Paw <${config.smtpUser}>`;
+  }
+
+  async send(to: string, subject: string, text: string): Promise<void> {
+    if (this.config.env !== 'production') this.logger.log(`→ ${to} : ${subject} : ${text}`);
+    try {
+      await this.transport.sendMail({ from: this.from, to, subject, text });
+    } catch (error) {
+      this.logger.warn(`Envoi SMTP impossible : ${error instanceof Error ? error.message : error}`);
+    }
+  }
 }
 
 /**
