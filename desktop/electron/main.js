@@ -82,9 +82,7 @@ function autoOpenTv() {
 
 function openTvWindow(page, remember = true) {
   if (remember) writeConfig({ tvPage: page });
-  const server = readConfig().server;
-  if (!server) return win.loadFile('config.html');
-  const url = `${server}/${page}`;
+  const url = `${serverUrl()}/${page}`;
   if (tvWin && !tvWin.isDestroyed()) {
     tvWin.loadURL(url);
     tvWin.focus();
@@ -212,10 +210,15 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  // Si le serveur est injoignable, revenir à l'écran de configuration.
+  // Serveur injoignable : avec le serveur par défaut (en ligne), on ne demande JAMAIS l'adresse — simple message qui réessaie
+  // tout seul. L'écran de configuration ne s'ouvre automatiquement que si une adresse personnalisée a été saisie.
   win.webContents.on('did-fail-load', (_e, code, desc, url) => {
     if (code === -3 || !url.startsWith('http')) return; // -3 = chargement annulé (navigation normale)
-    win.loadFile('config.html');
+    if (readConfig().server) return win.loadFile('config.html');
+    const page = '<meta charset="utf-8"><body style="font:20px Segoe UI,sans-serif;background:#14285f;color:#fff;display:grid;place-items:center;height:100vh;margin:0;text-align:center">'
+      + '<div><h2>Pas de connexion à Internet</h2><p>Nouvel essai automatique dans quelques secondes…</p><p style="opacity:.6;font-size:14px">' + desc + '</p></div>'
+      + '<script>setTimeout(function(){location.href=' + JSON.stringify(serverUrl() + '/caisse.html') + '},5000)</script>';
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page));
   });
 
   buildMenu();
