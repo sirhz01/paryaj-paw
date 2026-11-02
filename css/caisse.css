@@ -95,3 +95,10 @@ button { font: inherit; cursor: pointer; }
 .login input { padding: .55rem; border: 1px solid var(--line); border-radius: 8px; font-size: 1rem; }
 
 @media (max-width: 600px) { .grid { padding: 0 .6rem .8rem; } .nums { grid-template-columns: repeat(5, 1fr); } .rt { overflow-x: auto; } .payrow { flex-wrap: wrap; } }
+
+/* Argent attendu dans la caisse, affiché en continu pour le caissier (ouverture + ventes − décaissements). */
+.bar .cashbox { display: flex; align-items: baseline; gap: .5rem; padding: .35rem .9rem; border-radius: 10px;
+  background: #e8f5ec; border: 2px solid #1f9d55; white-space: nowrap; }
+.bar .cashbox span { font-size: .72rem; color: #1f6b3a; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.bar .cashbox b { font-size: 1.35rem; color: #157347; font-weight: 800; }
+.bar .cashbox.hidden { display: none; }

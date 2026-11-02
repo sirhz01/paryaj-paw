@@ -299,6 +299,14 @@ export class ShopController {
     return this.tickets.openShift(staff, dto.cents);
   }
 
+  /** Argent attendu dans la caisse pour la session en cours (ouverture + ventes − décaissements), pour l'afficher. */
+  @Get('shift/current')
+  @UseGuards(StaffGuard)
+  @Roles('cashier')
+  currentShift(@CurrentStaff() staff: StaffPrincipal) {
+    return this.tickets.currentShift(staff);
+  }
+
   @Get('report')
   @UseGuards(StaffGuard)
   @Roles('cashier', 'super_admin', 'finance', 'auditor')

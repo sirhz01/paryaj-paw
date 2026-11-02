@@ -296,6 +296,61 @@ export class TicketsService {
     });
   }
 
+  /**
+   * Argent attendu dans la caisse pour la session en cours du caissier : ouverture déclarée + ventes − décaissements
+   * depuis le début du service. Permet d'afficher en temps réel le montant qui doit se trouver dans le tiroir.
+   */
+  async currentShift(staff: Seller): Promise<{
+    openingCents: number;
+    stakesCents: number;
+    payoutsCents: number;
+    tickets: number;
+    payouts: number;
+    cashCents: number;
+    open: boolean;
+  }> {
+    const empty = { openingCents: 0, stakesCents: 0, payoutsCents: 0, tickets: 0, payouts: 0, cashCents: 0, open: false };
+    if (staff.role !== 'cashier') return empty;
+    const login = await this.db.query<{ at: Date }>(
+      "SELECT max(created_at) AS at FROM audit_log WHERE staff_id = $1 AND action = 'staff.login'",
+      [staff.id],
+    );
+    const startedAt = login.rows[0]?.at;
+    if (!startedAt) return empty;
+    // Comme à la fermeture : compter depuis la fin du rapport précédent si une session est restée ouverte.
+    const prev = await this.db.query<{ at: Date | null }>('SELECT max(ended_at) AS at FROM cashier_reports WHERE staff_id = $1', [staff.id]);
+    const countFrom = prev.rows[0]?.at && prev.rows[0].at < startedAt ? prev.rows[0].at : startedAt;
+    const { rows } = await this.db.query<{
+      tickets: number;
+      stakes: number;
+      payouts: number;
+      payoutsCents: number;
+      opening: number | null;
+    }>(
+      `SELECT (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2)::int AS tickets,
+              (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2)::bigint AS stakes,
+              (SELECT count(*) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $2)::int AS payouts,
+              (SELECT COALESCE(sum(amount_cents), 0) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $2)::bigint AS "payoutsCents",
+              (SELECT (details->>'openingCents')::bigint FROM audit_log
+                 WHERE staff_id = $1 AND action = 'shift.open' AND created_at >= $3 ORDER BY id DESC LIMIT 1) AS opening`,
+      [staff.id, countFrom, startedAt],
+    );
+    const r = rows[0];
+    const opening = r.opening === null || r.opening === undefined;
+    const openingCents = Number(r.opening ?? 0);
+    const stakesCents = Number(r.stakes);
+    const payoutsCents = Number(r.payoutsCents);
+    return {
+      openingCents,
+      stakesCents,
+      payoutsCents,
+      tickets: Number(r.tickets),
+      payouts: Number(r.payouts),
+      cashCents: openingCents + stakesCents - payoutsCents,
+      open: !opening,
+    };
+  }
+
   /** Derniers rapports de caissier, du plus récent au plus ancien. */
   async cashierReports(limit: number) {
     const { rows } = await this.db.query(

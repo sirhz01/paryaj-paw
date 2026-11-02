@@ -45,8 +45,19 @@ PP.ready.then(function () {
   /* ---------- Argent en caisse : déclaré au début et à la fin du service ---------- */
   const shiftOpened = () => { try { return sessionStorage.getItem('pp.shiftOpen') === PP.api.token; } catch (e) { return true; } };
   const askOpeningCash = () => { $('coAmount').value = ''; $('coMsg').textContent = ''; $('cashOpen').classList.remove('hidden'); $('coAmount').focus(); };
+  // Argent qui doit se trouver dans la caisse, affiché en continu : ouverture déclarée + ventes − décaissements.
+  const refreshCash = async () => {
+    if (!online || !PP.api.token) return void $('cashBox').classList.add('hidden');
+    try {
+      const s = await PP.api.shiftCurrent();
+      if (!s || !s.open) return void $('cashBox').classList.add('hidden');
+      $('cashAmt').textContent = PP.money(s.cashCents / 100);
+      $('cashBox').classList.remove('hidden');
+    } catch (e) { $('cashBox').classList.add('hidden'); }
+  };
   if (online && PP.api.token && !shiftOpened()) askOpeningCash();
   else if (online && !PP.api.token) needLogin();
+  else if (online && PP.api.token) refreshCash();
   $('cashOpenForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const cents = Math.round(Number($('coAmount').value) * 100);
@@ -55,6 +66,7 @@ PP.ready.then(function () {
       await PP.api.openShift(cents);
       try { sessionStorage.setItem('pp.shiftOpen', PP.api.token); } catch (err) { /* stockage bloqué */ }
       $('cashOpen').classList.add('hidden');
+      refreshCash();
     } catch (err) { $('coMsg').textContent = PP.api.message(err); $('coMsg').className = 'msg err'; }
   });
   $('cashCloseForm').addEventListener('submit', async (e) => {
@@ -64,6 +76,7 @@ PP.ready.then(function () {
     await PP.api.endShift(cents);
     try { sessionStorage.removeItem('pp.shiftOpen'); } catch (err) { /* stockage bloqué */ }
     $('cashClose').classList.add('hidden');
+    $('cashBox').classList.add('hidden');
     lockTerminal(null); needLogin();
   });
   $('ccCancel').addEventListener('click', () => $('cashClose').classList.add('hidden'));
@@ -235,6 +248,7 @@ PP.ready.then(function () {
     slip = []; picks = []; syncNums(); renderSlip();
     flash(`Ticket ${t.id} imprimé · tour ${t.round}`);
     renderHistory();
+    refreshCash();
   });
 
   function showTicket(html) {
@@ -306,6 +320,7 @@ PP.ready.then(function () {
     btn.classList.add('hidden'); payTicket = null;
     setPay(`Décaissement de ${PP.money(win)} imprimé.`, 'ok');
     renderHistory();
+    refreshCash();
   });
 
   /* ---------- Historique ---------- */

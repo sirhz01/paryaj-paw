@@ -165,6 +165,7 @@
     },
     /** Début de service : argent que le caissier a en caisse (centimes). */
     openShift: (cents) => A.call('POST', '/shop/shift/open', { cents }),
+    shiftCurrent: () => A.call('GET', '/shop/shift/current'),
     /** Un 401 efface la session : l'écran de connexion revient. */
     async call(method, path, body) {
       try { return await http(method, path, body, A.token); } catch (e) { if (e.status === 401) { A.token = null; if (A.onExpire) A.onExpire(); } throw e; }
