@@ -42,6 +42,8 @@ export default defineConfig({
   plugins: [react(), seoFiles()],
   server: {
     port: 5173,
+    // Autorise l'accès via un tunnel (Cloudflare) pour tester le site en ligne depuis un autre appareil.
+    allowedHosts: ['.trycloudflare.com', 'paryajpaw.online', '.paryajpaw.online'],
     proxy: {
       '/api': {
         target: process.env.API_URL || 'http://localhost:3000',
