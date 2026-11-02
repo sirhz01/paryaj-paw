@@ -334,7 +334,7 @@ export function validateTimings(t: unknown): string[] {
       const v = g[name];
       if (!Number.isInteger(v) || (v as number) < min || (v as number) > max) errors.push(`${game} : ${label} entre ${min} et ${max} secondes`);
     };
-    check('bet', 10, 300, 'mises');
+    check('bet', 10, 1800, 'mises');
     check('draw', TIMINGS[game].draw, 120, 'tirage');
     check('result', 5, 120, 'résultat');
   }

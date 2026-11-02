@@ -109,12 +109,19 @@ PP.ready.then(function () {
   const MIN_DRAW = { roulette: 11, keno: 30, luckysix: 32, luckyx: 24 };
   const tmText = (t) => Object.keys(GAMES).map((g) => GAMES[g] + ' ' + t[g].bet + '/' + t[g].draw + '/' + t[g].result).join(' · ');
   function renderTimings(t) {
-    $('timings').innerHTML = '<div class="tmrow tmhead"><span></span><span>Mises</span><span>Tirage (min.)</span><span>Résultat</span></div>'
+    $('timings').innerHTML = '<div class="tmrow tmhead"><span></span><span>Durée du tour (minutes)</span><span>Mises</span><span>Tirage (min.)</span><span>Résultat</span></div>'
       + Object.keys(GAMES).map((g) => '<div class="tmrow"><b>' + GAMES[g] + '</b>'
-        + '<input type="number" min="10" max="300" step="1" id="tm:' + g + ':bet" value="' + t[g].bet + '" aria-label="' + GAMES[g] + ' : durée des mises">'
+        + '<input type="number" min="0.5" max="35" step="any" class="tmtotal" id="tm:' + g + ':total" value="' + +((t[g].bet + t[g].draw + t[g].result) / 60).toFixed(2) + '" aria-label="' + GAMES[g] + ' : durée totale d’un tour en minutes">'
+        + '<input type="number" min="10" max="1800" step="1" id="tm:' + g + ':bet" value="' + t[g].bet + '" aria-label="' + GAMES[g] + ' : durée des mises">'
         + '<span class="tmdraw"><input type="number" min="' + MIN_DRAW[g] + '" max="120" step="1" id="tm:' + g + ':draw" value="' + t[g].draw + '" aria-label="' + GAMES[g] + ' : durée du tirage"><small>' + MIN_DRAW[g] + '</small></span>'
         + '<input type="number" min="5" max="120" step="1" id="tm:' + g + ':result" value="' + t[g].result + '" aria-label="' + GAMES[g] + ' : durée du résultat"></div>').join('');
     $('timings').querySelectorAll('input').forEach((el) => { el.disabled = !canEdit(); });
+    /* Durée du tour en minutes : les secondes de « Mises » s'ajustent (durée − tirage − résultat) ; l'inverse met la durée à jour. */
+    for (const g of Object.keys(GAMES)) {
+      const v = (k) => $('tm:' + g + ':' + k);
+      v('total').addEventListener('input', () => { v('bet').value = Math.round(Number(v('total').value) * 60 - Number(v('draw').value) - Number(v('result').value)); });
+      ['bet', 'draw', 'result'].forEach((k) => v(k).addEventListener('input', () => { v('total').value = +((Number(v('bet').value) + Number(v('draw').value) + Number(v('result').value)) / 60).toFixed(2); }));
+    }
     if (timingPlan) {
       $('timingsPlan').textContent = 'Aujourd’hui (mises/tirage/résultat) : ' + tmText(timingPlan.today)
         + (JSON.stringify(timingPlan.today) === JSON.stringify(timingPlan.tomorrow) ? '. Demain : pareil.' : '. Demain : ' + tmText(timingPlan.tomorrow) + '.');
