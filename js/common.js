@@ -94,7 +94,7 @@
       case 'roulette': return { n: PP.R.ORDER[Math.floor(rnd() * 38)] };
       case 'keno': return { draw: sample(rnd, 80, 20) };
       case 'luckysix': return { draw: sample(rnd, 48, 35) };
-      case 'luckyx': return { draw: sample(rnd, 80, 36).sort((a, b) => a - b) };
+      case 'luckyx': return { draw: sample(rnd, 50, 36).sort((a, b) => a - b) };
     }
   };
 
@@ -110,6 +110,10 @@
   };
   PP.ballColor = (n) => PP.COLORS[n % 8];
   PP.ballText = (n) => (n % 8 === 6 || n % 8 === 3) ? '#10161c' : '#fff';
+  /* Lucky X (50 boules) : 5 couleurs selon le reste de n ÷ 5 — 1 rouge, 2 bleu, 3 vert, 4 jaune, 5 mauve. */
+  const LX_COLORS = { 1: '#e53935', 2: '#2740d6', 3: '#1fbf55', 4: '#f2d31b', 0: '#8e44ad' };
+  PP.lxColor = (n) => LX_COLORS[n % 5];
+  PP.lxText = (n) => (n % 5 === 4 ? '#10161c' : '#fff');
 
   /* ---------- Boucle d'écran ---------- */
   PP.run = function (game, h) {

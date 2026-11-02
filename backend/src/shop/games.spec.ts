@@ -29,7 +29,7 @@ const PAYTABLES: ShopPaytables = {
     '10': { '5': 2, '6': 10, '7': 50, '8': 300, '9': 2500, '10': 10000 },
   },
   luckysix: [10000, 7500, 5000, 2500, 1000, 500, 300, 200, 150, 100, 80, 60, 40, 30, 25, 20, 18, 16, 14, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
-  luckyx: { single: 2.04, tiers: { '2': 4.61, '3': 10.6, '4': 24.7, '5': 58.7, '6': 142, '7': 350, '8': 881, '9': 2266, '10': 5959 } },
+  luckyx: { single: 1.27, tiers: { '2': 1.78, '3': 2.52, '4': 3.59, '5': 5.17, '6': 7.5, '7': 11, '8': 16.3, '9': 24.4, '10': 37.1 } },
 };
 
 const line = (partial: Partial<TicketLine> & Pick<TicketLine, 'picks'>): TicketLine => ({
@@ -167,14 +167,14 @@ describe('Lucky Six', () => {
 describe('Lucky X', () => {
   it('pari simple : gagne si le numéro est parmi les 36 boules tirées', () => {
     const l = numbersLine('luckyx', [9], 100, PAYTABLES)!;
-    expect(l).toMatchObject({ label: 'Pari simple', odds: 2.04 });
-    expect(lineWin('luckyx', l, { draw: [1, 2, 3, 4, 5, 9, 10] }, PAYTABLES)).toBe(204);
+    expect(l).toMatchObject({ label: 'Pari simple', odds: 1.27 });
+    expect(lineWin('luckyx', l, { draw: [1, 2, 3, 4, 5, 9, 10] }, PAYTABLES)).toBe(127);
     expect(lineWin('luckyx', l, { draw: [1, 2, 3, 4, 5, 6, 10] }, PAYTABLES)).toBe(0);
   });
 
   it('N numéros : tous doivent être tirés', () => {
     const l = numbersLine('luckyx', [4, 8, 15], 100, PAYTABLES)!;
-    expect(lineWin('luckyx', l, { draw: [15, 8, 4, 40] }, PAYTABLES)).toBe(1060);
+    expect(lineWin('luckyx', l, { draw: [15, 8, 4, 40] }, PAYTABLES)).toBe(252);
     expect(lineWin('luckyx', l, { draw: [15, 8, 40] }, PAYTABLES)).toBe(0);
   });
 });
@@ -194,8 +194,8 @@ describe('checkPicks', () => {
     expect(checkPicks('keno', [1, 1])).toMatch(/double/);
     expect(checkPicks('keno', [81])).toMatch(/1 à 80/);
     expect(checkPicks('luckysix', [1, 2, 3, 4, 5])).toMatch(/6 à 6/);
-    expect(checkPicks('luckyx', [0])).toMatch(/1 à 80/);
-    expect(checkPicks('luckyx', [1.5])).toMatch(/1 à 80/);
+    expect(checkPicks('luckyx', [0])).toMatch(/1 à 50/);
+    expect(checkPicks('luckyx', [1.5])).toMatch(/1 à 50/);
   });
 });
 
@@ -246,8 +246,8 @@ describe('RTP', () => {
     expect(rtp('keno', '1 numéros')).toBeCloseTo(75, 2);
     expect(rtp('keno', '2 numéros')).toBeCloseTo(114.24, 2);
     expect(rtp('luckysix', '6 numéros')).toBeCloseTo(85.9, 1);
-    expect(rtp('luckyx', '1 numéro')).toBeCloseTo(91.8, 2);
-    expect(rtp('luckyx', '2 boules')).toBeCloseTo(91.91, 1);
+    expect(rtp('luckyx', '1 numéro')).toBeCloseTo(91.44, 2);
+    expect(rtp('luckyx', '2 boules')).toBeCloseTo(91.54, 1);
   });
 
   it('validatePaytables refuse une ligne qui rend plus que la mise', () => {

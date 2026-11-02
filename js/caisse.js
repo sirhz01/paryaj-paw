@@ -12,7 +12,7 @@ PP.ready.then(function () {
   const NUM = {   // paramètres des grilles de numéros
     keno:     { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80' },
     luckysix: { max: 48, min: 6, maxPick: 6,  text: 'Choisir exactement 6 numéros sur 48' },
-    luckyx:   { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80 (36 boules tirées, en ordre croissant)' },
+    luckyx:   { max: 50, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 50 (36 boules tirées, en ordre croissant)' },
   };
 
   /* ---------- En-tête ---------- */
@@ -162,7 +162,7 @@ PP.ready.then(function () {
     $('quickN').innerHTML = Array.from({ length: c.maxPick - c.min + 1 }, (_, i) => `<option>${c.min + i}</option>`).join('');
     $('quickN').value = c.maxPick;
     $('nums').innerHTML = Array.from({ length: c.max }, (_, i) => {
-      const n = i + 1, col = game === 'keno' ? '' : `colored" style="--c:${PP.ballColor(n)};--txt:${PP.ballText(n)}`;
+      const n = i + 1, col = game === 'keno' ? '' : `colored" style="--c:${game === 'luckyx' ? PP.lxColor(n) : PP.ballColor(n)};--txt:${game === 'luckyx' ? PP.lxText(n) : PP.ballText(n)}`;
       return `<button class="${col}" data-n="${n}">${n}</button>`;
     }).join('');
     syncNums();

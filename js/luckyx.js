@@ -1,11 +1,12 @@
-/* Écran TV : Lucky X. 36 boules sur 80, annoncées dans l'ordre croissant : 18 de chaque côté du tambour (3 rangées de 6) ;
+/* Écran TV : Lucky X. 36 boules sur 50, annoncées dans l'ordre croissant, en 6 colonnes de 6 boules (3 colonnes de chaque côté du tambour) ;
+   chaque colonne se remplit de haut en bas avant de passer à la suivante ;
    paliers N boules en bas, numéro de séquence au centre. */
 PP.ready.then(function () {
   const $ = (id) => document.getElementById(id), body = document.body, STEP = 0.62, DRAWN = 36, PER_SIDE = 18;
   const setTop = PP.topbar('LUCKY X');
   const drum = PP.drum($('drum'), 28);
 
-  const ballHTML = (n, cls = '') => `<span class="ball ${cls}" style="background:${PP.ballColor(n)};color:${PP.ballText(n)}">${n}</span>`;
+  const ballHTML = (n, cls = '') => `<span class="ball ${cls}" style="background:${PP.lxColor(n)};color:${PP.lxText(n)}">${n}</span>`;
   const empty = '<span class="ball empty">0</span>';
   const tiers = Object.entries(PP.LUCKYX_TIERS);
 
@@ -15,7 +16,8 @@ PP.ready.then(function () {
     + '<div class="seq"><b id="seqN">–</b><small>DRAW SEQUENCE</small></div>'
     + tiers.slice(4).map(([n, v]) => `<div class="t" data-n="${n}"><small>${n} BALLS</small><b>${PP.short(v)}</b></div>`).join('');
 
-  const slotOf = (i) => (i < PER_SIDE ? $('sl') : $('sr')).children[i % PER_SIDE];
+  // colonne c = i ÷ 6 (0-2 à gauche, 3-5 à droite), rangée = i mod 6 ; la grille de chaque côté a 3 colonnes de 6 rangées.
+  const slotOf = (i) => { const col = Math.floor(i / 6); return (col < 3 ? $('sl') : $('sr')).children[(i % 6) * 3 + (col % 3)]; };
   let shown = 0, res = null, cur = '';
 
   function reveal(n) {

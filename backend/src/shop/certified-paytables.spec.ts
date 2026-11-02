@@ -8,9 +8,9 @@ function certifiedPaytables(): ShopPaytables {
   const match = sql.match(/'(\{[\s\S]*?\})'::jsonb/);
   if (!match) throw new Error('paytables introuvables dans 009_shop_paytables_rtp.sql');
   const base = JSON.parse(match[1]) as ShopPaytables;
-  // Lucky X (36 boules sur 80) : table de la migration 013, qui remplace celle de 009.
-  const luckyx = readFileSync(join(__dirname, '..', '..', 'migrations', '013_luckyx_36_of_80.sql'), 'utf8').match(/'(\{\s*"single"[\s\S]*?\})'::jsonb/);
-  if (!luckyx) throw new Error('table Lucky X introuvable dans 013_luckyx_36_of_80.sql');
+  // Lucky X (36 boules sur 50) : table de la migration 015, qui remplace celle de 009.
+  const luckyx = readFileSync(join(__dirname, '..', '..', 'migrations', '015_luckyx_36_of_50.sql'), 'utf8').match(/'(\{\s*"single"[\s\S]*?\})'::jsonb/);
+  if (!luckyx) throw new Error('table Lucky X introuvable dans 015_luckyx_36_of_50.sql');
   return { ...base, luckyx: JSON.parse(luckyx[1]) as ShopPaytables['luckyx'] };
 }
 

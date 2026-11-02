@@ -25,7 +25,7 @@ export type NumberGame = 'keno' | 'luckysix' | 'luckyx';
 export const NUMBER_GAMES: Record<NumberGame, { max: number; min: number; maxPick: number; drawn: number }> = {
   keno: { max: 80, min: 1, maxPick: 10, drawn: 20 },
   luckysix: { max: 48, min: 6, maxPick: 6, drawn: 35 },
-  luckyx: { max: 80, min: 1, maxPick: 10, drawn: 36 },
+  luckyx: { max: 50, min: 1, maxPick: 10, drawn: 36 },
 };
 
 export interface ShopPaytables {
