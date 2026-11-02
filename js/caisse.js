@@ -50,6 +50,9 @@ PP.ready.then(function () {
       const s = await PP.api.shiftCurrent();
       if (!s || !s.open) return void $('cashBox').classList.add('hidden');
       $('cashAmt').textContent = PP.money(s.cashCents / 100);
+      $('cashOpenAmt').textContent = PP.money(s.openingCents / 100);
+      $('cashIn').textContent = '+' + PP.money(s.stakesCents / 100);
+      $('cashOut').textContent = '−' + PP.money(s.payoutsCents / 100);
       $('cashBox').classList.remove('hidden');
     } catch (e) { $('cashBox').classList.add('hidden'); }
   };
@@ -244,7 +247,8 @@ PP.ready.then(function () {
     showTicket(PP.ticketHTML(t));
     PP.printHTML(PP.ticketHTML(t));
     slip = []; picks = []; syncNums(); renderSlip();
-    flash(`Ticket ${t.id} imprimé · tour ${t.round}`);
+    const encaisse = (t.lines || []).reduce((a, l) => a + (l.stake || 0), 0);
+    flash(`Ticket ${t.id} · ${PP.money(encaisse)} encaissé · tour ${t.round}`);
     renderHistory();
     refreshCash();
   });

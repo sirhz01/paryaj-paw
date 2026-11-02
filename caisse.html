@@ -30,8 +30,13 @@
   <header class="bar">
     <a href="index.html"><img class="logo" src="assets/logo.jpg" alt="La Référence Paryaj Paw"></a>
     <div class="shop"><b id="shopName"></b><span id="clock"></span></div>
-    <div class="cashbox hidden" id="cashBox" title="Argent qui doit se trouver dans la caisse (ouverture + ventes − décaissements)">
-      <span>Caisse</span><b id="cashAmt">—</b>
+    <div class="cashbox hidden" id="cashBox" title="Mouvements d'argent de la caisse, en temps réel">
+      <div class="cb-main"><span>En caisse</span><b id="cashAmt">—</b></div>
+      <div class="cb-sub">
+        <span class="cb-open">Ouverture <b id="cashOpenAmt">—</b></span>
+        <span class="cb-in">Entrées (ventes) <b id="cashIn">—</b></span>
+        <span class="cb-out">Sorties (décaiss.) <b id="cashOut">—</b></span>
+      </div>
     </div>
     <button class="ghost hidden" id="logoutBtn" title="Fermer la session">Déconnexion</button>
     <label class="caisse">Caisse

@@ -96,9 +96,14 @@ button { font: inherit; cursor: pointer; }
 
 @media (max-width: 600px) { .grid { padding: 0 .6rem .8rem; } .nums { grid-template-columns: repeat(5, 1fr); } .rt { overflow-x: auto; } .payrow { flex-wrap: wrap; } }
 
-/* Argent attendu dans la caisse, affiché en continu pour le caissier (ouverture + ventes − décaissements). */
-.bar .cashbox { display: flex; align-items: baseline; gap: .5rem; padding: .35rem .9rem; border-radius: 10px;
+/* Mouvements d'argent de la caisse, affichés en continu pour le caissier (ouverture, entrées, sorties, solde). */
+.bar .cashbox { display: flex; flex-direction: column; gap: .15rem; padding: .3rem .9rem; border-radius: 10px;
   background: #e8f5ec; border: 2px solid #1f9d55; white-space: nowrap; }
-.bar .cashbox span { font-size: .72rem; color: #1f6b3a; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
-.bar .cashbox b { font-size: 1.35rem; color: #157347; font-weight: 800; }
 .bar .cashbox.hidden { display: none; }
+.bar .cashbox .cb-main { display: flex; align-items: baseline; gap: .5rem; }
+.bar .cashbox .cb-main span { font-size: .72rem; color: #1f6b3a; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.bar .cashbox .cb-main b { font-size: 1.4rem; color: #157347; font-weight: 800; }
+.bar .cashbox .cb-sub { display: flex; gap: .9rem; font-size: .72rem; color: #4a6b57; }
+.bar .cashbox .cb-sub b { font-weight: 700; color: #2b2b2b; }
+.bar .cashbox .cb-in b { color: #157347; }
+.bar .cashbox .cb-out b { color: #b4232a; }
