@@ -7,7 +7,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm install (et non npm ci) : tolère un lock-file légèrement désynchronisé et le répare dans l'image.
+RUN npm install --no-audit --no-fund
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
 RUN npm run build
@@ -18,7 +19,7 @@ ENV NODE_ENV=production
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/dist ./dist
 # Les fichiers de migration sont lus à l'exécution (migrateOnBoot en production).
 COPY migrations ./migrations
