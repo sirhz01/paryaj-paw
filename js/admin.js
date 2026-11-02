@@ -316,6 +316,7 @@ PP.ready.then(function () {
       timingPlan = r.timings; settings = r.settings;
       $('shopName').textContent = settings.pointOfSale;
       fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
+      $('login').classList.add('hidden'); // l'écran de connexion reste affiché tant que la session n'est pas validée
       if (canEdit()) loadCashiers();
       loadShifts();
     } catch (e) {

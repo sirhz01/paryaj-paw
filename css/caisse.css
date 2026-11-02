@@ -87,7 +87,7 @@ button { font: inherit; cursor: pointer; }
 
 /* Mode démo et connexion */
 .banner { background: var(--red); color: #fff; text-align: center; padding: .45rem 1rem; font-weight: 600; font-size: .85rem; }
-.login { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(20, 40, 95, .85); padding: 1rem; }
+.login { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: #14285f; padding: 1rem; }
 .login form { width: min(24rem, 100%); display: grid; gap: .7rem; border-radius: 10px; }
 .login .logo { width: 100%; max-width: 16rem; margin: 0 auto; }
 .login h2 { text-align: center; margin: 0; }

@@ -56,6 +56,8 @@ PP.ready.then(function () {
       $('cashBox').classList.remove('hidden');
     } catch (e) { $('cashBox').classList.add('hidden'); }
   };
+  // L'écran de connexion est visible dès le chargement de la page (le HTML ne le cache pas) : on ne le retire que si une session existe.
+  if (!online || PP.api.token) $('login').classList.add('hidden');
   if (online && PP.api.token && !shiftOpened()) askOpeningCash();
   else if (online && !PP.api.token) needLogin();
   else if (online && PP.api.token) refreshCash();
