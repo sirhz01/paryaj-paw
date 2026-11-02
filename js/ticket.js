@@ -24,6 +24,12 @@
   }
 
   const row = (a, b, cls = '') => `<div class="r ${cls}"><span>${a}</span><span>${b}</span></div>`;
+  /* Moment du tirage du tour (= fin des mises) : indique au client à quel moment son jeu a lieu. */
+  const drawTimeOf = (t) => {
+    const g = PP.GAMES[t.game];
+    if (!g || !t.day || !t.round) return '';
+    return PP.dateTime(t.day + (t.round - 1) * PP.cycle(t.game) * 1000 + g.bet * 1000, false);
+  };
   const head = (title, t) => `
     <img class="logo" src="assets/logo.jpg" alt="La Référence Paryaj Paw">
     <div class="shop">Point de vente: ${PP.esc(PP.SHOP.pointDeVente)}<br>Périphérique: ${PP.esc(t.caisse)}<br>Émetteur: ${PP.esc(PP.SHOP.emetteur)}</div>
@@ -32,7 +38,7 @@
     ${row('Délivré', PP.dateTime(t.time))}
     ${row('ID de ticket', t.id)}
     <hr>
-    <div class="tour">Tour: ${t.round}</div>
+    <div class="tour">Tour: ${t.round}${drawTimeOf(t) ? ' &middot; Tirage: ' + drawTimeOf(t) : ''}</div>
     <hr>`;
 
   /* Ticket de mise. */
