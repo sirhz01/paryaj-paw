@@ -214,9 +214,8 @@ function createWindow() {
   // tout seul. L'écran de configuration ne s'ouvre automatiquement que si une adresse personnalisée a été saisie.
   win.webContents.on('did-fail-load', (_e, code, desc, url) => {
     if (code === -3 || !url.startsWith('http')) return; // -3 = chargement annulé (navigation normale)
-    if (readConfig().server) return win.loadFile('config.html');
     const page = '<meta charset="utf-8"><body style="font:20px Segoe UI,sans-serif;background:#14285f;color:#fff;display:grid;place-items:center;height:100vh;margin:0;text-align:center">'
-      + '<div><h2>Pas de connexion à Internet</h2><p>Nouvel essai automatique dans quelques secondes…</p><p style="opacity:.6;font-size:14px">' + desc + '</p></div>'
+      + '<div><h2>Pas de connexion à Internet</h2><p>Nouvel essai automatique dans quelques secondes…</p><p style="opacity:.6;font-size:14px">' + desc + '</p><p style="opacity:.6;font-size:14px">Menu Boutique → Changer de serveur…</p></div>'
       + '<script>setTimeout(function(){location.href=' + JSON.stringify(serverUrl() + '/caisse.html') + '},5000)</script>';
     win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page));
   });
@@ -247,6 +246,13 @@ ipcMain.handle('config:save', (_e, raw) => {
 });
 
 app.whenReady().then(() => {
+  // Migration : les anciennes versions gardaient l'adresse d'un serveur local (IP du portable serveur). Une fois pour toutes,
+  // on l'oublie pour revenir au serveur en ligne ; « Boutique → Changer de serveur… » reste possible ensuite.
+  if (readConfig().serverMigrated !== 1) {
+    const cfg = { ...readConfig(), serverMigrated: 1 };
+    delete cfg.server;
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  }
   createWindow();
   // Écran TV automatique : au démarrage, puis dès que la TV (HDMI) est branchée ; fermé si elle est débranchée.
   win.webContents.once('did-finish-load', () => setTimeout(autoOpenTv, 800));
