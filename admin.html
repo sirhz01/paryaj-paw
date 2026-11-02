@@ -151,6 +151,19 @@
         </form>
         <div class="msg" id="emMsg"></div>
       </div>
+      <div class="card" id="adminsCard">
+        <h2>Administrateurs</h2>
+        <p class="hint">Ajoutez une personne qui pourra se connecter à cette administration avec son <b>e-mail</b> et son <b>mot de passe</b>.
+          <b>Accès complet</b> = comme vous (réglages, taux, caissiers). <b>Consultation</b> = voit les rapports et les réglages sans rien pouvoir modifier.</p>
+        <form id="admForm" class="cashnew">
+          <label>E-mail <input type="email" id="aEmail" autocomplete="off" required></label>
+          <label>Mot de passe <input type="text" id="aPass" autocomplete="off" minlength="8" placeholder="8 caractères minimum" required></label>
+          <label>Accès <select id="aRole"><option value="super_admin">Accès complet</option><option value="auditor">Consultation seulement</option></select></label>
+          <button class="primary" type="submit">Ajouter l’administrateur</button>
+        </form>
+        <div class="msg" id="admMsg"></div>
+        <table class="tbl" id="admTbl"></table>
+      </div>
       <div class="card">
         <h2>Caissiers</h2>
         <p class="hint">Chaque caissier se connecte à la caisse avec son <b>e-mail</b> et son <b>mot de passe</b>.

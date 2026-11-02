@@ -10,10 +10,13 @@ PP.ready.then(function () {
   const today = () => PP.dayKey(Date.now() + (PP.offset || 0));
   const addDays = (day, n) => { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
-  let settings = null, role = '', terminals = [], timingPlan = null;
+  let settings = null, myId = '', role = '', terminals = [], timingPlan = null;
 
   function roleOf() {
     try { return JSON.parse(atob(A.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role || ''; } catch (e) { return ''; }
+  }
+  function idOf() {
+    try { return JSON.parse(atob(A.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub || ''; } catch (e) { return ''; }
   }
   const canEdit = () => role === 'super_admin';
   const flash = (el, text, ok) => { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); };
@@ -45,7 +48,7 @@ PP.ready.then(function () {
     [...$('tabs').children].forEach((b) => b.classList.toggle('on', b === t));
     document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('hidden', p.id !== 'tab-' + t.dataset.tab));
     // Rafraîchit la liste et les caisses attribuables à l'ouverture de l'onglet Caissiers.
-    if (t.dataset.tab === 'cashiers' && canEdit()) loadCashiers();
+    if (t.dataset.tab === 'cashiers' && canEdit()) { loadCashiers(); loadAdmins(); }
   });
 
   /* ---------- Rapport ---------- */
@@ -328,6 +331,47 @@ PP.ready.then(function () {
     } catch (err) { flash($('cashMsg'), err.code === 'EMAIL_TAKEN' ? 'Cet e-mail est déjà utilisé.' : errorText(err), false); }
   });
 
+  /* ---------- Administrateurs ---------- */
+  const ROLE_LABEL = { super_admin: 'Accès complet', auditor: 'Consultation', finance: 'Consultation (finance)', support: 'Consultation (support)' };
+  async function loadAdmins() {
+    try {
+      const list = await A.call('GET', '/admin/admins');
+      $('admTbl').innerHTML = '<thead><tr><th>E-mail</th><th>Accès</th><th>État</th><th>Actions</th></tr></thead><tbody>'
+        + list.map((a) => {
+          const me = String(a.id) === String(myId);
+          const badge = a.active ? '<span class="tag ok">Autorisé</span>' : '<span class="tag off">Bloqué</span>';
+          const acts = me ? '<em>vous</em>' : `<button class="ghost" data-act="${a.active ? 'block' : 'allow'}">${a.active ? 'Bloquer' : 'Autoriser'}</button><button class="ghost" data-act="pass">Mot de passe</button>`;
+          return `<tr data-id="${a.id}" data-email="${esc(a.email)}"><td>${esc(a.email)}</td><td>${ROLE_LABEL[a.role] || esc(a.role)}</td><td>${badge}${a.locked ? ' <span class="tag off">verrouillé</span>' : ''}</td><td class="acts">${acts}</td></tr>`;
+        }).join('') + '</tbody>';
+    } catch (e) { $('admTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
+  }
+  $('admForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const r = await A.call('POST', '/admin/admins', { email: $('aEmail').value.trim(), password: $('aPass').value, role: $('aRole').value });
+      const totp = PP.STAFF_TOTP && r.totpSecret ? ` Code d’authentification à configurer dans son application : ${r.totpSecret}` : '';
+      flash($('admMsg'), 'Administrateur ajouté : il peut se connecter tout de suite.' + totp, true);
+      $('aEmail').value = ''; $('aPass').value = '';
+      loadAdmins();
+    } catch (err) { flash($('admMsg'), err.code === 'EMAIL_TAKEN' ? 'Cet e-mail est déjà utilisé.' : err.code === 'VALIDATION_ERROR' ? 'E-mail ou mot de passe trop faible (8 caractères minimum, évitez les suites et les mots courants).' : errorText(err), false); }
+  });
+  $('admTbl').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const tr = b.closest('tr'), id = tr.dataset.id, email = tr.dataset.email;
+    try {
+      if (b.dataset.act === 'pass') {
+        const pass = prompt('Nouveau mot de passe pour ' + email + ' (8 caractères minimum) :');
+        if (!pass) return;
+        await A.call('PATCH', `/admin/admins/${id}/password`, { password: pass });
+        flash($('admMsg'), `Mot de passe de ${email} changé ; ses sessions sont coupées.`, true);
+      } else {
+        await A.call('PATCH', `/admin/admins/${id}/access`, { active: b.dataset.act === 'allow' });
+        flash($('admMsg'), b.dataset.act === 'allow' ? email + ' est autorisé.' : email + ' est bloqué ; sa session est coupée.', true);
+      }
+      loadAdmins();
+    } catch (err) { flash($('admMsg'), errorText(err), false); }
+  });
+
   // Le propriétaire change son propre mot de passe : l'actuel est exigé ; on se reconnecte ensuite.
   $('pwForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -375,7 +419,7 @@ PP.ready.then(function () {
 
   /* ---------- Démarrage ---------- */
   async function start() {
-    role = roleOf();
+    role = roleOf(); myId = idOf();
     $('logoutBtn').classList.remove('hidden');
     $('who').textContent = 'Rôle : ' + role + (canEdit() ? '' : ' (consultation seulement)');
     $('tabCashiers').classList.toggle('hidden', !canEdit());
@@ -385,7 +429,7 @@ PP.ready.then(function () {
       $('shopName').textContent = settings.pointOfSale;
       fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
       $('login').classList.add('hidden'); // l'écran de connexion reste affiché tant que la session n'est pas validée
-      if (canEdit()) loadCashiers();
+      if (canEdit()) { loadCashiers(); loadAdmins(); }
       loadShifts();
     } catch (e) {
       if (e.status !== 401) { A.logout(); showLogin(e.status === 403 ? 'Ce compte n’a pas accès à l’administration (compte propriétaire requis).' : A.message(e)); }
