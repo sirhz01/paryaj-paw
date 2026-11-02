@@ -25,7 +25,9 @@ if listening 5173; then
   echo "→ Site web déjà en marche (:5173)."
 else
   echo "→ Démarrage du site web (Vite) sur http://localhost:5173 …"
-  ( cd "$ROOT/web" && nohup npx vite --port 5173 >/tmp/paryaj-vite.log 2>&1 & )
+  # --host : écoute sur toutes les interfaces (IPv4 comprise), nécessaire pour que le tunnel (cloudflared,
+  # qui joint 127.0.0.1) atteigne Vite ; sans lui, Vite n'écoute que sur [::1] (IPv6) et le tunnel renvoie 404.
+  ( cd "$ROOT/web" && nohup npx vite --host --port 5173 >/tmp/paryaj-vite.log 2>&1 & )
 fi
 
 echo "→ Attente des serveurs …"
