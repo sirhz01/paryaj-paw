@@ -14,6 +14,7 @@ const version = Date.now().toString(36);
 // index.html (joueurs) et les pages légales viennent de l'app React ; on ne copie que la boutique interne + écrans TV.
 const PAGES = ['caisse', 'admin', 'roulette', 'keno', 'luckysix', 'luckyx', '404'];
 const DIRS = ['js', 'css', 'assets'];
+const FILES = ['admin.webmanifest', 'sw-admin.js'];
 
 if (!existsSync(dist)) { console.error('copy-shop: dist introuvable, lancer après vite build'); process.exit(1); }
 
@@ -21,6 +22,8 @@ for (const dir of DIRS) {
   const src = join(repo, dir);
   if (existsSync(src)) cpSync(src, join(dist, dir), { recursive: true });
 }
+
+for (const f of FILES) if (existsSync(join(repo, f))) cpSync(join(repo, f), join(dist, f));
 
 for (const name of PAGES) {
   const src = join(repo, `${name}.html`);

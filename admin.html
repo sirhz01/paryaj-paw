@@ -9,6 +9,7 @@
   <link rel="icon" href="assets/icon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="assets/icon-180.png">
   <meta name="theme-color" content="#14285f">
+  <link rel="manifest" href="admin.webmanifest">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3w6A==" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="css/caisse.css">
   <link rel="stylesheet" href="css/admin.css">
@@ -166,5 +167,6 @@
   <script src="js/common.js"></script>
   <script src="js/api.js"></script>
   <script src="js/admin.js"></script>
+  <script>if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw-admin.js').catch(() => {});</script>
 </body>
 </html>
