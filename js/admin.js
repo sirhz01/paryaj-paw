@@ -59,7 +59,37 @@ PP.ready.then(function () {
         + (rows || '<tr><td colspan="6">Aucune vente ce jour-là.</td></tr>')
         + `<tr class="sum"><td>Total</td><td>${s.tickets}</td><td>${cents(s.stakesCents)}</td><td>${s.payouts}</td><td>${cents(s.payoutsCents)}</td><td class="${net < 0 ? 'neg' : 'pos'}">${cents(net)}</td></tr></tbody>`;
       const u = r.unclaimedWinners;
-      $('repUnclaimed').textContent = u.count ? `${u.count} ticket(s) gagnant(s) pas encore réclamé(s) : ${cents(u.cents)} à prévoir.` : 'Aucun gain en attente de paiement.';
+      $('repUnclaimed').textContent = u.count ? `${u.count} ticket(s) gagnant(s) de ce jour pas encore réclamé(s) : ${cents(u.cents)} à prévoir.` : 'Aucun gain de ce jour en attente de paiement.';
+
+      // Par jeu (tickets du jour de tirage) : mêmes définitions que le rapport de période.
+      const g = { tickets: 0, stakesCents: 0, winsCents: 0, paidCents: 0, pendingTickets: 0 };
+      const grows = r.games.map((x) => {
+        for (const k of Object.keys(g)) g[k] += Number(x[k]);
+        const gg = x.stakesCents - x.winsCents;
+        return `<tr><td>${GAMES[x.game] || esc(x.game)}</td><td>${x.tickets}</td><td>${cents(x.stakesCents)}</td><td>${cents(x.winsCents)}</td><td>${cents(x.paidCents)}</td><td>${x.pendingTickets}</td><td class="${gg < 0 ? 'neg' : 'pos'}">${cents(gg)}</td></tr>`;
+      }).join('');
+      const ggTot = g.stakesCents - g.winsCents;
+      $('repGames').innerHTML = '<thead><tr><th>Jeu</th><th>Tickets</th><th>Mises</th><th>Gains dus</th><th>Payé</th><th>Tirage pas fait</th><th>Bénéfice</th></tr></thead><tbody>'
+        + (grows || '<tr><td colspan="7">Aucun ticket ce jour-là.</td></tr>')
+        + `<tr class="sum"><td>Total</td><td>${g.tickets}</td><td>${cents(g.stakesCents)}</td><td>${cents(g.winsCents)}</td><td>${cents(g.paidCents)}</td><td>${g.pendingTickets}</td><td class="${ggTot < 0 ? 'neg' : 'pos'}">${cents(ggTot)}</td></tr></tbody>`;
+
+      // Sessions de caissier terminées ce jour : attendu = début + ventes − décaissements ; écart = fin déclarée − attendu.
+      let gapSum = 0, gapCount = 0;
+      const srows = r.shifts.map((x) => {
+        const sNet = x.stakesCents - x.payoutsCents, known = x.openingCents !== null && x.closingCents !== null;
+        const exp = known ? x.openingCents + sNet : null, gap = known ? x.closingCents - exp : null;
+        if (known) { gapSum += gap; gapCount++; }
+        return `<tr><td>${esc(x.email)}</td><td>${esc(x.terminal || '—')}</td><td>${PP.dateTime(Date.parse(x.startedAt), false)}</td><td>${PP.dateTime(Date.parse(x.endedAt), false)}</td><td>${x.tickets}</td><td>${cents(x.stakesCents)}</td><td>${cents(x.payoutsCents)}</td><td>${known ? cents(exp) : '—'}</td><td>${x.closingCents === null ? '—' : cents(x.closingCents)}</td>`
+          + `<td class="${gap === null ? '' : gap < 0 ? 'neg' : gap > 0 ? 'pos' : ''}">${gap === null ? '—' : (gap > 0 ? '+' : '') + cents(gap)}</td></tr>`;
+      }).join('');
+      $('repShifts').innerHTML = '<thead><tr><th>Caissier</th><th>Caisse</th><th>Connexion</th><th>Déconnexion</th><th>Tickets</th><th>Ventes</th><th>Gains payés</th><th>Attendu</th><th>Fin déclarée</th><th>Écart</th></tr></thead><tbody>'
+        + (srows || '<tr><td colspan="10">Aucune session terminée ce jour-là.</td></tr>') + '</tbody>';
+
+      // Résumé du jour : tout vient des tableaux ci-dessus.
+      const kpi = (label, value, cls) => `<div class="kpi"><span>${label}</span><b class="${cls || ''}">${value}</b></div>`;
+      $('repKpis').innerHTML = kpi('Ventes (mises)', cents(g.stakesCents)) + kpi('Gains dus', cents(g.winsCents)) + kpi('Gains payés', cents(g.paidCents))
+        + kpi('Reste à payer', cents(u.cents), u.cents > 0 ? 'neg' : '') + kpi('Bénéfice', cents(ggTot), ggTot < 0 ? 'neg' : 'pos')
+        + kpi('Écart de caisse', gapCount ? (gapSum > 0 ? '+' : '') + cents(gapSum) : '—', gapSum < 0 ? 'neg' : gapSum > 0 ? 'pos' : '');
     } catch (e) { $('repTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
   }
 
@@ -141,28 +171,52 @@ PP.ready.then(function () {
     $('fPayout').value = htg(s.maxPayoutCents); $('fApproval').value = htg(s.approvalThresholdCents);
     $('fTop').checked = s.topLineEnabled;
     renderTimings(s.timings);
-    document.querySelectorAll('#setForm input, #setForm .save').forEach((el) => { if (!el.closest('.terms')) el.disabled = !canEdit(); });
+    document.querySelectorAll('#setForm input').forEach((el) => { if (!el.closest('.terms')) el.disabled = !canEdit(); });
   }
 
-  async function save(patch, msgEl) {
-    const { version, createdAt, ...base } = settings;
-    try {
-      const r = await A.call('PUT', '/admin/shop/settings', { ...base, ...patch });
-      timingPlan = r.timings; settings = r.settings; fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
-      flash(msgEl, 'Enregistré (version ' + settings.version + '). Les écrans et la caisse le prennent au prochain rechargement ; les nouveaux temps de jeu à partir de demain 00:00.', true);
-    } catch (e) { flash(msgEl, errorText(e), false); }
+  /* Enregistrement automatique : chaque modification valide est envoyée ~0,7 s plus tard (une seule requête à la fois).
+     Les champs ne sont pas réécrits après l'enregistrement, pour ne pas voler le focus pendant la saisie. */
+  let chain = Promise.resolve();
+  function save(patch, msgEl) {
+    chain = chain.then(async () => {
+      const { version, createdAt, ...base } = settings;
+      try {
+        const r = await A.call('PUT', '/admin/shop/settings', { ...base, ...patch });
+        timingPlan = r.timings; settings = r.settings; renderRtp(r.rtp);
+        $('timingsPlan').textContent = 'Aujourd’hui (mises/tirage/résultat) : ' + tmText(timingPlan.today)
+          + (JSON.stringify(timingPlan.today) === JSON.stringify(timingPlan.tomorrow) ? '. Demain : pareil.' : '. Demain : ' + tmText(timingPlan.tomorrow) + '.');
+        flash(msgEl, 'Enregistré automatiquement à ' + new Date().toLocaleTimeString('fr-FR') + ' (version ' + settings.version + '). Écrans et caisse : au prochain rechargement ; nouveaux temps de jeu : demain 00:00.', true);
+      } catch (e) { flash(msgEl, 'Non enregistré : ' + errorText(e), false); }
+    });
+    return chain;
   }
-  $('setForm').addEventListener('submit', (e) => {
-    e.preventDefault();
+  const autosave = (form, build, msgEl) => {
+    let timer = null;
+    const run = () => {
+      if (!canEdit() || !settings) return;
+      if (!form.checkValidity()) return flash(msgEl, 'Valeur incomplète ou invalide : pas encore enregistré.', false);
+      const r = build();
+      if (typeof r === 'string') return flash(msgEl, r, false);
+      save(r, msgEl);
+    };
+    const later = () => { clearTimeout(timer); flash(msgEl, 'Enregistrement…', true); timer = setTimeout(run, 700); };
+    form.addEventListener('change', later);
+    form.addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(timer); run(); });
+    return later;
+  };
+  const settingsPatch = () => {
     const names = terminals.map((t) => t.trim().toUpperCase());
-    if (names.some((n) => !n) || new Set(names).size !== names.length) return flash($('setMsg'), 'Chaque caisse doit avoir un nom différent.', false);
-    const stakes = $('fStakes').value.split(/[,;\s]+/).filter(Boolean).map(toCents);
-    save({
-      pointOfSale: $('fPos').value.trim(), issuer: $('fIssuer').value.trim(), terminals: names, stakesCents: stakes,
+    if (names.some((n) => !n) || new Set(names).size !== names.length) return 'Chaque caisse doit avoir un nom différent.';
+    return {
+      pointOfSale: $('fPos').value.trim(), issuer: $('fIssuer').value.trim(), terminals: names, stakesCents: $('fStakes').value.split(/[,;s]+/).filter(Boolean).map(toCents),
       minStakeCents: toCents($('fMin').value), maxStakeCents: toCents($('fMax').value), maxTicketCents: toCents($('fTicket').value),
       maxPayoutCents: toCents($('fPayout').value), approvalThresholdCents: toCents($('fApproval').value), topLineEnabled: $('fTop').checked, timings: readTimings(),
-    }, $('setMsg'));
-  });
+    };
+  };
+  const saveSettingsLater = autosave($('setForm'), settingsPatch, $('setMsg'));
+  // Ajouter / retirer une caisse n'émet pas d'événement « change » : on déclenche l'enregistrement à la main.
+  $('terms').addEventListener('click', (e) => { if (e.target.closest('[data-del]')) saveSettingsLater(); });
+  $('termAdd').addEventListener('click', saveSettingsLater);
 
   /* ---------- Taux de gain ---------- */
   const rateBox = (label, name, value) => `<label class="rate">${label}<input type="number" min="0" step="any" name="${name}" value="${value === undefined ? '' : value}" ${canEdit() ? '' : 'disabled'}></label>`;
@@ -198,7 +252,7 @@ PP.ready.then(function () {
       for (let h = 0; h <= n; h++) $('rateForm').elements[`k:${n}:${h}`].value = row[h] === undefined ? '' : row[h];
       showKenoRtp(n);
     }
-    flash($('rateMsg'), 'Taux calculés pour un RTP visé de ' + $('kenoRtp').value + ' %. Cliquer sur « Enregistrer les taux » pour les appliquer.', true);
+    flash($('rateMsg'), 'Taux calculés pour un RTP visé de ' + $('kenoRtp').value + ' %. Enregistrement automatique…', true);
   });
   $('kenoRates').addEventListener('input', (e) => { const m = /^k:(d+):/.exec(e.target.name || ''); if (m) showKenoRtp(+m[1]); });
 
@@ -212,14 +266,15 @@ PP.ready.then(function () {
       + Array.from({ length: 9 }, (_, i) => i + 2).map((n) => rateBox(n + ' boules', 'x:' + n, p.luckyx.tiers[n])).join('');
     $('rateForm').querySelector('.save').disabled = !canEdit();
   }
-  $('rateForm').addEventListener('submit', (e) => {
-    e.preventDefault();
+  const ratesPatch = () => {
     const val = (name) => { const v = $('rateForm').elements[name].value; return v === '' ? 0 : Number(v); };
     const keno = {};
     for (let n = 1; n <= 10; n++) { keno[n] = {}; for (let h = 0; h <= n; h++) { const v = val(`k:${n}:${h}`); if (v > 0) keno[n][h] = v; } }
     const tiers = {}; for (let n = 2; n <= 10; n++) tiers[n] = val('x:' + n);
-    save({ paytables: { keno, luckysix: settings.paytables.luckysix.map((_, i) => val('l:' + i)), luckyx: { single: val('x:single'), tiers } } }, $('rateMsg'));
-  });
+    return { paytables: { keno, luckysix: settings.paytables.luckysix.map((_, i) => val('l:' + i)), luckyx: { single: val('x:single'), tiers } } };
+  };
+  const saveRatesLater = autosave($('rateForm'), ratesPatch, $('rateMsg'));
+  $('kenoAuto').addEventListener('click', saveRatesLater);
 
   function renderRtp(list) {
     const cls = (v) => v > 100 ? 'rtp-bad' : v < 90 || v > 95 ? 'rtp-warn' : 'rtp-ok';

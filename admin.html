@@ -39,8 +39,15 @@
           <button class="ghost" id="repGo">Actualiser</button>
           <button class="ghost" id="printBtn">Imprimer</button>
         </div>
+        <div class="kpis" id="repKpis"></div>
+        <h3>Par caisse (argent encaissé et décaissé ce jour)</h3>
         <table class="tbl" id="repTbl"></table>
+        <h3>Par jeu (tickets de ce jour)</h3>
+        <table class="tbl" id="repGames"></table>
+        <h3>Sessions de caissier terminées ce jour</h3>
+        <table class="tbl" id="repShifts"></table>
         <p class="hint" id="repUnclaimed"></p>
+        <p class="hint">Ventes et décaissements sont comptés à l’heure où l’argent est entré ou sorti de la caisse. « Par jeu » compte les tickets du jour de tirage : gains dus = ce que les gagnants doivent recevoir, payé = déjà remis, bénéfice = mises − gains dus.</p>
       </div>
       <div class="card">
         <h2>Période : ventes, gains et bénéfice par jeu</h2>
@@ -81,7 +88,7 @@
         <div class="tmgrid" id="timings"></div>
         <p class="hint" id="timingsPlan"></p>
         <div class="msg" id="setMsg"></div>
-        <button class="primary save" type="submit">Enregistrer les réglages</button>
+        <p class="hint">Chaque modification est enregistrée automatiquement.</p>
       </form>
     </section>
 
@@ -94,14 +101,14 @@
           <label>RTP visé (%) <input type="number" id="kenoRtp" min="50" max="99" step="0.1" value="94"></label>
           <button type="button" class="ghost" id="kenoAuto">Calculer les taux standard automatiquement</button>
         </div>
-        <p class="hint">Les taux sont calculés d’après la probabilité exacte de chaque résultat (20 numéros tirés sur 80), comme pour la roulette. Vérifier, puis enregistrer.</p>
+        <p class="hint">Les taux sont calculés d’après la probabilité exacte de chaque résultat (20 numéros tirés sur 80), comme pour la roulette. Les changements sont enregistrés automatiquement.</p>
         <div id="kenoRates"></div>
         <h3>Lucky Six : boule n° 6 à 35 qui complète les 6 numéros</h3>
         <div class="grid6" id="ls6Rates"></div>
         <h3>Lucky X</h3>
         <div class="grid6" id="lxRates"></div>
         <div class="msg" id="rateMsg"></div>
-        <button class="primary save" type="submit">Enregistrer les taux</button>
+        <p class="hint">Chaque modification est enregistrée automatiquement ; le serveur refuse tout taux qui dépasse 100 % de retour.</p>
       </form>
       <div class="card">
         <h2>Retour au joueur (RTP) par ligne</h2>

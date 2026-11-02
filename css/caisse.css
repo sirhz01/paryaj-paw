@@ -107,3 +107,10 @@ button { font: inherit; cursor: pointer; }
 .bar .cashbox .cb-sub b { font-weight: 700; color: #2b2b2b; }
 .bar .cashbox .cb-in b { color: #157347; }
 .bar .cashbox .cb-out b { color: #b4232a; }
+
+/* Numéros choisis : chacun se retire avec sa croix */
+.pk { display: flex; flex-wrap: wrap; gap: .3rem; margin: .3rem 0; }
+.pk button { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .5rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-weight: 700; cursor: pointer; }
+.pk button i { color: #c8201d; font-size: .75rem; }
+.slip .ln .pk { grid-column: 1 / -1; }
+.slip .ln .pk button { border: 1px solid var(--line); background: #fff; color: inherit; font-size: .9rem; }

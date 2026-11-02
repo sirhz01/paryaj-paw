@@ -386,6 +386,27 @@ export class TicketsService {
       [day],
     );
 
+    // Détail par jeu pour les tickets du jour (jour du tirage) : mêmes définitions que le rapport de période.
+    const games = await this.db.query(
+      `SELECT t.game, count(*)::int AS tickets, sum(t.stake_cents)::bigint AS "stakesCents",
+              COALESCE(sum(r.win_cents), 0)::bigint AS "winsCents", COALESCE(sum(p.amount_cents), 0)::bigint AS "paidCents",
+              count(*) FILTER (WHERE r.ticket_id IS NULL)::int AS "pendingTickets"
+         FROM shop_tickets t
+         LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
+         LEFT JOIN shop_payouts p ON p.ticket_id = t.id
+        WHERE t.day = $1::date GROUP BY t.game ORDER BY t.game`,
+      [day],
+    );
+    // Sessions de caissier terminées ce jour-là : argent déclaré au début et à la fin, écart avec l'attendu.
+    const shifts = await this.db.query(
+      `SELECT s.email, r.terminal, r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
+              r.stakes_cents::bigint AS "stakesCents", r.payouts, r.payouts_cents::bigint AS "payoutsCents",
+              r.opening_cents::bigint AS "openingCents", r.closing_cents::bigint AS "closingCents"
+         FROM cashier_reports r JOIN staff s ON s.id = r.staff_id
+        WHERE ${DAY_RANGE('r.ended_at', '$1')} ORDER BY r.ended_at`,
+      [day],
+    );
+
     const terminals = new Map<string, { terminal: string; tickets: number; stakesCents: number; payouts: number; payoutsCents: number }>();
     const row = (terminal: string) => {
       if (!terminals.has(terminal)) terminals.set(terminal, { terminal, tickets: 0, stakesCents: 0, payouts: 0, payoutsCents: 0 });
@@ -404,6 +425,8 @@ export class TicketsService {
         payoutsCents: list.reduce((n, t) => n + t.payoutsCents, 0),
       },
       unclaimedWinners: unclaimed.rows[0],
+      games: games.rows,
+      shifts: shifts.rows,
     };
   }
 

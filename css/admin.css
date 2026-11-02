@@ -67,3 +67,10 @@ body.admin { overflow-x: hidden; }
   .admin .bar .shop { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
   .admin .wrap { padding-inline: .5rem; }
 }
+
+/* Résumé du jour dans le rapport */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .5rem; margin: .6rem 0 1rem; }
+.kpi { background: #f3f5fb; border-radius: 8px; padding: .55rem .7rem; display: grid; gap: .15rem; }
+.kpi span { font-size: .75rem; opacity: .7; }
+.kpi b { font-size: 1.1rem; }
+.kpi b.neg { color: #c8201d; } .kpi b.pos { color: #1c7a3a; }

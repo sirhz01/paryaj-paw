@@ -194,7 +194,8 @@ PP.ready.then(function () {
   function renderSlip() {
     const lines = currentLines();
     $('slip').innerHTML = lines.length ? lines.map((l, i) => `
-      <div class="ln"><b>${l.label}</b><span>${PP.money(l.stake)}</span>${game === 'roulette' ? `<button data-i="${i}" title="Retirer"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>` : '<span></span>'}
+      <div class="ln"><b>${l.label}</b><span>${PP.money(l.stake)}</span><button data-i="${i}" title="${game === 'roulette' ? 'Retirer' : 'Retirer tous les numéros'}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        ${game === 'roulette' ? '' : `<div class="pk">${picks.map((n) => `<button data-p="${n}" title="Retirer le ${n}">${n} <i class="fa-solid fa-xmark" aria-hidden="true"></i></button>`).join('')}</div>`}
         <small>${l.picks.join(' ')} · cote ${l.odds.toFixed(2)} · gain possible ${PP.money(l.possible)}</small></div>`).join('')
       : '<div class="empty">Aucune mise. Choisir sur le plateau.</div>';
     $('total').textContent = PP.money(lines.reduce((a, l) => a + l.stake, 0));
@@ -205,7 +206,13 @@ PP.ready.then(function () {
       if (own) c.dataset.stake = own.stake; else delete c.dataset.stake;
     });
   }
-  $('slip').addEventListener('click', (e) => { const i = e.target.dataset.i; if (i !== undefined) { slip.splice(+i, 1); renderSlip(); } });
+  $('slip').addEventListener('click', (e) => {
+    const p = e.target.closest('[data-p]');                       // croix d'un numéro choisi par erreur
+    if (p) { picks = picks.filter((n) => n !== +p.dataset.p); syncNums(); return renderSlip(); }
+    const b = e.target.closest('[data-i]'); if (!b) return;
+    if (game === 'roulette') slip.splice(+b.dataset.i, 1); else { picks = []; syncNums(); }
+    renderSlip();
+  });
   $('resetBtn').addEventListener('click', () => { slip = []; picks = []; clearPending(); syncNums(); renderSlip(); flash(''); });
 
   function flash(text, err) { const m = $('msg'); m.textContent = text; m.className = 'msg' + (err ? ' err' : text ? ' ok' : ''); }
