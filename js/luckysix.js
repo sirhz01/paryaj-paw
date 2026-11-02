@@ -51,12 +51,17 @@ PP.ready.then(function () {
     onPhase(s) {
       body.dataset.phase = s.phase;
       const key = (cur = s.day + ':' + s.round);
-      res = null;
-      if (s.phase === 'bet') { reset(); $('nextRound').textContent = s.round; }
-      else PP.load('luckysix', s.day, s.round).then((r) => { if (cur === key) res = r; });
-      $('drumBox').classList.toggle('hidden', s.phase === 'result');
-      $('resBox').classList.toggle('hidden', s.phase !== 'result');
-      if (s.phase === 'result') $('resBox').textContent = 'RESULTS ROUND ' + s.round;
+      if (s.phase === 'bet') {
+        $('nextRound').textContent = s.round;
+        // Les boules du dernier tirage restent à l'écran pendant les mises ; après un rechargement de la page, on les récupère.
+        if (shown === 0 && s.round > 1) PP.load('luckysix', s.day, s.round - 1).then((r) => { if (cur === key && shown === 0 && r) { res = r; reveal(35); } });
+      } else if (s.phase === 'draw') {
+        reset(); res = null;
+        PP.load('luckysix', s.day, s.round).then((r) => { if (cur === key) res = r; });
+      } else if (shown < 35) PP.load('luckysix', s.day, s.round).then((r) => { if (cur === key) res = r; });
+      $('drumBox').classList.toggle('hidden', s.phase !== 'draw');
+      $('resBox').classList.toggle('hidden', s.phase === 'draw' || (s.phase === 'bet' && s.round < 2));
+      $('resBox').textContent = s.phase === 'result' ? 'RESULTS ROUND ' + s.round : 'LAST DRAW · ROUND ' + (s.round - 1);
       drum.setSpeed(s.phase === 'draw' ? 1.6 : 1);
     },
     onTick(s) {

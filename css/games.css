@@ -18,7 +18,7 @@ body.keno .stage { background: radial-gradient(110% 100% at 50% 20%, #1b3fd8 0%,
 
 /* ===== Lucky Six ===== */
 .ls-board { position: absolute; inset: 0; padding: .8rem 1.6rem; display: none; grid-template-rows: 1fr auto; gap: .6rem; }
-body.luckysix:not([data-phase='bet']) .ls-board { display: grid; }
+body.luckysix .ls-board { display: grid; }
 /* Tambour au centre en haut, échelle des gains en colonnes tout autour (comme sur les écrans de référence). */
 .ls-top { grid-area: 1 / 1; z-index: 1; align-self: start; justify-self: center; width: 60%; display: grid; grid-template-columns: 1fr 15rem 1fr; align-items: center; height: 15rem; }
 .ls-top .cap { display: none; }
@@ -113,7 +113,10 @@ body.keno[data-phase='bet'] .pay { display: grid; }
 
 /* ===== Lucky X ===== */
 .cy-board { position: absolute; inset: 0; display: none; }
-body.luckyx:not([data-phase='bet']) .cy-board { display: block; }
+body.luckyx .cy-board { display: block; }
+/* Pendant les mises, le tambour disparaît mais les boules du dernier tirage restent affichées ; l'annonce passe au centre, entre les deux blocs. */
+body.luckyx[data-phase='bet'] .cy-drum { display: none; }
+body.luckyx .promo .slide { padding: 0 24rem; }
 /* 36 boules : 18 de chaque côté du tambour, en 3 colonnes de 6 boules ; elles se remplissent en lisant de gauche à droite puis vers le bas. */
 .cy-side { position: absolute; top: 46%; transform: translateY(-50%); display: grid; grid-template-columns: repeat(3, 3.3rem); grid-template-rows: repeat(6, 3.1rem); gap: .6rem 1rem; justify-items: center; align-items: center; }
 .cy-side.l { left: 7rem; } .cy-side.r { right: 7rem; }
