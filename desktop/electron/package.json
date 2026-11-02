@@ -1,7 +1,7 @@
 {
   "name": "paryaj-paw-boutik",
   "productName": "Paryaj Paw Boutik",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "Terminal de la boutique Paryaj Paw (caisse et écrans TV) pour Windows",
   "author": "Paryaj Paw",
@@ -30,7 +30,6 @@
     "files": [
       "main.js",
       "preload.js",
-      "config.html",
       "build/icon.*"
     ],
     "win": {

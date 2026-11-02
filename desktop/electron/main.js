@@ -2,8 +2,8 @@
 /*
  * Terminal de la boutique Paryaj Paw pour Windows (Electron).
  * C'est un client léger : il charge le front-end servi par le serveur (caisse et écrans TV),
- * il ne contient ni jeu ni base de données. Par défaut il ouvre le serveur local (localhost:3000) ;
- * l'adresse peut être changée via le menu « Boutique → Changer de serveur… ». Tout le calcul reste sur le serveur.
+ * il ne contient ni jeu ni base de données. Il ouvre toujours le serveur en ligne (https://paryajpaw.online), sans aucune adresse à saisir.
+ * Tout le calcul reste sur le serveur.
  */
 const { app, BrowserWindow, Menu, ipcMain, shell, dialog, screen } = require('electron');
 const path = require('node:path');
@@ -37,31 +37,14 @@ function writeConfig(patch) {
   return next;
 }
 
-/**
- * Normalise l'adresse du serveur (sans / final) :
- *  - « 192.168.1.10 »        → « http://192.168.1.10:3000 »  (serveur local, port 3000 par défaut)
- *  - « https://paryajpaw.online » → inchangé (HTTPS = port 443 par défaut ; ne jamais forcer :3000)
- */
-function normalizeServer(input) {
-  let s = String(input || '').trim();
-  if (!s) return '';
-  if (!/^https?:\/\//i.test(s)) s = 'http://' + s;
-  const isHttps = /^https:\/\//i.test(s);
-  const hostAndPath = s.replace(/^https?:\/\//i, '');
-  // Port 3000 ajouté seulement pour un serveur local en http sans port ; en https on garde le port par défaut (443).
-  if (!isHttps && !/:\d+(\/|$)/.test(hostAndPath)) s = s.replace(/\/+$/, '') + ':3000';
-  return s.replace(/\/+$/, '');
-}
-
 // Serveur par défaut : le système en ligne (Vercel + base Neon). La caisse et le back-office travaillent
-// ainsi sur les mêmes comptes, paris et caisses que le site des joueurs. Pour pointer un serveur local
-// (démo sur ce poste), utiliser « Boutique → Changer de serveur… ».
+// ainsi sur les mêmes comptes, paris et caisses.
 const DEFAULT_SERVER = 'https://paryajpaw.online';
 
 let win;
 
 function serverUrl() {
-  return readConfig().server || DEFAULT_SERVER;
+  return DEFAULT_SERVER; // tout est en ligne : plus d'adresse de serveur à saisir
 }
 
 function loadServerPage(page = '') {
@@ -123,9 +106,6 @@ function buildMenu() {
       submenu: [
         { label: 'Caisse', accelerator: 'CmdOrCtrl+1', click: () => { setFullScreen(false); loadServerPage('caisse.html'); } },
         { label: 'Administration', accelerator: 'CmdOrCtrl+Shift+A', click: () => { setFullScreen(false); loadServerPage('admin.html'); } },
-        { label: 'Site des joueurs', accelerator: 'CmdOrCtrl+H', click: () => { setFullScreen(false); loadServerPage(''); } },
-        { type: 'separator' },
-        { label: 'Changer de serveur…', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.loadFile('config.html') },
         { type: 'separator' },
         { role: 'quit', label: 'Quitter' },
       ],
@@ -178,7 +158,7 @@ function buildMenu() {
               type: 'info',
               title: 'Paryaj Paw Boutik',
               message: 'Paryaj Paw Boutik',
-              detail: `Version ${app.getVersion()}\nServeur : ${readConfig().server || DEFAULT_SERVER + ' (par défaut)'}`,
+              detail: `Version ${app.getVersion()}\nServeur : ${DEFAULT_SERVER}`,
             }),
         },
       ],
@@ -215,7 +195,7 @@ function createWindow() {
   win.webContents.on('did-fail-load', (_e, code, desc, url) => {
     if (code === -3 || !url.startsWith('http')) return; // -3 = chargement annulé (navigation normale)
     const page = '<meta charset="utf-8"><body style="font:20px Segoe UI,sans-serif;background:#14285f;color:#fff;display:grid;place-items:center;height:100vh;margin:0;text-align:center">'
-      + '<div><h2>Pas de connexion à Internet</h2><p>Nouvel essai automatique dans quelques secondes…</p><p style="opacity:.6;font-size:14px">' + desc + '</p><p style="opacity:.6;font-size:14px">Menu Boutique → Changer de serveur…</p></div>'
+      + '<div><h2>Pas de connexion à Internet</h2><p>Nouvel essai automatique dans quelques secondes…</p><p style="opacity:.6;font-size:14px">' + desc + '</p></div>'
       + '<script>setTimeout(function(){location.href=' + JSON.stringify(serverUrl() + '/caisse.html') + '},5000)</script>';
     win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page));
   });
@@ -225,29 +205,9 @@ function createWindow() {
   loadServerPage('caisse.html');
 }
 
-// L'écran de configuration enregistre l'adresse du serveur et ouvre l'accueil.
-ipcMain.handle('config:get', () => ({ server: readConfig().server || '', version: app.getVersion() }));
-ipcMain.handle('config:test', async (_e, raw) => {
-  const server = normalizeServer(raw);
-  if (!server) return { ok: false, error: 'Adresse vide' };
-  try {
-    const res = await fetch(`${server}/api/v1/health`, { signal: AbortSignal.timeout(5000) });
-    return res.ok ? { ok: true, server } : { ok: false, error: `Réponse ${res.status}` };
-  } catch (e) {
-    return { ok: false, error: 'Serveur injoignable' };
-  }
-});
-ipcMain.handle('config:save', (_e, raw) => {
-  const server = normalizeServer(raw);
-  if (!server) return { ok: false };
-  writeConfig({ server });
-  loadServerPage('caisse.html');
-  return { ok: true, server };
-});
-
 app.whenReady().then(() => {
   // Migration : les anciennes versions gardaient l'adresse d'un serveur local (IP du portable serveur). Une fois pour toutes,
-  // on l'oublie pour revenir au serveur en ligne ; « Boutique → Changer de serveur… » reste possible ensuite.
+  // on l'oublie : l'app est toujours branchée sur le serveur en ligne.
   if (readConfig().serverMigrated !== 1) {
     const cfg = { ...readConfig(), serverMigrated: 1 };
     delete cfg.server;
