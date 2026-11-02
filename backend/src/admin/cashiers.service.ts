@@ -70,4 +70,20 @@ export class CashiersService {
     if (!rows[0]) throw new AppError('CASHIER_NOT_FOUND', 404);
     await this.audit.log(adminId, 'cashier.reset_password', { type: 'staff', id }, {});
   }
+
+  /**
+   * Supprime un compte caissier. Refusé s'il a déjà vendu ou payé des tickets (ou rendu un rapport) : l'historique doit
+   * rester intact ; il suffit alors de le bloquer.
+   */
+  async remove(adminId: number, id: number): Promise<void> {
+    let rows: { email: string }[];
+    try {
+      ({ rows } = await this.db.query<{ email: string }>(`DELETE FROM staff WHERE id = $1 AND role = 'cashier' RETURNING email`, [id]));
+    } catch (error) {
+      if ((error as { code?: string }).code === '23503') throw new AppError('CASHIER_HAS_HISTORY', 409);
+      throw error;
+    }
+    if (!rows[0]) throw new AppError('CASHIER_NOT_FOUND', 404);
+    await this.audit.log(adminId, 'cashier.delete', { type: 'staff', id }, { email: rows[0].email });
+  }
 }

@@ -71,4 +71,18 @@ export class AdminsService {
     if (!rows[0]) throw new AppError('ADMIN_NOT_FOUND', 404);
     await this.audit.log(adminId, 'admin.reset_password', { type: 'staff', id }, {});
   }
+
+  /** Supprime un administrateur (jamais soi-même). Refusé s'il a déjà agi dans le système (historique à conserver) : le bloquer suffit. */
+  async remove(adminId: number, id: number): Promise<void> {
+    if (id === adminId) throw new AppError('CANNOT_DELETE_SELF', 400);
+    let rows: { email: string }[];
+    try {
+      ({ rows } = await this.db.query<{ email: string }>(`DELETE FROM staff WHERE id = $1 AND role <> 'cashier' RETURNING email`, [id]));
+    } catch (error) {
+      if ((error as { code?: string }).code === '23503') throw new AppError('ADMIN_HAS_HISTORY', 409);
+      throw error;
+    }
+    if (!rows[0]) throw new AppError('ADMIN_NOT_FOUND', 404);
+    await this.audit.log(adminId, 'admin.delete', { type: 'staff', id }, { email: rows[0].email });
+  }
 }

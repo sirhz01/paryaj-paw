@@ -74,3 +74,4 @@ body.admin { overflow-x: hidden; }
 .kpi span { font-size: .75rem; opacity: .7; }
 .kpi b { font-size: 1.1rem; }
 .kpi b.neg { color: #c8201d; } .kpi b.pos { color: #1c7a3a; }
+.admin .tbl button.danger { color: #c8201d; border-color: #e3b0ae; }

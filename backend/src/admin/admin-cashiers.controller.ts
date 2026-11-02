@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { IsBoolean, IsEmail, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { CurrentStaff, Roles, StaffGuard, StaffPrincipal } from '../common/auth';
 import { StrongPassword } from '../common/password';
@@ -57,5 +57,10 @@ export class AdminCashiersController {
   @Patch(':id/password')
   resetPassword(@CurrentStaff() staff: StaffPrincipal, @Param('id', ParseIntPipe) id: number, @Body() dto: PasswordDto) {
     return this.cashiers.resetPassword(staff.id, id, dto.password);
+  }
+
+  @Delete(':id')
+  remove(@CurrentStaff() staff: StaffPrincipal, @Param('id', ParseIntPipe) id: number) {
+    return this.cashiers.remove(staff.id, id);
   }
 }

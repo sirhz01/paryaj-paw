@@ -20,7 +20,8 @@ PP.ready.then(function () {
   }
   const canEdit = () => role === 'super_admin';
   const flash = (el, text, ok) => { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); };
-  const errorText = (e) => e.code === 'INVALID_SETTINGS' && e.body.errors ? e.body.errors.join(' · ') : A.message(e);
+  const HISTORY = { CASHIER_HAS_HISTORY: 'Ce caissier a déjà vendu ou payé des tickets : on ne peut pas le supprimer (l’historique reste). Utilisez « Bloquer ».', ADMIN_HAS_HISTORY: 'Cet administrateur a déjà agi dans le système : on ne peut pas le supprimer. Utilisez « Bloquer ».', CANNOT_DELETE_SELF: 'Vous ne pouvez pas supprimer votre propre compte.' };
+  const errorText = (e) => HISTORY[e.code] || (e.code === 'INVALID_SETTINGS' && e.body.errors ? e.body.errors.join(' · ') : A.message(e));
 
   /* ---------- Connexion ---------- */
   function showLogin(msg) {
@@ -316,7 +317,7 @@ PP.ready.then(function () {
           const lock = c.locked ? ' <span class="tag off">verrouillé</span>' : '';
           return `<tr data-id="${c.id}" data-email="${esc(c.email)}"><td>${esc(c.email)}</td><td>${esc(c.terminal || '—')}</td>`
             + `<td>${badge}${lock}</td><td class="acts"><button class="ghost" data-act="${c.active ? 'block' : 'allow'}">${c.active ? 'Bloquer' : 'Autoriser'}</button>`
-            + `<button class="ghost" data-act="pass">Mot de passe</button></td></tr>`;
+            + `<button class="ghost" data-act="pass">Mot de passe</button><button class="ghost danger" data-act="del">Supprimer</button></td></tr>`;
         }).join('') : '<tr><td colspan="4">Aucun caissier. Créez-en un ci-dessus.</td></tr>') + '</tbody>';
     } catch (e) { $('cashTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
   }
@@ -340,7 +341,7 @@ PP.ready.then(function () {
         + list.map((a) => {
           const me = String(a.id) === String(myId);
           const badge = a.active ? '<span class="tag ok">Autorisé</span>' : '<span class="tag off">Bloqué</span>';
-          const acts = me ? '<em>vous</em>' : `<button class="ghost" data-act="${a.active ? 'block' : 'allow'}">${a.active ? 'Bloquer' : 'Autoriser'}</button><button class="ghost" data-act="pass">Mot de passe</button>`;
+          const acts = me ? '<em>vous</em>' : `<button class="ghost" data-act="${a.active ? 'block' : 'allow'}">${a.active ? 'Bloquer' : 'Autoriser'}</button><button class="ghost" data-act="pass">Mot de passe</button><button class="ghost danger" data-act="del">Supprimer</button>`;
           return `<tr data-id="${a.id}" data-email="${esc(a.email)}"><td>${esc(a.email)}</td><td>${ROLE_LABEL[a.role] || esc(a.role)}</td><td>${badge}${a.locked ? ' <span class="tag off">verrouillé</span>' : ''}</td><td class="acts">${acts}</td></tr>`;
         }).join('') + '</tbody>';
     } catch (e) { $('admTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
@@ -359,7 +360,11 @@ PP.ready.then(function () {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id, email = tr.dataset.email;
     try {
-      if (b.dataset.act === 'pass') {
+      if (b.dataset.act === 'del') {
+        if (!confirm('Supprimer l’administrateur ' + email + ' ? Cette action est définitive.')) return;
+        await A.call('DELETE', `/admin/admins/${id}`);
+        flash($('admMsg'), email + ' supprimé.', true);
+      } else if (b.dataset.act === 'pass') {
         const pass = prompt('Nouveau mot de passe pour ' + email + ' (8 caractères minimum) :');
         if (!pass) return;
         await A.call('PATCH', `/admin/admins/${id}/password`, { password: pass });
@@ -404,7 +409,11 @@ PP.ready.then(function () {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const tr = b.closest('tr'), id = tr.dataset.id, email = tr.dataset.email, act = b.dataset.act;
     try {
-      if (act === 'allow' || act === 'block') {
+      if (act === 'del') {
+        if (!confirm(`Supprimer le caissier ${email} ? Cette action est définitive.`)) return;
+        await A.call('DELETE', `/admin/cashiers/${id}`);
+        flash($('cashMsg'), `${email} supprimé.`, true);
+      } else if (act === 'allow' || act === 'block') {
         await A.call('PATCH', `/admin/cashiers/${id}/access`, { active: act === 'allow' });
         flash($('cashMsg'), `${email} ${act === 'allow' ? 'autorisé' : 'bloqué'}.`, true);
       } else {
