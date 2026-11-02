@@ -15,3 +15,5 @@ desktop/tauri/node_modules/
 desktop/tauri/src-tauri/target/
 desktop/tauri/src-tauri/gen/
 .claude/settings.local.json
+.vercel
+.env*
