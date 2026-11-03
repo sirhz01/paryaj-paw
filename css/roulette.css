@@ -95,3 +95,7 @@ body.roulette {
 .wclock { position: absolute; left: 50%; top: -19%; transform: translateX(-50%); font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; text-shadow: 0 .1rem .4rem #000; opacity: 0; transition: opacity .4s; pointer-events: none; white-space: nowrap; }
 .wclock.on { opacity: 1; }
 .hub.on { inset: 34%; border-radius: 50%; background: rgba(8, 4, 2, .62); box-shadow: 0 0 0 .15rem rgba(217, 180, 74, .8); }
+
+/* Pendant les mises, la roue tourne lentement (comme sur la vidéo de référence). */
+@keyframes wheelIdle { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+[data-phase='bet'] #rotor { animation: wheelIdle 180s linear infinite; }
