@@ -17,7 +17,7 @@ PP.GAMES = {
 };
 
 /* Couleur d'une boule selon n % 8 (Lucky Six / Lucky X). */
-PP.COLORS = ['#2b2f33', '#e53935', '#1fbf55', '#38b6ff', '#2740d6', '#7a5a3a', '#d7e83a', '#ff9a2e'];
+PP.COLORS = ['#2b2f33', '#e53935', '#1fbf55', '#38b6ff', '#d65db1', '#7a5a3a', '#d7e83a', '#ff9a2e'];
 PP.COLOR_NAMES = ['Noir', 'Rouge', 'Vert', 'Bleu clair', 'Bleu', 'Marron', 'Jaune', 'Orange'];
 
 /* Lucky Six : 35 boules tirées sur 48. La boule n°6..35 qui complète les 6 numéros du joueur

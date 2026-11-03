@@ -34,9 +34,6 @@ body.luckysix .ls-board { display: grid; }
 .drumbox .cur { position: absolute; right: -3.1rem; top: 50%; transform: translateY(-50%); }
 .drumbox .cur .ball { width: 3.1rem; height: 3.1rem; font-size: 1.4rem; }
 .resbox { text-align: center; font-size: 1.9rem; font-weight: 800; letter-spacing: .06em; }
-.sum { justify-self: end; text-align: right; font-size: .75rem; line-height: 1.5; }
-.sum b { font-size: 2.2rem; display: block; line-height: 1; }
-.sum .oe { font-size: 1.3rem; font-weight: 800; color: var(--gold); }
 
 /* 30 paliers : colonne de gauche (9), quatre colonnes de 3 en bas au centre (12), colonne de droite (9). */
 .ls-grid { grid-area: 1 / 1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(9, 1fr); gap: .2rem 1rem; align-items: center; }
@@ -75,11 +72,6 @@ body.luckysix .ls-board { display: grid; }
 .ls-grid .slot:nth-child(29) { grid-column: 6; grid-row: 8; }
 .ls-grid .slot:nth-child(30) { grid-column: 6; grid-row: 9; }
 
-.colbet { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem 3rem; padding-top: .2rem; }
-.colbet .cap { grid-column: 1 / -1; text-align: center; font-size: .85rem; letter-spacing: .1em; color: #cfe6ff; }
-.cb { display: grid; grid-template-columns: 1fr 1.4rem; align-items: center; gap: .6rem; font-size: .8rem; }
-.cb i { display: block; height: .32rem; border-radius: .2rem; transition: width .4s; }
-.hide-draw .colbet { visibility: hidden; }
 
 /* ===== Keno ===== */
 .k-board { position: absolute; inset: 0; display: none; grid-template-columns: 1fr 19rem 1fr; gap: 1rem; padding: 1rem 1.4rem; align-items: center; }
@@ -137,3 +129,48 @@ body.luckyx[data-phase='result'] .cy-drum { opacity: .15; }
 
 /* La carte promo n'existe que pendant la phase de mise. */
 body:not([data-phase='bet']) .promo { display: none; }
+
+
+/* ===== Lucky Six : habillage d'après l'écran de référence ===== */
+/* Boules : anneau de couleur, centre blanc, numéro noir. Cases vides : disques bleu nuit. */
+.ball.lsb { background: #fff; color: #111; border: .3rem solid var(--bc); box-shadow: inset 0 0 0 .12rem #fff, 0 .15rem .35rem rgba(0, 0, 0, .45); font-weight: 600; }
+.ls-grid .ball.empty { background: rgba(14, 50, 125, .8); border: .12rem solid rgba(140, 185, 240, .3); box-shadow: inset 0 .15rem .4rem rgba(0, 0, 0, .35); color: transparent; }
+.ls-grid .slot { font-size: 1.35rem; font-weight: 500; letter-spacing: .02em; }
+.ls-grid .slot:nth-child(n + 22) { flex-direction: row-reverse; }
+.ls-cur { position: absolute; top: .35rem; left: 50%; transform: translateX(-50%); z-index: 2; font-size: .85rem; font-weight: 700; letter-spacing: .08em; padding: 0 3rem .25rem; border-bottom: .06rem solid rgba(255, 255, 255, .35); white-space: nowrap; }
+.ls-cur b { margin-left: .4rem; }
+.ls-top { margin-top: 1.5rem; grid-template-columns: 1fr 17rem 1fr; height: 17rem; }
+.drumbox { width: 17rem; height: 17rem; }
+/* Cadre chromé du tambour, avec voyants et trappe de sortie. */
+.drumbox::before { content: ''; position: absolute; inset: -.55rem; border-radius: 50%; z-index: 2; pointer-events: none;
+  background: conic-gradient(#eef3f8, #8a94a1, #f7fafc, #5f6975, #eef3f8, #8a94a1, #f7fafc, #5f6975, #eef3f8);
+  -webkit-mask: radial-gradient(circle, transparent 66%, #000 67%); mask: radial-gradient(circle, transparent 66%, #000 67%); }
+.drumbox::after { content: ''; position: absolute; right: -1rem; top: 38%; width: .5rem; height: 3.6rem; z-index: 3; border-radius: .3rem;
+  background: radial-gradient(circle at 50% 18%, #ff5a4a 0 .2rem, transparent .22rem), radial-gradient(circle at 50% 82%, #ff5a4a 0 .2rem, transparent .22rem), linear-gradient(90deg, #aab3bf, #eef3f8, #7d8794); }
+.drumbox .hole { position: absolute; left: 50%; bottom: -1.1rem; width: 2rem; height: 1.2rem; transform: translateX(-50%); z-index: 3; border-radius: 0 0 1rem 1rem; background: radial-gradient(ellipse at 50% 40%, #0a0c10 0 45%, #c9d2dc 48%, #7f8996 100%); }
+.drumbox .cur { display: none; }
+/* Grosse boule qui sort du tambour. */
+.bigball { position: absolute; z-index: 1; inset: 12%; border-radius: 50%; display: none; place-items: center;
+  background: radial-gradient(circle at 36% 30%, rgba(255, 255, 255, .85) 0, rgba(255, 255, 255, 0) 22%), radial-gradient(circle at 50% 50%, var(--bc) 0, var(--bc) 60%, rgba(0, 0, 0, .55) 100%);
+  box-shadow: 0 .6rem 1.4rem rgba(0, 0, 0, .55); }
+.bigball::before { content: ''; position: absolute; inset: 17%; border-radius: 50%; background: #fff; box-shadow: inset 0 0 .6rem rgba(0, 0, 0, .25); }
+.bigball span { position: relative; font-size: 5.4rem; font-weight: 500; color: #111; line-height: 1; }
+.bigball.on { display: grid; animation: bigpop .35s ease-out; }
+@keyframes bigpop { 0% { transform: scale(.35); opacity: .2; } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
+/* Pre-numbers : glissière chromée à gauche du tambour. */
+.ls-top > div:first-child .row { padding: .6rem .35rem; border-radius: 1.6rem; background: linear-gradient(90deg, #8b95a2, #e9eef4 45%, #7f8996); box-shadow: 0 .2rem .6rem rgba(0, 0, 0, .4); }
+/* Barre du bas : couleurs, somme des pre-numbers, pair / impair. */
+.botbar { grid-row: 2; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: rgba(2, 10, 28, .72); margin: 0 -1.6rem -.8rem; padding: .35rem 1.6rem; min-height: 3.1rem; }
+.bb-color { display: flex; align-items: center; gap: .8rem; }
+.bb-color .lbl { font-size: .62rem; line-height: 1.25; letter-spacing: .08em; color: #cfe3f7; }
+.cbars { display: flex; align-items: flex-end; gap: .22rem; height: 2.1rem; }
+.cbars i { display: block; width: .65rem; height: calc(var(--h) * 1%); background: var(--c); border-radius: .08rem; transition: height .4s; }
+.bb-sum { display: flex; align-items: center; gap: .9rem; }
+.bb-sum .t { font-size: .62rem; line-height: 1.25; letter-spacing: .08em; color: #cfe3f7; text-align: right; }
+.bb-sum b { font-size: 1.7rem; font-weight: 600; }
+.bb-sum .oe { font-size: .7rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; }
+.bb-eo { justify-self: end; display: grid; gap: .25rem; min-width: 11rem; }
+.bb-eo .r { display: grid; grid-template-columns: 3rem 1.6rem 1fr; align-items: center; gap: .5rem; font-size: .7rem; letter-spacing: .08em; }
+.bb-eo .r b { font-size: .9rem; text-align: right; }
+.bb-eo i { display: block; height: .3rem; background: rgba(255, 255, 255, .18); border-radius: .2rem; overflow: hidden; }
+.bb-eo u { display: block; height: 100%; width: 0; background: #fff; transition: width .4s; }

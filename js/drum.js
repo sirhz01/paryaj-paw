@@ -13,7 +13,7 @@ PP.drum = function (canvas, count = 30) {
     if (!running) return;
     ctx.clearRect(0, 0, size, size);
     const g = ctx.createRadialGradient(size / 2, size / 2, R * .2, size / 2, size / 2, R);
-    g.addColorStop(0, 'rgba(8,20,40,.85)'); g.addColorStop(1, 'rgba(0,0,0,.95)');
+    g.addColorStop(0, 'rgba(14,16,22,.95)'); g.addColorStop(1, 'rgba(0,0,0,.98)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(size / 2, size / 2, R, 0, 6.283); ctx.fill();
     for (const b of balls) {
       b.vy += .08 * speed;

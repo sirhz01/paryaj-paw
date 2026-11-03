@@ -52,16 +52,24 @@
     </section>
 
     <section class="ls-board">
+      <div class="ls-cur">CURRENT DRAW <b id="curDraw"></b></div>
       <div class="ls-top">
         <div><div class="cap">PRE-NUMBERS</div><div class="row" id="pre"></div></div>
         <div id="center">
-          <div class="drumbox" id="drumBox"><canvas id="drum"></canvas><div class="cur" id="cur"></div></div>
+          <div class="drumbox" id="drumBox"><canvas id="drum"></canvas><div class="bigball" id="bigBall"></div><div class="hole"></div></div>
           <div class="resbox hidden" id="resBox"></div>
         </div>
-        <div class="sum" id="sum"></div>
+        <div></div>
       </div>
       <div class="ls-grid" id="grid"></div>
-      <div class="colbet"><div class="cap">COLOUR BETTING</div><div id="cbL"></div><div id="cbR"></div></div>
+      <div class="botbar">
+        <div class="bb-color"><div class="lbl">COLOR<br>BETTING</div><div class="cbars" id="cbars"></div></div>
+        <div class="bb-sum" id="sum"></div>
+        <div class="bb-eo">
+          <div class="r"><span>EVEN</span><b id="evenN">0</b><i><u id="evenBar"></u></i></div>
+          <div class="r"><span>ODD</span><b id="oddN">0</b><i><u id="oddBar"></u></i></div>
+        </div>
+      </div>
     </section>
     <div class="fs-hint">F = plein écran</div>
   </main>
