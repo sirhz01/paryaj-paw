@@ -178,3 +178,18 @@ body:not([data-phase='bet']) .promo { display: none; }
 body.luckysix .promo .slide { padding: 0 11rem 15rem 28rem; }
 body.luckysix[data-phase='bet'] .resbox { display: none; }
 body.luckysix .fs-hint { display: none; }
+
+/* ===== Lucky Six : écran des résultats (fin du tirage) =====
+   Titre, 5 pre-numbers en ligne, puis les 30 boules sur 3 rangées de 10 : le gain est à droite de chaque boule,
+   10K en haut à gauche (boule 6) jusqu'à 1 en bas à droite (boule 35). */
+body.luckysix[data-phase='result'] .ls-top { width: 100%; height: auto; margin-top: 2.6rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+body.luckysix[data-phase='result'] .ls-top > div:first-child { order: 2; justify-self: auto; margin: 0; }
+body.luckysix[data-phase='result'] .ls-top > div:first-child .row { flex-direction: row; gap: .9rem; }
+body.luckysix[data-phase='result'] .ls-top > div:first-child .ball { transform: none; }
+body.luckysix[data-phase='result'] #center { order: 1; }
+body.luckysix[data-phase='result'] .ls-top > div:last-child { display: none; }
+body.luckysix[data-phase='result'] .resbox { font-size: 1.5rem; }
+body.luckysix[data-phase='result'] .ls-grid { align-self: center; justify-self: center; max-width: 100%; margin-top: 6rem; grid-template-columns: repeat(10, auto); grid-template-rows: repeat(3, auto); gap: 1.4rem 1rem; }
+body.luckysix[data-phase='result'] .ls-grid .slot { grid-column: auto; grid-row: auto; flex-direction: row; gap: .5rem; }
+body.luckysix[data-phase='result'] .ls-grid .slot .ball { width: 2.4rem; height: 2.4rem; font-size: 1.05rem; }
+body.luckysix[data-phase='result'] .ls-grid .slot .pz { min-width: 2.5rem; font-size: 1.1rem; }
