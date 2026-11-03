@@ -3,11 +3,11 @@
 PP.ready.then(function () {
   const $ = (id) => document.getElementById(id), body = document.body;
   /* Chaque boule : le tambour tourne PAUSE secondes, puis la boule reste BALL secondes à l'écran avant que le tambour reparte. */
-  const BALL = 1.14, PAUSE = 1, STEP = BALL + PAUSE;
+  const BALL = 1.14, PAUSE = 1.26, STEP = BALL + PAUSE;   // 2,4 s par boule
   /* Nombre de boules sorties à l'instant s.t du tirage. Si le tirage réglé est plus court que nécessaire, le rythme est resserré. */
   const targetAt = (s) => {
-    const step = Math.max(0.6, Math.min(STEP, (s.dur - PAUSE - BALL) / 34));
-    return s.t < PAUSE ? 0 : Math.min(35, Math.floor((s.t - PAUSE) / step) + 1);
+    const step = Math.max(0.6, Math.min(STEP, s.dur / 35)), pause = step * PAUSE / STEP, k = Math.floor(s.t / step);
+    return Math.min(35, k + (s.t - k * step >= pause ? 1 : 0));
   };
   const setTop = PP.topbar('LUCKY SIX');
   const drum = PP.drum($('drum'), 30);
