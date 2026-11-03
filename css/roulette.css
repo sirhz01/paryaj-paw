@@ -1,10 +1,10 @@
 /* American Roulette : feutre vert foncé (moins électrique que l'ancien écran).
    Pour ajuster la teinte : --felt-hi / --felt / --felt-lo. */
 body.roulette {
-  --felt-hi: #14573a;
-  --felt: #0c3d28;
-  --felt-lo: #04170f;
-  --cell: rgba(5, 30, 19, .55);
+  --felt-hi: #2e8f55;
+  --felt: #1d7244;
+  --felt-lo: #0a3a22;
+  --cell: rgba(4, 38, 20, .42);
   --edge: rgba(200, 255, 225, .28);
 }
 .roulette .stage { background: radial-gradient(120% 95% at 28% 18%, var(--felt-hi) 0%, var(--felt) 48%, var(--felt-lo) 100%); }
@@ -16,14 +16,14 @@ body.roulette {
   display: grid; place-items: center; font-weight: 700; font-size: 1.05rem; color: #e9fff1;
   background: var(--cell); border: .08rem solid var(--edge); border-radius: .15rem; transition: opacity .4s, background .3s, box-shadow .3s;
 }
-.rc.num.red { background: #8c1d19; }
+.rc.num.red { background: #c8261f; }
 .rc.num.black { background: #101714; }
 .rc.zero { background: #0f6b37; }
 .rc.side { font-size: .8rem; letter-spacing: .04em; color: #cfeedd; }
-.rc.side.is-red { background: #8c1d19; color: #fff; }
+.rc.side.is-red { background: #c8261f; color: #fff; }
 .rc.side.is-black { background: #101714; color: #fff; }
-.rt.focus .rc:not(.hl) { opacity: .28; }
-.rc.hl { box-shadow: 0 0 .9rem rgba(255, 230, 120, .55) inset; border-color: #ffe27a; }
+.rt.focus .rc:not(.hl) { opacity: .3; }
+.rc.hl { border: .14rem solid #fff; box-shadow: none; }
 .rc.win { background: #e03a32 !important; color: #fff; border-color: #fff; box-shadow: 0 0 1rem rgba(255, 255, 255, .6); }
 .rc.win.black, .rc.num.black.win { background: #2b3230 !important; }
 .rc.win.zero { background: #19a653 !important; }
@@ -31,17 +31,17 @@ body.roulette {
 .rc.side.win.is-red { background: #e03a32 !important; color: #fff; }
 
 .info:not(.on) { display: none; }
-.info { margin-top: 1.1rem; padding: .8rem 1rem; display: grid; grid-template-columns: 1fr auto; gap: .2rem 1rem; background: rgba(0, 0, 0, .38); border-left: .3rem solid var(--gold); transition: opacity .4s; }
-.info .grp { grid-column: 1 / -1; font-size: .8rem; font-weight: 700; color: #d9f2e3; letter-spacing: .1em; }
-.info .name { font-size: 2.6rem; font-weight: 800; color: var(--gold); line-height: 1; }
-.info .code { font-size: 2.2rem; font-weight: 800; text-align: right; }
-.info .desc { font-size: .8rem; color: #cfeedd; text-transform: uppercase; }
-.info .wager { font-size: .85rem; text-align: right; }
+.info { margin-top: 1.6rem; padding: 1rem 1.4rem; display: grid; grid-template-columns: 1fr auto; gap: .1rem 1rem; background: rgba(0, 0, 0, .3); transition: opacity .4s; }
+.info .grp { grid-column: 1 / -1; font-size: .95rem; font-weight: 700; color: #e4f5ea; letter-spacing: .12em; margin-bottom: .6rem; }
+.info .name { font-size: 3.4rem; font-weight: 800; color: #f2c230; line-height: 1; }
+.info .code { font-size: 3.4rem; font-weight: 700; text-align: right; line-height: 1; grid-row: 2; grid-column: 2; }
+.info .desc { font-size: .9rem; color: #d6efe0; text-transform: uppercase; letter-spacing: .04em; }
+.info .wager { font-size: .9rem; text-align: right; letter-spacing: .1em; color: #d6efe0; }
 
 /* ---- Roue ---- */
 .wheel-wrap {
-  position: absolute; z-index: 3; width: 22rem; aspect-ratio: 1; transform: translate(-50%, -50%);
-  left: 84%; top: 56%; transition: left 1.3s cubic-bezier(.5, 0, .2, 1), top 1.3s cubic-bezier(.5, 0, .2, 1),
+  position: absolute; z-index: 3; width: 31rem; aspect-ratio: 1; transform: translate(-50%, -50%);
+  left: 87%; top: 58%; transition: left 1.3s cubic-bezier(.5, 0, .2, 1), top 1.3s cubic-bezier(.5, 0, .2, 1),
     width 1.3s cubic-bezier(.5, 0, .2, 1), opacity 1s, filter 1s;
   filter: drop-shadow(0 .6rem 1.2rem rgba(0, 0, 0, .55));
 }

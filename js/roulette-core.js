@@ -126,6 +126,23 @@
 
     const ball = el('g', { id: 'ballRot' });
     const b = el('circle', { id: 'ball', cx: 0, cy: -88, r: 2.7, fill: '#f6f6f2', stroke: '#9a9a90', 'stroke-width': .4 }, ball);
-    return { rotor, ball, ballDot: b, step: th };
+    /* Statistiques des derniers tirages, sur la roue : nombre de sorties de chaque case (petit chiffre sous les numéros) et
+       histogramme (barres vers le moyeu) — rouge/orange = cases chaudes, jaune = moyennes, vert/bleu = froides. */
+    const statsG = el('g', {}, rotor);
+    const setStats = (counts) => {
+      statsG.innerHTML = '';
+      const vals = R.ORDER.map((n) => counts[n] || 0), max = Math.max(1, ...vals);
+      const sorted = [...vals].sort((a, b) => b - a), hot = sorted[5], cold = sorted[31];
+      R.ORDER.forEach((n, i) => {
+        const v = vals[i], len = 3 + 11 * (v / max);
+        const col = v === 0 ? '#3b82d6' : v >= hot && v > 0 ? (v === max ? '#e2342d' : '#f08a24') : v <= cold ? '#35b34a' : '#e8d63a';
+        const g = el('g', { transform: `rotate(${i * th})` }, statsG);
+        el('line', { x1: 0, y1: -51, x2: 0, y2: -51 + len, stroke: col, 'stroke-width': 3.3 }, g);
+        const t = el('text', { x: 0, y: -54, 'text-anchor': 'middle', 'font-size': 3.6, fill: '#cfe3d6', 'font-weight': 600 }, g);
+        t.textContent = v;
+      });
+    };
+    setStats({});
+    return { rotor, ball, ballDot: b, step: th, setStats };
   };
 })();

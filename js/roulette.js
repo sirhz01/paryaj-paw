@@ -27,8 +27,8 @@ PP.ready.then(function () {
     if (i === infoIdx) return;
     infoIdx = i;
     const f = INFOS[i];
-    $('infoGrp').textContent = f.grp; $('infoName').textContent = f.name; $('infoCode').textContent = f.code;
-    $('infoDesc').textContent = f.desc; $('infoWager').textContent = 'WAGER X ' + f.x.toFixed(2).replace('.', ',');
+    $('infoGrp').textContent = f.grp; $('infoName').textContent = f.name; $('infoCode').textContent = f.x.toFixed(2).replace('.', ',');
+    $('infoDesc').textContent = f.desc; $('infoWager').textContent = 'X WAGER';
     $('info').classList.add('on');   // la barre n'apparaît qu'une fois remplie : plus de barre vide au démarrage
     tableEl.classList.add('focus');
     const cells = new Set(f.keys.flatMap((k) => /^(st|six):/.test(k) ? R.keyNumbers(k).map((n) => 'n:' + n) : [k]));
@@ -78,8 +78,11 @@ PP.ready.then(function () {
   }
 
   function renderLatest(s) {
-    PP.recent('roulette', s, 10).then((list) => {
-      $('latest').innerHTML = '<span>LATEST RESULTS</span>' + list.map((r) => `<span class="chip ${R.color(r.n)}">${r.n}</span>`).join('');
+    PP.recent('roulette', s, 50).then((list) => {
+      $('latest').innerHTML = '<span>LATEST RESULTS</span>' + list.slice(0, 10).map((r) => `<span class="chip ${R.color(r.n)}">${r.n}</span>`).join('');
+      const counts = {};
+      list.forEach((r) => { counts[r.n] = (counts[r.n] || 0) + 1; });
+      wheel.setStats(counts);
     });
   }
 
