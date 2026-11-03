@@ -187,9 +187,15 @@ body.luckysix[data-phase='result'] .ls-top > div:first-child { order: 2; justify
 body.luckysix[data-phase='result'] .ls-top > div:first-child .row { flex-direction: row; gap: .9rem; }
 body.luckysix[data-phase='result'] .ls-top > div:first-child .ball { transform: none; }
 body.luckysix[data-phase='result'] #center { order: 1; }
-body.luckysix[data-phase='result'] .ls-top > div:last-child { display: none; }
+body.luckysix[data-phase='result'] .ls-spacer { display: none; }
+/* La somme des pre-numbers quitte la barre du bas et se place sous les pre-numbers (déplacée par luckysix.js). */
+body.luckysix[data-phase='result'] .ls-top > .bb-sum { order: 3; gap: 1.2rem; margin-top: .4rem; }
+body.luckysix[data-phase='result'] .ls-top > .bb-sum .t { font-size: .85rem; }
+body.luckysix[data-phase='result'] .ls-top > .bb-sum b { font-size: 2.2rem; }
+body.luckysix[data-phase='result'] .ls-top > .bb-sum .oe { font-size: 1rem; }
 body.luckysix[data-phase='result'] .resbox { font-size: 1.5rem; }
-body.luckysix[data-phase='result'] .ls-grid { align-self: center; justify-self: center; max-width: 100%; margin-top: 6rem; grid-template-columns: repeat(10, auto); grid-template-rows: repeat(3, auto); gap: 1.4rem 1rem; }
+body.luckysix[data-phase='result'] .ls-grid { align-self: center; justify-self: center; max-width: 100%; margin-top: 10rem; grid-template-columns: repeat(10, auto); grid-template-rows: repeat(3, auto); gap: 1.4rem 1rem; }
 body.luckysix[data-phase='result'] .ls-grid .slot { grid-column: auto; grid-row: auto; flex-direction: row; gap: .5rem; }
 body.luckysix[data-phase='result'] .ls-grid .slot .ball { width: 2.4rem; height: 2.4rem; font-size: 1.05rem; }
 body.luckysix[data-phase='result'] .ls-grid .slot .pz { min-width: 2.5rem; font-size: 1.1rem; }
+body.luckysix[data-phase='result'] .bb-eo { grid-column: 3; }

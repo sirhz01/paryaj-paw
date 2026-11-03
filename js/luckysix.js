@@ -72,6 +72,12 @@ PP.ready.then(function () {
       $('drumBox').classList.toggle('hidden', s.phase !== 'draw');
       $('resBox').classList.toggle('hidden', s.phase === 'draw' || (s.phase === 'bet' && s.round < 2));
       $('resBox').textContent = s.phase === 'result' ? 'RESULTS ROUND ' + s.round : 'LAST DRAW · ROUND ' + (s.round - 1);
+      // À l'écran des résultats, la somme des pre-numbers passe sous les pre-numbers ; sinon elle reste dans la barre du bas.
+      const sum = $('sum'), host = document.querySelector(s.phase === 'result' ? '.ls-top' : '.botbar');
+      if (sum.parentNode !== host) {
+        if (s.phase === 'result') host.appendChild(sum);
+        else host.insertBefore(sum, host.querySelector('.bb-eo'));
+      }
       drum.setSpeed(s.phase === 'draw' ? 1.6 : 1);
     },
     onTick(s) {
