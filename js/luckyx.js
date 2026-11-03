@@ -20,11 +20,32 @@ PP.ready.then(function () {
   const slotOf = (i) => { const col = Math.floor(i / 6); return (col < 3 ? $('sl') : $('sr')).children[(i % 6) * 3 + (col % 3)]; };
   let shown = 0, res = null, cur = '';
 
+  // La boule sortie apparaît d'abord en grand sur le tambour, puis rejoint sa place.
+  const HOLD = 700;
+  let bigTimer = 0, placeTimer = 0, pendingPlace = null;
+  function showBig(n) {
+    const big = $('bigBall');
+    big.style.setProperty('--bc', PP.lxColor(n)); big.innerHTML = '<span>' + n + '</span>';
+    big.classList.remove('on'); void big.offsetWidth; big.classList.add('on');
+    clearTimeout(bigTimer); bigTimer = setTimeout(() => big.classList.remove('on'), HOLD);
+  }
+  function place(i) {
+    const tmp = document.createElement('div'); tmp.innerHTML = ballHTML(res.draw[i], 'pop');
+    slotOf(i).replaceWith(tmp.firstChild);
+  }
+  function flush() {
+    clearTimeout(placeTimer);
+    if (pendingPlace !== null && res) place(pendingPlace);
+    pendingPlace = null;
+  }
   function reveal(n) {
     if (!res) return;
-    for (let i = shown; i < n; i++) {
-      const tmp = document.createElement('div'); tmp.innerHTML = ballHTML(res.draw[i], 'pop');
-      slotOf(i).replaceWith(tmp.firstChild);
+    flush();
+    if (n - shown === 1) {
+      showBig(res.draw[shown]); pendingPlace = shown;
+      placeTimer = setTimeout(flush, HOLD);
+    } else {
+      for (let i = shown; i < n; i++) place(i);
     }
     if (n > shown) {
       shown = n; $('seqN').textContent = n;
@@ -32,6 +53,7 @@ PP.ready.then(function () {
     }
   }
   function reset() {
+    clearTimeout(placeTimer); pendingPlace = null; $('bigBall').classList.remove('on');
     shown = 0; $('seqN').textContent = '–';
     $('sl').innerHTML = $('sr').innerHTML = empty.repeat(PER_SIDE);
     document.querySelectorAll('.cy-strip .t').forEach((t) => t.classList.remove('on'));
