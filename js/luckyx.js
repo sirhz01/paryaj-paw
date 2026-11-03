@@ -2,7 +2,7 @@
    chaque colonne se remplit de haut en bas avant de passer à la suivante ;
    paliers N boules en bas, numéro de séquence au centre. */
 PP.ready.then(function () {
-  const $ = (id) => document.getElementById(id), body = document.body, STEP = 0.62, DRAWN = 36, PER_SIDE = 18;
+  const $ = (id) => document.getElementById(id), body = document.body, STEP = 1.14, DRAWN = 36, PER_SIDE = 18;
   const setTop = PP.topbar('LUCKY X');
   const drum = PP.drum($('drum'), 28);
 

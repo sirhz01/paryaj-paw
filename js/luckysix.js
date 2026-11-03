@@ -1,7 +1,7 @@
 /* Écran TV : Lucky Six. 35 boules sur 48 ; les 5 premières sont les « pre-numbers »,
    les boules 6 à 35 tombent chacune sur un palier de gain (LUCKY_LADDER). */
 PP.ready.then(function () {
-  const $ = (id) => document.getElementById(id), body = document.body, STEP = 0.9;
+  const $ = (id) => document.getElementById(id), body = document.body, STEP = 1.14;
   const setTop = PP.topbar('LUCKY SIX');
   const drum = PP.drum($('drum'), 30);
 
