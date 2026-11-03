@@ -99,3 +99,6 @@ body.roulette {
 /* Pendant les mises, la roue tourne lentement (comme sur la vidéo de référence). */
 @keyframes wheelIdle { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
 [data-phase='bet'] #rotor { animation: wheelIdle 180s linear infinite; }
+
+/* L'anneau extérieur (ZERO, RED, BLACK, ODD, EVEN, LOW, HIGH, douzaines) tourne lentement autour de la roue, à la même vitesse qu'elle. */
+#ringG { transform-origin: 0 0; animation: wheelIdle 180s linear infinite; }
