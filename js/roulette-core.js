@@ -106,26 +106,47 @@
     const el = (n, a, p) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); (p || svg).appendChild(e); return e; };
     const pt = (r, a) => [(r * Math.sin(a * Math.PI / 180)).toFixed(2), (-r * Math.cos(a * Math.PI / 180)).toFixed(2)];
 
-    el('circle', { r: 99, fill: '#0a1a12', stroke: '#c9a24a', 'stroke-width': 1.2 });
-    el('circle', { r: 92, fill: '#0f2a1d', stroke: '#1b4a33', 'stroke-width': .6 });
+    /* Roue d'après la photo de référence : cuvette sombre avec la piste de la bille (et deux butées dorées à gauche et à droite),
+       anneau des numéros, anneau des cases, puis un cœur en bois verni avec un cône en laiton. */
+    const defs = el('defs', {});
+    const grad = (id, attrs, stops) => { const g = el('radialGradient', Object.assign({ id }, attrs), defs); stops.forEach(([o, c]) => el('stop', { offset: o, 'stop-color': c }, g)); };
+    grad('gBowl', { cx: '50%', cy: '50%', r: '50%' }, [['.88', '#101315'], ['.94', '#2b3033'], ['1', '#171a1c']]);
+    grad('gHub', { cx: '38%', cy: '32%', r: '80%' }, [['0', '#9a4a22'], ['.5', '#6a2c13'], ['1', '#2e0f06']]);
+    grad('gBrass', { cx: '40%', cy: '35%', r: '70%' }, [['0', '#fff1b0'], ['.45', '#d9b44a'], ['1', '#7d5a14']]);
+    el('circle', { r: 99.2, fill: 'url(#gBowl)', stroke: '#c9a24a', 'stroke-width': 1.4 });
+    el('circle', { r: 94, fill: 'none', stroke: 'rgba(255,255,255,.07)', 'stroke-width': 6 });
+    el('circle', { r: 90.4, fill: 'none', stroke: '#c9a24a', 'stroke-width': .7 });
+    [90, 270].forEach((deg) => {            /* butées en losange : la bille y rebondit */
+      const [cx, cy] = pt(94.3, deg);
+      el('path', { d: 'M0 -5.2L3.4 0L0 5.2L-3.4 0Z', transform: 'translate(' + cx + ' ' + cy + ') rotate(' + (deg - 90) + ')', fill: 'url(#gBrass)', stroke: '#4a3408', 'stroke-width': .4 });
+    });
 
     const rotor = el('g', { id: 'rotor' });
+    const sector = (r0, r1, a0, a1) => {
+      const [x0, y0] = pt(r1, a0), [x1, y1] = pt(r1, a1), [x2, y2] = pt(r0, a1), [x3, y3] = pt(r0, a0);
+      return `M${x0} ${y0}A${r1} ${r1} 0 0 1 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 0 0 ${x3} ${y3}Z`;
+    };
+    const FILL = { green: '#37b34a', red: '#d9573b', black: '#14171a' };
     R.ORDER.forEach((n, i) => {
-      const a0 = (i - .5) * th, a1 = (i + .5) * th, [x0, y0] = pt(84, a0), [x1, y1] = pt(84, a1), [x2, y2] = pt(60, a1), [x3, y3] = pt(60, a0);
-      const fill = { green: '#13803f', red: '#b3201c', black: '#15181b' }[R.color(n)];
-      el('path', { d: `M${x0} ${y0}A84 84 0 0 1 ${x1} ${y1}L${x2} ${y2}A60 60 0 0 0 ${x3} ${y3}Z`, fill, stroke: '#d9c27a', 'stroke-width': .35 }, rotor);
-      const t = el('text', { x: 0, y: -69.5, 'text-anchor': 'middle', 'font-size': n.length > 1 ? 5.2 : 6.2, fill: '#fff', 'font-weight': 700, transform: `rotate(${i * th})` }, rotor);
+      const a0 = (i - .5) * th, a1 = (i + .5) * th, fill = FILL[R.color(n)];
+      el('path', { d: sector(77, 90, a0, a1), fill, stroke: '#d9c27a', 'stroke-width': .3 }, rotor);   // anneau des numéros
+      el('path', { d: sector(58, 75.5, a0 + .25, a1 - .25), fill, stroke: 'rgba(0,0,0,.35)', 'stroke-width': .3 }, rotor);   // case
+      const t = el('text', { x: 0, y: -80.2, 'text-anchor': 'middle', 'font-size': n.length > 1 ? 5.4 : 6.4, fill: '#fff', 'font-weight': 700, transform: `rotate(${i * th})` }, rotor);
       t.textContent = n;
     });
-    el('circle', { r: 58, fill: '#0b1f16', stroke: '#c9a24a', 'stroke-width': .6 }, rotor);
-    for (let i = 0; i < 38; i++) {          /* rayons décoratifs du moyeu */
-      const [x, y] = pt(58, i * th), [u, v] = pt(36, i * th);
-      el('line', { x1: x, y1: y, x2: u, y2: v, stroke: i % 2 ? '#1c4a33' : '#2b6b49', 'stroke-width': 2.2 }, rotor);
-    }
-    el('circle', { r: 36, fill: '#06150e', stroke: '#c9a24a', 'stroke-width': .8 }, rotor);
+    el('circle', { r: 76.2, fill: 'none', stroke: '#d9b44a', 'stroke-width': 1.1 }, rotor);
+    el('circle', { r: 57.6, fill: 'url(#gHub)', stroke: '#d9b44a', 'stroke-width': 1.2 }, rotor);
+    /* veines du bois / marbre */
+    [['M-48 -18C-30 -40 -8 -4 18 -26S50 -8 44 18', 'rgba(255,214,150,.22)', 1.6], ['M-44 26C-20 6 8 40 34 14', 'rgba(255,190,120,.18)', 1.2],
+     ['M-30 -44C-10 -30 -18 -6 6 4S30 30 14 46', 'rgba(20,6,0,.35)', 1.8], ['M-52 4C-34 14 -22 -10 -2 -2S34 -34 50 -14', 'rgba(255,224,170,.14)', 1]]
+      .forEach(([d, stroke, w]) => el('path', { d, fill: 'none', stroke, 'stroke-width': w, 'stroke-linecap': 'round' }, rotor));
+    el('circle', { r: 11, fill: 'url(#gBrass)', stroke: '#6b4a0c', 'stroke-width': .6 }, rotor);   // cône en laiton
+    el('circle', { r: 3.2, fill: '#f6e3a0', stroke: '#7d5a14', 'stroke-width': .4 }, rotor);
 
     const ball = el('g', { id: 'ballRot' });
-    const b = el('circle', { id: 'ball', cx: 0, cy: -88, r: 2.7, fill: '#f6f6f2', stroke: '#9a9a90', 'stroke-width': .4 }, ball);
+    const b = el('circle', { id: 'ball', cx: 0, cy: -94.3, r: 2.9, fill: '#f6f6f2', stroke: '#9a9a90', 'stroke-width': .4 }, ball);
+    /* reflet vitré fixe sur le cœur (ne tourne pas avec la roue) */
+    el('ellipse', { cx: -17, cy: -26, rx: 30, ry: 13, fill: 'rgba(255,255,255,.17)', transform: 'rotate(-28 -17 -26)', 'pointer-events': 'none' });
     /* Statistiques des derniers tirages (visibles pendant les mises, la roue est alors sur le côté) :
        - anneau de chiffres : nombre de sorties de chaque case, juste sous les numéros ;
        - histogramme en secteurs larges autour du moyeu : plus la case est sortie, plus le secteur est long
@@ -133,10 +154,6 @@
        - anneau extérieur : part des derniers tirages par catégorie (pair, impair, rouge, noir, douzaines…). */
     const statsG = el('g', { id: 'statsG' }, rotor);
     const ringG = el('g', { id: 'ringG' });
-    const sector = (r0, r1, a0, a1) => {
-      const [x0, y0] = pt(r1, a0), [x1, y1] = pt(r1, a1), [x2, y2] = pt(r0, a1), [x3, y3] = pt(r0, a0);
-      return `M${x0} ${y0}A${r1} ${r1} 0 0 1 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 0 0 ${x3} ${y3}Z`;
-    };
     const CATS = [
       ['ZERO', (n) => n === '0' || n === '00', '#13803f'], ['1ST 12', (n) => +n >= 1 && +n <= 12, '#1d4a36'], ['2ND 12', (n) => +n >= 13 && +n <= 24, '#1d4a36'],
       ['3RD 12', (n) => +n >= 25 && +n <= 36, '#1d4a36'], ['LOW', (n) => +n >= 1 && +n <= 18, '#1d4a36'], ['HIGH', (n) => +n >= 19 && +n <= 36, '#1d4a36'],

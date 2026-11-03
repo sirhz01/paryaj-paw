@@ -48,7 +48,10 @@ body.roulette {
 .wheel-wrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
 #rotor, #ballRot { transform-origin: 0 0; }
 #ball { transition: transform .9s cubic-bezier(.3, 1.6, .5, 1); }
-#ball.in { transform: translateY(16px); }
+#ball.in { transform: translateY(28px); }
+/* La bille rebondit sur les butées et dans les cases avant de se poser (28 = de la piste jusqu'à la case). */
+#ball.drop { animation: ballDrop 3.2s ease-in-out forwards; }
+@keyframes ballDrop { 0% { transform: translateY(0); } 12% { transform: translateY(9px); } 22% { transform: translateY(3px); } 40% { transform: translateY(17px); } 52% { transform: translateY(10px); } 70% { transform: translateY(25px); } 82% { transform: translateY(20px); } 100% { transform: translateY(28px); } }
 .hub { position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.6rem; font-weight: 800; font-variant-numeric: tabular-nums; pointer-events: none; text-shadow: 0 .1rem .4rem #000; }
 
 /* ---- Résultat ---- */
@@ -87,3 +90,8 @@ body.roulette {
 /* Statistiques de la roue : visibles seulement pendant les mises (roue sur le côté), masquées quand elle passe au centre. */
 #statsG, #ringG { transition: opacity .6s; }
 [data-phase='draw'] #statsG, [data-phase='draw'] #ringG, [data-phase='result'] #statsG, [data-phase='result'] #ringG { opacity: 0; }
+
+/* Compte à rebours : au-dessus de la roue, puis dans le cœur de la roue pendant les 20 dernières secondes. */
+.wclock { position: absolute; left: 50%; top: -19%; transform: translateX(-50%); font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; text-shadow: 0 .1rem .4rem #000; opacity: 0; transition: opacity .4s; pointer-events: none; white-space: nowrap; }
+.wclock.on { opacity: 1; }
+.hub.on { inset: 34%; border-radius: 50%; background: rgba(8, 4, 2, .62); box-shadow: 0 0 0 .15rem rgba(217, 180, 74, .8); }

@@ -4,7 +4,7 @@
    result → numéro gagnant + mises gagnantes sur la table */
 PP.ready.then(function () {
   const R = PP.R, $ = (id) => document.getElementById(id);
-  const stage = $('stage'), tableEl = $('table'), hub = $('hub');
+  const stage = $('stage'), tableEl = $('table'), hub = $('hub'), clock = $('wClock');
   const setTop = PP.topbar('AMERICAN ROULETTE');
 
   R.buildTable(tableEl);
@@ -60,7 +60,7 @@ PP.ready.then(function () {
   function spin(s, n, resume) {
     const k = R.ORDER.indexOf(n), remaining = s.dur - s.t;
     const rotor = wheel.rotor, ball = wheel.ball;
-    wheel.ballDot.classList.remove('in');
+    wheel.ballDot.classList.remove('in', 'drop');
     setT(rotor, 0); setT(ball, 0);
     rotor.style.transform = `rotate(${rotorAngle}deg)`; ball.style.transform = 'rotate(0deg)';
     void rotor.getBoundingClientRect();
@@ -104,17 +104,21 @@ PP.ready.then(function () {
       stage.dataset.phase = s.phase;
       renderLatest(s);
       setIdle(s.phase === 'bet');
-      if (s.phase === 'bet') { clearFocus(); wheel.ballDot.classList.remove('in'); return; }
+      if (s.phase === 'bet') { clearFocus(); wheel.ballDot.classList.remove('in', 'drop'); return; }
       const key = (cur = s.day + ':' + s.round);
       PP.load('roulette', s.day, s.round).then((res) => { if (res && cur === key) show(res, first); });
     },
     onTick(s) {
       setTop(s);
-      if (s.phase === 'bet') {
-        showInfo(Math.floor(s.t / 3) % INFOS.length);
-        hub.textContent = PP.clock(s.left);
-      } else hub.textContent = '';
-      /* La bille tombe dans la case sur les dernières secondes du tirage. */
+      /* Compte à rebours des mises : au-dessus de la roue, puis dans son cœur pendant les 20 dernières secondes. */
+      const inside = s.phase === 'bet' && s.left <= 20, above = s.phase === 'bet' && s.left > 20;
+      if (s.phase === 'bet') showInfo(Math.floor(s.t / 3) % INFOS.length);
+      hub.textContent = inside ? PP.clock(s.left) : '';
+      hub.classList.toggle('on', inside);
+      clock.textContent = above ? PP.clock(s.left) : '';
+      clock.classList.toggle('on', above);
+      /* La bille rebondit sur les butées puis tombe dans la case sur les dernières secondes du tirage. */
+      if (s.phase === 'draw' && s.left < 4) wheel.ballDot.classList.add('drop');
       if (s.phase === 'draw' && s.left < 2.4) wheel.ballDot.classList.add('in');
     },
   });
