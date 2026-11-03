@@ -126,21 +126,45 @@
 
     const ball = el('g', { id: 'ballRot' });
     const b = el('circle', { id: 'ball', cx: 0, cy: -88, r: 2.7, fill: '#f6f6f2', stroke: '#9a9a90', 'stroke-width': .4 }, ball);
-    /* Statistiques des derniers tirages, sur la roue : nombre de sorties de chaque case (petit chiffre sous les numéros) et
-       histogramme (barres vers le moyeu) — rouge/orange = cases chaudes, jaune = moyennes, vert/bleu = froides. */
-    const statsG = el('g', {}, rotor);
-    const setStats = (counts) => {
-      statsG.innerHTML = '';
+    /* Statistiques des derniers tirages (visibles pendant les mises, la roue est alors sur le côté) :
+       - anneau de chiffres : nombre de sorties de chaque case, juste sous les numéros ;
+       - histogramme en secteurs larges autour du moyeu : plus la case est sortie, plus le secteur est long
+         (rouge/orange = cases chaudes, jaune = moyennes, vert/bleu = froides) ;
+       - anneau extérieur : part des derniers tirages par catégorie (pair, impair, rouge, noir, douzaines…). */
+    const statsG = el('g', { id: 'statsG' }, rotor);
+    const ringG = el('g', { id: 'ringG' });
+    const sector = (r0, r1, a0, a1) => {
+      const [x0, y0] = pt(r1, a0), [x1, y1] = pt(r1, a1), [x2, y2] = pt(r0, a1), [x3, y3] = pt(r0, a0);
+      return `M${x0} ${y0}A${r1} ${r1} 0 0 1 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 0 0 ${x3} ${y3}Z`;
+    };
+    const CATS = [
+      ['ZERO', (n) => n === '0' || n === '00', '#13803f'], ['1ST 12', (n) => +n >= 1 && +n <= 12, '#1d4a36'], ['2ND 12', (n) => +n >= 13 && +n <= 24, '#1d4a36'],
+      ['3RD 12', (n) => +n >= 25 && +n <= 36, '#1d4a36'], ['LOW', (n) => +n >= 1 && +n <= 18, '#1d4a36'], ['HIGH', (n) => +n >= 19 && +n <= 36, '#1d4a36'],
+      ['RED', (n) => R.color(n) === 'red', '#b3201c'], ['BLACK', (n) => R.color(n) === 'black', '#15181b'],
+      ['ODD', (n) => +n >= 1 && +n % 2 === 1, '#1d4a36'], ['EVEN', (n) => +n >= 1 && +n % 2 === 0, '#1d4a36'],
+    ];
+    const setStats = (counts, results = []) => {
+      statsG.innerHTML = ''; ringG.innerHTML = '';
       const vals = R.ORDER.map((n) => counts[n] || 0), max = Math.max(1, ...vals);
       const sorted = [...vals].sort((a, b) => b - a), hot = sorted[5], cold = sorted[31];
       R.ORDER.forEach((n, i) => {
-        const v = vals[i], len = 2 + 7 * (v / max);
+        const v = vals[i], a0 = (i - .5) * th + .35, a1 = (i + .5) * th - .35;
         const col = v === 0 ? '#3b82d6' : v >= hot && v > 0 ? (v === max ? '#e2342d' : '#f08a24') : v <= cold ? '#35b34a' : '#e8d63a';
-        const g = el('g', { transform: `rotate(${i * th})` }, statsG);
-        el('line', { x1: 0, y1: -51, x2: 0, y2: -51 + len, stroke: col, 'stroke-width': 4.6 }, g);
-        // Nombre de sorties au bout de la barre.
-        const t = el('text', { x: 0, y: -51 + len + 5.2, 'text-anchor': 'middle', 'font-size': 5, fill: '#ffffff', 'font-weight': 700 }, g);
+        el('path', { d: sector(36.5, 50, a0, a1), fill: '#151a3c' }, statsG);
+        el('path', { d: sector(36.5, 36.5 + 13.5 * Math.max(v / max, .06), a0, a1), fill: col }, statsG);
+        const t = el('text', { x: 0, y: -52.2, 'text-anchor': 'middle', 'font-size': 5, fill: '#ffffff', 'font-weight': 700, transform: `rotate(${i * th})` }, statsG);
         t.textContent = v;
+      });
+      CATS.forEach(([label, test, fill], k) => {
+        const a0 = k * 36 + .8, a1 = (k + 1) * 36 - .8, id = 'ringArc' + k;
+        const share = results.length ? (100 * results.filter((r) => test(String(r))).length / results.length).toFixed(1) + '%' : '–';
+        const [x0, y0] = pt(106.5, a0), [x1, y1] = pt(106.5, a1);
+        el('path', { d: `M${x0} ${y0}A106.5 106.5 0 0 1 ${x1} ${y1}`, fill: 'none', stroke: fill, 'stroke-width': 11 }, ringG);
+        const [u0, v0] = pt(104.6, a0), [u1, v1] = pt(104.6, a1);
+        el('path', { id, d: `M${u0} ${v0}A104.6 104.6 0 0 1 ${u1} ${v1}`, fill: 'none' }, ringG);
+        const t = el('text', { 'font-size': 4.2, fill: '#ffffff', 'font-weight': 700 }, ringG);
+        const tp = el('textPath', { href: '#' + id, startOffset: '50%', 'text-anchor': 'middle' }, t);
+        tp.textContent = label + ' ' + share;
       });
     };
     setStats({});

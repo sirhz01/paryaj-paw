@@ -40,8 +40,8 @@ body.roulette {
 
 /* ---- Roue ---- */
 .wheel-wrap {
-  position: absolute; z-index: 3; width: 28rem; aspect-ratio: 1; transform: translate(-50%, -50%);
-  left: 89%; top: 58%; transition: left 1.3s cubic-bezier(.5, 0, .2, 1), top 1.3s cubic-bezier(.5, 0, .2, 1),
+  position: absolute; z-index: 3; width: 26rem; aspect-ratio: 1; transform: translate(-50%, -50%);
+  left: 89%; top: 54%; transition: left 1.3s cubic-bezier(.5, 0, .2, 1), top 1.3s cubic-bezier(.5, 0, .2, 1),
     width 1.3s cubic-bezier(.5, 0, .2, 1), opacity 1s, filter 1s;
   filter: drop-shadow(0 .6rem 1.2rem rgba(0, 0, 0, .55));
 }
@@ -83,3 +83,7 @@ body.roulette {
 [data-phase='result'] .result-panel { opacity: 1; }
 [data-phase='result'] .info { opacity: 0; }
 [data-phase='result'] .hub { font-size: 0; }
+
+/* Statistiques de la roue : visibles seulement pendant les mises (roue sur le côté), masquées quand elle passe au centre. */
+#statsG, #ringG { transition: opacity .6s; }
+[data-phase='draw'] #statsG, [data-phase='draw'] #ringG, [data-phase='result'] #statsG, [data-phase='result'] #ringG { opacity: 0; }

@@ -82,7 +82,7 @@ PP.ready.then(function () {
       $('latest').innerHTML = '<span>LATEST RESULTS</span>' + list.slice(0, 10).map((r) => `<span class="chip ${R.color(r.n)}">${r.n}</span>`).join('');
       const counts = {};
       list.forEach((r) => { counts[r.n] = (counts[r.n] || 0) + 1; });
-      wheel.setStats(counts);
+      wheel.setStats(counts, list.map((r) => r.n));
     });
   }
 
