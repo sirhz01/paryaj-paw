@@ -174,3 +174,7 @@ body:not([data-phase='bet']) .promo { display: none; }
 .bb-eo .r b { font-size: .9rem; text-align: right; }
 .bb-eo i { display: block; height: .3rem; background: rgba(255, 255, 255, .18); border-radius: .2rem; overflow: hidden; }
 .bb-eo u { display: block; height: 100%; width: 0; background: #fff; transition: width .4s; }
+/* Pendant les mises : l'annonce occupe la zone libre à droite des pre-numbers (rien ne chevauche le tambour ni les paliers). */
+body.luckysix .promo .slide { padding: 0 11rem 15rem 28rem; }
+body.luckysix[data-phase='bet'] .resbox { display: none; }
+body.luckysix .fs-hint { display: none; }
