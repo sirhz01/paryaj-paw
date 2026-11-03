@@ -15,8 +15,8 @@ PP.ready.then(function () {
 
   const ballHTML = (n, cls = '') => `<span class="ball ${cls}" style="background:${PP.lxColor(n)};color:${PP.lxText(n)}">${n}</span>`;
   const empty = '<span class="ball empty">0</span>';
-  // Paliers affichés du plus haut (10 BALLS) au plus bas (2 BALLS).
-  const tiers = Object.entries(PP.LUCKYX_TIERS).reverse();
+  // Paliers affichés de 2 BALLS à 10 BALLS.
+  const tiers = Object.entries(PP.LUCKYX_TIERS);
 
   $('sl').innerHTML = $('sr').innerHTML = empty.repeat(PER_SIDE);
   $('tiers').innerHTML = tiers.map(([n, v]) => `<div class="t" style="opacity:1"><small>${n} BALLS</small><b>${PP.short(v)}</b></div>`).join('');
