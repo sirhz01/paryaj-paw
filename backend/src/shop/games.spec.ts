@@ -62,8 +62,8 @@ describe('roulette américaine', () => {
 
   it('paie selon la table standard et perd sur 0 et 00 pour les chances simples', () => {
     const win = (key: string, n: string) => lineWin('roulette', rouletteLine(key, 10000, true)!, { n }, PAYTABLES);
-    expect(win('n:17', '17')).toBe(152000);
-    expect(win('n:00', '00')).toBe(152000);
+    expect(win('n:17', '17')).toBe(360000);
+    expect(win('n:00', '00')).toBe(360000);
     expect(win('n:17', '18')).toBe(0);
     expect(win('st:19', '21')).toBe(50700);
     expect(win('six:1', '6')).toBe(25300);
@@ -122,7 +122,8 @@ describe('roulette américaine', () => {
 
   it('avantage maison 60 % (RTP 40 %) sur chaque mise de la roue', () => {
     const rtp = (line: string) => rtpReport(PAYTABLES, true).find((r) => r.game === 'roulette' && r.line === line)!.rtpPercent;
-    for (const line of ['straight', 'split', 'street', 'corner', 'six', 'top line']) expect(rtp(line)).toBeCloseTo(40, 0);
+    for (const line of ['split', 'street', 'corner', 'six', 'top line']) expect(rtp(line)).toBeCloseTo(40, 0);
+    expect(rtp('straight')).toBeCloseTo(94.74, 1);   // numéro plein : 36 × la mise
   });
 });
 
@@ -182,7 +183,7 @@ describe('Lucky X', () => {
 describe('ticketWin', () => {
   it('additionne les lignes puis applique le plafond de gain', () => {
     const lines = [rouletteLine('n:1', 10000, true)!, rouletteLine('red', 10000, true)!];
-    expect(ticketWin('roulette', lines, { n: '1' }, PAYTABLES, 10_000_000)).toBe(160400);
+    expect(ticketWin('roulette', lines, { n: '1' }, PAYTABLES, 10_000_000)).toBe(368400);
     expect(ticketWin('roulette', lines, { n: '1' }, PAYTABLES, 100000)).toBe(100000);
   });
 });
@@ -237,7 +238,7 @@ describe('RTP', () => {
   const rtp = (game: string, line: string) => rtpReport(PAYTABLES, true).find((r) => r.game === game && r.line === line)!.rtpPercent;
 
   it('roulette américaine : RTP 40 % (avantage maison 60 %) sur chaque mise', () => {
-    expect(rtp('roulette', 'straight')).toBeCloseTo(40, 0);
+    expect(rtp('roulette', 'straight')).toBeCloseTo(94.74, 1);   // numéro plein à 36 × la mise
     expect(rtp('roulette', 'chance simple')).toBeCloseTo(40, 0);
     expect(rtp('roulette', 'top line')).toBeCloseTo(40, 0);
   });

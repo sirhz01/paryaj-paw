@@ -134,11 +134,12 @@
       const vals = R.ORDER.map((n) => counts[n] || 0), max = Math.max(1, ...vals);
       const sorted = [...vals].sort((a, b) => b - a), hot = sorted[5], cold = sorted[31];
       R.ORDER.forEach((n, i) => {
-        const v = vals[i], len = 3 + 11 * (v / max);
+        const v = vals[i], len = 2 + 7 * (v / max);
         const col = v === 0 ? '#3b82d6' : v >= hot && v > 0 ? (v === max ? '#e2342d' : '#f08a24') : v <= cold ? '#35b34a' : '#e8d63a';
         const g = el('g', { transform: `rotate(${i * th})` }, statsG);
-        el('line', { x1: 0, y1: -51, x2: 0, y2: -51 + len, stroke: col, 'stroke-width': 3.3 }, g);
-        const t = el('text', { x: 0, y: -54, 'text-anchor': 'middle', 'font-size': 3.6, fill: '#cfe3d6', 'font-weight': 600 }, g);
+        el('line', { x1: 0, y1: -51, x2: 0, y2: -51 + len, stroke: col, 'stroke-width': 4.6 }, g);
+        // Nombre de sorties au bout de la barre.
+        const t = el('text', { x: 0, y: -51 + len + 5.2, 'text-anchor': 'middle', 'font-size': 5, fill: '#ffffff', 'font-weight': 700 }, g);
         t.textContent = v;
       });
     };

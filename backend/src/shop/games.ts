@@ -59,11 +59,12 @@ const range = (a: number, b: number): string[] => Array.from({ length: b - a + 1
 const ALL = range(1, 36);
 
 /** Cote totale (mise comprise) par type de mise. Table américaine standard (avantage maison 5,26 %). */
-// Cotes (multiplicateur total de la mise) calées sur un RTP de 40 % : cote = 0,40 × 38 / (numéros couverts).
-// Avantage maison 60 %. NB : les chances simples (rouge/noir, pair/impair, manque/passe) rendent alors moins
+// Cotes (multiplicateur total de la mise) calées sur un RTP de 40 % : cote = 0,40 × 38 / (numéros couverts), sauf le numéro
+// plein (« n ») : 36 × la mise (50 G sur le 15 → 1 800 G), soit un RTP de 36/38 = 94,7 %. Avantage maison 60 % ailleurs. NB : les
+// chances simples (rouge/noir, pair/impair, manque/passe) rendent alors moins
 // que la mise (0,84×), conséquence mathématique d'un RTP de 40 % sur un pari gagné ~47 % du temps.
 const ROULETTE_ODDS: Record<string, number> = {
-  n: 15.2, sp: 7.6, st: 5.07, co: 3.8, six: 2.53, col: 1.27, doz: 1.27, red: 0.84, black: 0.84, even: 0.84, odd: 0.84, low: 0.84, high: 0.84, basket: 3.04,
+  n: 36, sp: 7.6, st: 5.07, co: 3.8, six: 2.53, col: 1.27, doz: 1.27, red: 0.84, black: 0.84, even: 0.84, odd: 0.84, low: 0.84, high: 0.84, basket: 3.04,
 };
 
 const ROULETTE_LABELS: Record<string, string> = {
@@ -267,7 +268,7 @@ export function rtpReport(paytables: ShopPaytables, topLineEnabled: boolean): Rt
     ['straight', 1], ['split', 2], ['street', 3], ['corner', 4], ['six', 6], ['column/douzaine', 12], ['chance simple', 18], ['top line', 5],
   ] as const) {
     if (type === 'top line' && !topLineEnabled) continue;
-    const odds = { straight: 15.2, split: 7.6, street: 5.07, corner: 3.8, six: 2.53, 'column/douzaine': 1.27, 'chance simple': 0.84, 'top line': 3.04 }[type];
+    const odds = { straight: 36, split: 7.6, street: 5.07, corner: 3.8, six: 2.53, 'column/douzaine': 1.27, 'chance simple': 0.84, 'top line': 3.04 }[type];
     add('roulette', type, (odds * covered) / 38);
   }
   for (const [n, row] of Object.entries(paytables.keno)) {

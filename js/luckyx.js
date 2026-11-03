@@ -69,7 +69,16 @@ PP.ready.then(function () {
     lastReveal = now;
     reveal(target - shown > 1 ? shown + 1 : target);
   }
+  /* Écran des résultats : les boules tirées, ensemble et dans l'ordre du tirage (une seule fois par tour). */
+  let resKey = '';
+  function renderResults(s) {
+    const key = s.day + ':' + s.round;
+    if (!res || resKey === key) return;
+    resKey = key;
+    $('cyRes').innerHTML = '<div class="rt">RESULTS ROUND ' + s.round + '</div><div class="rg">' + res.draw.slice(0, DRAWN).map((n) => ballHTML(n)).join('') + '</div>';
+  }
   function reset() {
+    resKey = '';
     clearTimeout(placeTimer); pendingPlace = null; $('bigBall').classList.remove('on');
     shown = 0; $('seqN').textContent = '–';
     $('sl').innerHTML = $('sr').innerHTML = empty.repeat(PER_SIDE);
@@ -99,7 +108,7 @@ PP.ready.then(function () {
         slides.forEach((el, i) => el.classList.toggle('on', i === k));
         $('left').textContent = PP.clock(s.left);
       } else if (s.phase === 'draw') catchUp(targetAt(s));
-      else reveal(DRAWN);
+      else { reveal(DRAWN); renderResults(s); }
     },
   });
 });
