@@ -1,0 +1,54 @@
+# Application desktop Windows : construit l'installateur et publie une release GitHub automatiquement.
+# Se déclenche à chaque modification du dossier desktop/electron sur main (ou à la main : onglet Actions → Run workflow).
+# Les pages (caisse, admin, écrans TV) n'ont PAS besoin de ça : l'application les charge depuis https://paryajpaw.online.
+# Les ordinateurs déjà équipés se mettent à jour tout seuls (electron-updater lit latest.yml de la dernière release).
+name: Application desktop
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/electron/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop/electron
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installer les dépendances
+        run: npm install --no-audit --no-fund
+
+      # Un numéro de version plus grand à chaque construction, pour que electron-updater voie la mise à jour.
+      - name: Numéro de version
+        run: npm pkg set version=0.3.${{ github.run_number }}
+
+      - name: Construire et publier la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
+
+      # Même fichier sous un nom fixe : c'est le lien du bouton « Télécharger » de la page telecharger.html.
+      - name: Fichier à nom fixe pour la page de téléchargement
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          V=$(node -p "require('./package.json').version")
+          cp "release/ParyajPawBoutik-${V}-setup.exe" release/ParyajPawBoutik-setup.exe
+          gh release upload "v${V}" release/ParyajPawBoutik-setup.exe --clobber --repo "${{ github.repository }}"

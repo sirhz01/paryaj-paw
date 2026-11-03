@@ -64,7 +64,8 @@
       {
         "provider": "github",
         "owner": "sirhz01",
-        "repo": "paryaj-paw"
+        "repo": "paryaj-paw",
+        "releaseType": "release"
       }
     ]
   }
