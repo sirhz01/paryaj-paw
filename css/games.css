@@ -211,7 +211,7 @@ body.luckysix[data-phase='result'] .ls-colbet { display: grid; grid-row: 2; grid
 .cb-g.r .cb-r b { order: 1; text-align: left; }
 
 /* ===== Lucky X : écran des résultats (après le tirage) =====
-   En haut à droite : les 50 boules par couleur (rouge, bleu, vert, jaune, mauve), foncées si tirées et pâles sinon, avec à gauche
+   En haut à droite : les 50 boules par couleur (rouge, bleu, vert, jaune, mauve), foncées si tirées et pâles sinon ; en haut à gauche
    la première boule tirée (en haut) et la dernière (en dessous), en grand. En bas : les 36 boules tirées, dans l'ordre du tirage. */
 .cy-results { display: none; }
 body.luckyx[data-phase='result'] .cy-side, body.luckyx[data-phase='result'] .cy-drum, body.luckyx[data-phase='result'] .cy-done { display: none; }
@@ -222,8 +222,8 @@ body.luckyx[data-phase='result'] .cy-strip { bottom: 9.6rem; }
 .cy-results .rall .ball { width: 2.1rem; height: 2.1rem; font-size: .85rem; }
 .cy-results .rall .ball.off { opacity: .22; filter: saturate(.6); box-shadow: none; }
 .cy-results .rall .ball.on { box-shadow: 0 0 0 .12rem rgba(255, 255, 255, .85), 0 .15rem .4rem rgba(0, 0, 0, .55); }
-.cy-results .rfl { position: absolute; right: 28.6rem; top: 1.2rem; display: grid; gap: .7rem; justify-items: center; }
+.cy-results .rfl { position: absolute; left: 2.6rem; top: 5rem; display: grid; gap: .7rem; justify-items: center; }
 .cy-results .rfl small { display: block; font-size: .7rem; letter-spacing: .12em; text-align: center; color: #cfe3f7; margin-bottom: .2rem; }
-.cy-results .rfl .ball { width: 5rem; height: 5rem; font-size: 2rem; }
+.cy-results .rfl .ball { width: 6.4rem; height: 6.4rem; font-size: 2.6rem; }
 .cy-results .rdr { position: absolute; left: 0; right: 0; bottom: 1.2rem; display: grid; grid-template-columns: repeat(18, auto); justify-content: center; gap: .5rem .4rem; }
 .cy-results .rdr .ball { width: 2.6rem; height: 2.6rem; font-size: 1.05rem; }
