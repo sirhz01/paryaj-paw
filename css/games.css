@@ -178,3 +178,34 @@ body:not([data-phase='bet']) .promo { display: none; }
 body.luckysix .promo .slide { padding: 0 11rem 15rem 28rem; }
 body.luckysix[data-phase='bet'] .resbox { display: none; }
 body.luckysix .fs-hint { display: none; }
+
+/* ===== Lucky Six : écran des résultats (après le tirage) =====
+   Titre, 5 pre-numbers en ligne, somme et parité des pre-numbers, puis les 30 boules sur 3 rangées de 10
+   (gain à droite de chaque boule : 10K en haut à gauche, 1 en bas à droite) et les barres « Colour betting ».
+   Pendant les mises et le tirage, la disposition autour du tambour ne change pas. */
+.ls-info, .ls-colbet { display: none; }
+body.luckysix[data-phase='result'] .ls-top { width: 100%; height: auto; margin-top: 1.8rem; display: flex; flex-direction: column; align-items: center; gap: .8rem; }
+body.luckysix[data-phase='result'] .ls-top > div:first-child { order: 2; justify-self: auto; margin: 0; }
+body.luckysix[data-phase='result'] .ls-top .cap { display: block; text-align: center; font-size: .8rem; color: #dbe9fa; margin-bottom: .5rem; }
+body.luckysix[data-phase='result'] .ls-top > div:first-child .row { flex-direction: row; gap: .9rem; }
+body.luckysix[data-phase='result'] .ls-top > div:first-child .ball { transform: none; width: 2.7rem; height: 2.7rem; }
+body.luckysix[data-phase='result'] #center { order: 1; }
+body.luckysix[data-phase='result'] .ls-spacer { display: none; }
+body.luckysix[data-phase='result'] .resbox { font-size: 1.5rem; }
+body.luckysix[data-phase='result'] .ls-info { order: 3; display: flex; gap: 9rem; margin-top: .6rem; text-align: center; }
+body.luckysix[data-phase='result'] .ls-info span { display: block; font-size: .85rem; color: #cfe3f7; letter-spacing: .03em; }
+body.luckysix[data-phase='result'] .ls-info b { display: block; font-size: 1.7rem; font-weight: 600; }
+body.luckysix[data-phase='result'] .ls-grid { align-self: end; justify-self: center; max-width: 100%; margin-bottom: .4rem; grid-template-columns: repeat(10, auto); grid-template-rows: repeat(3, auto); gap: 1.4rem 1rem; }
+body.luckysix[data-phase='result'] .ls-grid .slot { grid-column: auto; grid-row: auto; flex-direction: row; gap: .5rem; }
+body.luckysix[data-phase='result'] .ls-grid .slot .ball { width: 2.4rem; height: 2.4rem; font-size: 1.05rem; }
+body.luckysix[data-phase='result'] .ls-grid .slot .pz { min-width: 2.5rem; font-size: 1.1rem; }
+body.luckysix[data-phase='result'] .botbar { display: none; }
+body.luckysix[data-phase='result'] .ls-colbet { display: grid; grid-row: 2; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 3rem; padding: 0 1rem 1rem; }
+.cb-t { font-size: .95rem; color: #dbe9fa; text-align: center; }
+.cb-g { display: grid; gap: .45rem; }
+.cb-r { display: grid; grid-template-columns: 1fr 1.6rem; align-items: center; gap: .5rem; font-size: .8rem; }
+.cb-r i { display: block; height: .4rem; width: calc(var(--w) * 1%); max-width: 100%; background: var(--c); border-radius: .2rem; }
+.cb-r b { text-align: right; font-weight: 500; }
+.cb-g.r .cb-r { grid-template-columns: 1.6rem 1fr; }
+.cb-g.r .cb-r i { order: 2; }
+.cb-g.r .cb-r b { order: 1; text-align: left; }

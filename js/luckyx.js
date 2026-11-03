@@ -2,7 +2,14 @@
    chaque colonne se remplit de haut en bas avant de passer à la suivante ;
    paliers N boules en bas, numéro de séquence au centre. */
 PP.ready.then(function () {
-  const $ = (id) => document.getElementById(id), body = document.body, STEP = 1.14, DRAWN = 36, PER_SIDE = 18;
+  const $ = (id) => document.getElementById(id), body = document.body, DRAWN = 36, PER_SIDE = 18;
+  /* Chaque boule : le tambour tourne PAUSE secondes, puis la boule reste BALL secondes à l'écran avant que le tambour reparte. */
+  const BALL = 1.14, PAUSE = 1, STEP = BALL + PAUSE;
+  /* Nombre de boules sorties à l'instant s.t du tirage. Si le tirage réglé est plus court que nécessaire, le rythme est resserré. */
+  const targetAt = (s) => {
+    const step = Math.max(0.6, Math.min(STEP, (s.dur - PAUSE - BALL) / (DRAWN - 1)));
+    return s.t < PAUSE ? 0 : Math.min(DRAWN, Math.floor((s.t - PAUSE) / step) + 1);
+  };
   const setTop = PP.topbar('LUCKY X');
   const drum = PP.drum($('drum'), 28);
 
@@ -21,7 +28,7 @@ PP.ready.then(function () {
   let shown = 0, res = null, cur = '';
 
   // La boule sortie apparaît d'abord en grand sur le tambour, puis rejoint sa place.
-  const HOLD = 700;
+  const HOLD = BALL * 1000;
   let bigTimer = 0, placeTimer = 0, pendingPlace = null;
   function showBig(n) {
     const big = $('bigBall');
@@ -52,6 +59,16 @@ PP.ready.then(function () {
       document.querySelectorAll('.cy-strip .t').forEach((t) => t.classList.toggle('on', +t.dataset.n <= n));
     }
   }
+  /* Si le résultat arrive en retard (réseau lent), on ne montre pas d'un coup toutes les boules manquantes :
+     on rattrape une boule à la fois, plus vite que le rythme normal. */
+  let lastReveal = 0;
+  function catchUp(target) {
+    if (!res || target <= shown) return;
+    const now = Date.now();
+    if (target - shown > 1 && now - lastReveal < 300) return;
+    lastReveal = now;
+    reveal(target - shown > 1 ? shown + 1 : target);
+  }
   function reset() {
     clearTimeout(placeTimer); pendingPlace = null; $('bigBall').classList.remove('on');
     shown = 0; $('seqN').textContent = '–';
@@ -81,7 +98,7 @@ PP.ready.then(function () {
         const slides = document.querySelectorAll('.promo .slide'), k = Math.floor(s.t / 5) % slides.length;
         slides.forEach((el, i) => el.classList.toggle('on', i === k));
         $('left').textContent = PP.clock(s.left);
-      } else if (s.phase === 'draw') reveal(Math.min(DRAWN, Math.floor(s.t / STEP) + 1));
+      } else if (s.phase === 'draw') catchUp(targetAt(s));
       else reveal(DRAWN);
     },
   });
