@@ -10,7 +10,7 @@ body.roulette {
 .roulette .stage { background: radial-gradient(120% 95% at 28% 18%, var(--felt-hi) 0%, var(--felt) 48%, var(--felt-lo) 100%); }
 
 /* ---- Table ---- */
-.table-wrap { position: absolute; left: 1.5rem; top: 1.2rem; width: 45.5rem; transition: opacity .9s ease, transform .9s ease, left .9s ease; }
+.table-wrap { position: absolute; left: 1.5rem; top: 1.2rem; width: 41rem; transition: opacity .9s ease, transform .9s ease, left .9s ease; }
 .rt { display: grid; grid-template-columns: 3rem repeat(12, 1fr) 4.4rem; grid-template-rows: repeat(6, 1.45rem) 2.6rem 2.6rem; gap: .18rem; }
 .rc {
   display: grid; place-items: center; font-weight: 700; font-size: 1.05rem; color: #e9fff1;
@@ -40,8 +40,8 @@ body.roulette {
 
 /* ---- Roue ---- */
 .wheel-wrap {
-  position: absolute; z-index: 3; width: 31rem; aspect-ratio: 1; transform: translate(-50%, -50%);
-  left: 87%; top: 58%; transition: left 1.3s cubic-bezier(.5, 0, .2, 1), top 1.3s cubic-bezier(.5, 0, .2, 1),
+  position: absolute; z-index: 3; width: 28rem; aspect-ratio: 1; transform: translate(-50%, -50%);
+  left: 89%; top: 58%; transition: left 1.3s cubic-bezier(.5, 0, .2, 1), top 1.3s cubic-bezier(.5, 0, .2, 1),
     width 1.3s cubic-bezier(.5, 0, .2, 1), opacity 1s, filter 1s;
   filter: drop-shadow(0 .6rem 1.2rem rgba(0, 0, 0, .55));
 }
@@ -79,7 +79,7 @@ body.roulette {
 
 /* result : table à droite, panneau gagnant à gauche, roue au centre en fond. */
 [data-phase='result'] .wheel-wrap { left: 50%; top: 52%; width: 31.5rem; opacity: .18; filter: blur(.12rem); }
-[data-phase='result'] .table-wrap { left: 17.5rem; width: 45.5rem; transform: scale(.88); transform-origin: left top; }
+[data-phase='result'] .table-wrap { left: 17.5rem; width: 41rem; transform: scale(.88); transform-origin: left top; }
 [data-phase='result'] .result-panel { opacity: 1; }
 [data-phase='result'] .info { opacity: 0; }
 [data-phase='result'] .hub { font-size: 0; }
