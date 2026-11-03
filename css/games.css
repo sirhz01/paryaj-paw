@@ -142,12 +142,12 @@ body:not([data-phase='bet']) .promo { display: none; }
 .ls-top { margin-top: 1.5rem; grid-template-columns: 1fr 17rem 1fr; height: 17rem; }
 .drumbox { width: 17rem; height: 17rem; }
 /* Cadre chromé du tambour, avec voyants et trappe de sortie. */
-.drumbox::before { content: ''; position: absolute; inset: -.55rem; border-radius: 50%; z-index: 2; pointer-events: none;
+.drumbox::before, .cy-drum::before { content: ''; position: absolute; inset: -.55rem; border-radius: 50%; z-index: 2; pointer-events: none;
   background: conic-gradient(#eef3f8, #8a94a1, #f7fafc, #5f6975, #eef3f8, #8a94a1, #f7fafc, #5f6975, #eef3f8);
   -webkit-mask: radial-gradient(circle, transparent 66%, #000 67%); mask: radial-gradient(circle, transparent 66%, #000 67%); }
-.drumbox::after { content: ''; position: absolute; right: -1rem; top: 38%; width: .5rem; height: 3.6rem; z-index: 3; border-radius: .3rem;
+.drumbox::after, .cy-drum::after { content: ''; position: absolute; right: -1rem; top: 38%; width: .5rem; height: 3.6rem; z-index: 3; border-radius: .3rem;
   background: radial-gradient(circle at 50% 18%, #ff5a4a 0 .2rem, transparent .22rem), radial-gradient(circle at 50% 82%, #ff5a4a 0 .2rem, transparent .22rem), linear-gradient(90deg, #aab3bf, #eef3f8, #7d8794); }
-.drumbox .hole { position: absolute; left: 50%; bottom: -1.1rem; width: 2rem; height: 1.2rem; transform: translateX(-50%); z-index: 3; border-radius: 0 0 1rem 1rem; background: radial-gradient(ellipse at 50% 40%, #0a0c10 0 45%, #c9d2dc 48%, #7f8996 100%); }
+.drumbox .hole, .cy-drum .hole { position: absolute; left: 50%; bottom: -1.1rem; width: 2rem; height: 1.2rem; transform: translateX(-50%); z-index: 3; border-radius: 0 0 1rem 1rem; background: radial-gradient(ellipse at 50% 40%, #0a0c10 0 45%, #c9d2dc 48%, #7f8996 100%); }
 .drumbox .cur { display: none; }
 /* Grosse boule qui sort du tambour. */
 .bigball { position: absolute; z-index: 1; inset: 12%; border-radius: 50%; display: none; place-items: center;
