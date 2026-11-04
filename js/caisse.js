@@ -5,7 +5,8 @@ PP.ready.then(function () {
   const R = PP.R, $ = (id) => document.getElementById(id), online = PP.online;
   let game = 'roulette', stake = 100;
   let slip = [];            // roulette : [{ key, stake }]
-  let picks = [];           // autres jeux : numéros choisis
+  let picks = [];           // autres jeux : numéros choisis (mise en cours de saisie)
+  let saved = [];           // autres jeux : mises déjà ajoutées au ticket [{ picks, stake }] (plusieurs mises sur un seul ticket)
   let pendingCell = null;   // 1re case touchée en mode Cheval / Carré (2 touches)
   let payTicket = null;
   let replayTicket = null;
@@ -103,7 +104,7 @@ PP.ready.then(function () {
   document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
     game = b.dataset.g;
     document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
-    slip = []; picks = []; clearPending();
+    slip = []; picks = []; saved = []; clearPending();
     renderBoard(); renderSlip();
   }));
 
@@ -189,14 +190,23 @@ PP.ready.then(function () {
   /* ---------- Ticket en cours ---------- */
   function currentLines() {
     if (game === 'roulette') return slip.map((l) => PP.bets.rouletteLine(l.key, l.stake));
-    if (!picks.length) return [];
-    return [PP.bets.numbersLine(game, picks, stake)];
+    const all = saved.map((s) => PP.bets.numbersLine(game, s.picks, s.stake));
+    return picks.length ? all.concat([PP.bets.numbersLine(game, picks, stake)]) : all;
   }
+  /* Range les numéros choisis comme une mise du ticket, pour en choisir une autre. */
+  function addLine() {
+    if (!picks.length) return flash('Choisir des numéros', true);
+    if (picks.length < NUM[game].min) return flash(`Il faut au moins ${NUM[game].min} numéro(s)`, true);
+    if (!stake) return flash('Choisir une mise', true);
+    saved.push({ picks: [...picks], stake }); picks = [];
+    syncNums(); renderSlip(); flash(`Mise ajoutée : ${saved.length} sur le ticket. Choisir les numéros suivants.`);
+  }
+  $('addLine').addEventListener('click', addLine);
   function renderSlip() {
     const lines = currentLines();
     $('slip').innerHTML = lines.length ? lines.map((l, i) => `
-      <div class="ln"><b>${l.label}</b><span>${PP.money(l.stake)}</span><button data-i="${i}" title="${game === 'roulette' ? 'Retirer' : 'Retirer tous les numéros'}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-        ${game === 'roulette' ? '' : `<div class="pk">${picks.map((n) => `<button data-p="${n}" title="Retirer le ${n}">${n} <i class="fa-solid fa-xmark" aria-hidden="true"></i></button>`).join('')}</div>`}
+      <div class="ln"><b>${l.label}${game !== 'roulette' && i < saved.length ? ' · mise ' + (i + 1) : ''}</b><span>${PP.money(l.stake)}</span><button data-i="${i}" title="${game === 'roulette' ? 'Retirer' : 'Retirer cette mise'}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        ${game === 'roulette' ? '' : `<div class="pk">${l.picks.map((n) => `<button data-p="${n}" data-l="${i}" title="Retirer le ${n}">${n} <i class="fa-solid fa-xmark" aria-hidden="true"></i></button>`).join('')}${i < saved.length ? `<button class="ed" data-e="${i}" title="Reprendre cette mise pour ajouter des numéros"><i class="fa-solid fa-pen" aria-hidden="true"></i> Modifier</button>` : ''}</div>`}
         <small>${l.picks.join(' ')} · cote ${l.odds.toFixed(2)} · gain possible ${PP.money(l.possible)}</small></div>`).join('')
       : '<div class="empty">Aucune mise. Choisir sur le plateau.</div>';
     $('total').textContent = PP.money(lines.reduce((a, l) => a + l.stake, 0));
@@ -208,13 +218,26 @@ PP.ready.then(function () {
     });
   }
   $('slip').addEventListener('click', (e) => {
+    const ed = e.target.closest('[data-e]');                      // reprendre une mise déjà ajoutée : on peut ajouter ou retirer des boules
+    if (ed) {
+      if (picks.length) addLine();
+      const s = saved.splice(+ed.dataset.e, 1)[0];
+      if (s) { picks = s.picks; stake = s.stake; $('stake').value = stake; syncChips(); }
+      syncNums(); return renderSlip();
+    }
     const p = e.target.closest('[data-p]');                       // croix d'un numéro choisi par erreur
-    if (p) { picks = picks.filter((n) => n !== +p.dataset.p); syncNums(); return renderSlip(); }
+    if (p) {
+      const li = +p.dataset.l, n = +p.dataset.p;
+      if (li < saved.length) { saved[li].picks = saved[li].picks.filter((x) => x !== n); if (!saved[li].picks.length) saved.splice(li, 1); }
+      else picks = picks.filter((x) => x !== n);
+      syncNums(); return renderSlip();
+    }
     const b = e.target.closest('[data-i]'); if (!b) return;
-    if (game === 'roulette') slip.splice(+b.dataset.i, 1); else { picks = []; syncNums(); }
+    const i = +b.dataset.i;
+    if (game === 'roulette') slip.splice(i, 1); else if (i < saved.length) saved.splice(i, 1); else { picks = []; syncNums(); }
     renderSlip();
   });
-  $('resetBtn').addEventListener('click', () => { slip = []; picks = []; clearPending(); syncNums(); renderSlip(); flash(''); });
+  $('resetBtn').addEventListener('click', () => { slip = []; picks = []; saved = []; clearPending(); syncNums(); renderSlip(); flash(''); });
 
   function flash(text, err) { const m = $('msg'); m.textContent = text; m.className = 'msg' + (err ? ' err' : text ? ' ok' : ''); }
 
@@ -243,7 +266,7 @@ PP.ready.then(function () {
   $('printBtn').addEventListener('click', async () => {
     const lines = currentLines();
     if (!lines.length) return flash('Ticket vide', true);
-    if (game !== 'roulette') {
+    if (game !== 'roulette' && picks.length) {
       const c = NUM[game];
       if (picks.length < c.min) return flash(`Il faut au moins ${c.min} numéro(s)`, true);
       if (!stake) return flash('Choisir une mise', true);
@@ -256,7 +279,7 @@ PP.ready.then(function () {
     finally { btn.disabled = false; }
     showTicket(PP.ticketHTML(t));
     PP.printHTML(PP.ticketHTML(t));
-    slip = []; picks = []; syncNums(); renderSlip();
+    slip = []; picks = []; saved = []; syncNums(); renderSlip();
     const encaisse = (t.lines || []).reduce((a, l) => a + (l.stake || 0), 0);
     flash(`Ticket ${t.id} · ${PP.money(encaisse)} encaissé · tour ${t.round}`);
     renderHistory();
@@ -326,7 +349,7 @@ PP.ready.then(function () {
     const t = replayTicket; if (!t) return;
     document.querySelector(`#tabs button[data-g="${t.game}"]`).click();   // change de jeu et vide le ticket en cours
     if (t.game === 'roulette') slip = t.lines.map((l) => ({ key: l.key, stake: l.stake }));
-    else { picks = [...t.lines[0].picks]; stake = t.lines[0].stake; $('stake').value = stake; syncChips(); syncNums(); }
+    else { saved = t.lines.map((l) => ({ picks: [...l.picks], stake: l.stake })); picks = []; syncNums(); }
     renderSlip();
     flash(`Mises du ticket ${t.id} reprises pour le tour ${PP.state(t.game).phase === 'bet' && PP.state(t.game).left > 2 ? PP.state(t.game).round : PP.state(t.game).round + 1} : vérifier puis imprimer.`);
     setPay('');
