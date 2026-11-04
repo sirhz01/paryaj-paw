@@ -186,7 +186,7 @@ PP.ready.then(function () {
       const { version, createdAt, ...base } = settings;
       try {
         const r = await A.call('PUT', '/admin/shop/settings', { ...base, ...patch });
-        timingPlan = r.timings; settings = r.settings; renderRtp(r.rtp);
+        timingPlan = r.timings; settings = r.settings; renderRtp(r.rtp); showRouletteOdds(settings);
         $('timingsPlan').textContent = 'Aujourd’hui (mises/tirage/résultat) : ' + tmText(timingPlan.today)
           + (JSON.stringify(timingPlan.today) === JSON.stringify(timingPlan.tomorrow) ? '. Demain : pareil.' : '. Demain : ' + tmText(timingPlan.tomorrow) + '.');
         flash(msgEl, 'Enregistré automatiquement à ' + new Date().toLocaleTimeString('fr-FR') + ' (version ' + settings.version + '). Écrans et caisse : au prochain rechargement ; nouveaux temps de jeu : demain 00:00.', true);
@@ -260,8 +260,15 @@ PP.ready.then(function () {
   });
   $('kenoRates').addEventListener('input', (e) => { const m = /^k:(d+):/.exec(e.target.name || ''); if (m) showKenoRtp(+m[1]); });
 
+  const ROULETTE_NAMES = { n: 'Numéro plein', sp: 'Cheval', st: 'Street', co: 'Carré', six: 'Six lignes', col: 'Colonne', doz: 'Douzaine', red: 'Rouge/Noir/Pair/Impair/Manque/Passe', basket: 'Top line' };
+  function showRouletteOdds(s) {
+    const r = s.paytables.roulette;
+    $('rouletteRtp').value = r ? r.targetRtp : 40;
+    $('rouletteOdds').textContent = r ? 'Cotes actuelles : ' + Object.entries(ROULETTE_NAMES).map(([k, name]) => name + ' ' + r.odds[k]).join(' · ') + '.' : 'Cotes d’avant la configuration par RTP (anciennes constantes).';
+  }
   function fillRates(s) {
     const p = s.paytables;
+    showRouletteOdds(s);
     $('kenoRates').innerHTML = Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<div class="krow"><b>${n} numéro${n > 1 ? 's' : ''}<span class="krtp" id="kr${n}"></span></b><div class="rates">${
       Array.from({ length: n + 1 }, (_, h) => rateBox(h + ' trouvé' + (h > 1 ? 's' : ''), `k:${n}:${h}`, p.keno[n] && p.keno[n][h])).join('')}</div></div>`).join('');
     for (let n = 1; n <= 10; n++) showKenoRtp(n);
@@ -274,7 +281,8 @@ PP.ready.then(function () {
     const keno = {};
     for (let n = 1; n <= 10; n++) { keno[n] = {}; for (let h = 0; h <= n; h++) { const v = val(`k:${n}:${h}`); if (v > 0) keno[n][h] = v; } }
     const tiers = {}; for (let n = 2; n <= 10; n++) tiers[n] = val('x:' + n);
-    return { paytables: { keno, luckysix: settings.paytables.luckysix.map((_, i) => val('l:' + i)), luckyx: { single: val('x:single'), tiers } } };
+    const target = Number($('rouletteRtp').value);
+    return { ...(target >= 1 && target <= 100 ? { rouletteTargetRtp: target } : {}), paytables: { keno, luckysix: settings.paytables.luckysix.map((_, i) => val('l:' + i)), luckyx: { single: val('x:single'), tiers } } };
   };
   const saveRatesLater = autosave($('rateForm'), ratesPatch, $('rateMsg'));
   $('kenoAuto').addEventListener('click', saveRatesLater);

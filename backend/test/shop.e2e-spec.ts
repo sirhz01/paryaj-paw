@@ -168,9 +168,9 @@ describe('Boutique (e2e)', () => {
       expect(res.body).toMatchObject({ game: 'roulette', day: DAY, round: 12, terminal: 'CAISSE #1', status: 'pending', stakeCents: 22500 });
       expect(res.body.id).toMatch(/^[A-HJ-NP-Z2-9]{9}$/);
       expect(res.body.lines).toEqual([
-        { key: 'n:17', label: 'Pari simple', picks: ['17'], odds: 36, stakeCents: 15000, possibleCents: 540000 },
-        { key: 'doz:2', label: 'Douzaine 2', picks: ['DOUZAINE 2'], odds: 1.27, stakeCents: 2500, possibleCents: 3175 },
-        { key: 'red', label: 'Rouge', picks: ['ROUGE'], odds: 0.84, stakeCents: 5000, possibleCents: 4200 },
+        { key: 'n:17', label: 'Pari simple', picks: ['17'], odds: 34.96, stakeCents: 15000, possibleCents: 524400 },
+        { key: 'doz:2', label: 'Douzaine 2', picks: ['DOUZAINE 2'], odds: 2.91, stakeCents: 2500, possibleCents: 7275 },
+        { key: 'red', label: 'Rouge', picks: ['ROUGE'], odds: 1.94, stakeCents: 5000, possibleCents: 9700 },
       ]);
     });
 
@@ -256,10 +256,10 @@ describe('Boutique (e2e)', () => {
       const t = await winningTicket(2500);
       at(21, 36);
       const view = await ticket(t.id).expect(200);
-      expect(view.body).toMatchObject({ status: 'won', winCents: 90000 });
+      expect(view.body).toMatchObject({ status: 'won', winCents: 87400 });
 
       const paid = await pay(t.id).expect(200);
-      expect(paid.body).toMatchObject({ status: 'paid', payoutCents: 90000, paidTerminal: 'CAISSE #1' });
+      expect(paid.body).toMatchObject({ status: 'paid', payoutCents: 87400, paidTerminal: 'CAISSE #1' });
       const again = await pay(t.id).expect(409);
       expect(again.body.code).toBe('ALREADY_PAID');
       const { rows } = await db.query('SELECT count(*)::int AS n FROM shop_payouts WHERE ticket_id = $1', [t.id]);
@@ -285,14 +285,14 @@ describe('Boutique (e2e)', () => {
       await pay(res.body.id).expect(409).expect((r) => expect(r.body.code).toBe('TICKET_LOST'));
     });
 
-    // Le numéro plein paie 36× (RTP 94,7 %) : 40 000 de mise sur chaque case donnent 1 440 000 de gain, au-dessus du seuil d'approbation.
+    // RTP roulette de 92 % : le numéro plein paie 34,96× ; 40 000 de mise sur chaque case donnent 1 398 400 de gain, au-dessus du seuil d'approbation.
     it('un gros gain demande un responsable', async () => {
       at(24, 2);
       const t = await winningTicket(40000);
       at(24, 36);
       const refused = await pay(t.id).expect(403);
-      expect(refused.body).toMatchObject({ code: 'APPROVAL_REQUIRED', amountCents: 1_440_000 });
-      await pay(t.id, admin).expect(200).expect((r) => expect(r.body.payoutCents).toBe(1_440_000));
+      expect(refused.body).toMatchObject({ code: 'APPROVAL_REQUIRED', amountCents: 1_398_400 });
+      await pay(t.id, admin).expect(200).expect((r) => expect(r.body.payoutCents).toBe(1_398_400));
     });
 
     it('chaque jeu règle ses tickets comme les règles du serveur', async () => {
@@ -323,7 +323,7 @@ describe('Boutique (e2e)', () => {
       at(30, 40);
       expect(await rounds.settleDue()).toBeGreaterThanOrEqual(1);
       const { rows } = await db.query('SELECT win_cents FROM shop_ticket_results WHERE ticket_id = $1', [t.id]);
-      expect(rows).toEqual([{ win_cents: 90000 }]);
+      expect(rows).toEqual([{ win_cents: 87400 }]);
       expect(await rounds.settleDue()).toBe(0);
     });
 
@@ -447,6 +447,33 @@ describe('Boutique (e2e)', () => {
       at(41, 30);                                         // tirage commencé (mises : 25 s)
       await voidIt(sold.body.id).expect(409).expect((r) => expect(r.body.code).toBe('VOID_TOO_LATE'));
       await ticket(sold.body.id).expect(200).expect((r) => expect(r.body.status).toBe('pending'));
+    });
+  });
+
+  describe('roulette : RTP visé réglé dans l administration', () => {
+    it('la migration pose 92 % ; changer la cible recalcule les cotes pour les ventes suivantes seulement', async () => {
+      at(50, 2);
+      const before = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:17', stakeCents: 2500 }] }).expect(201);
+      expect(before.body.lines[0].odds).toBe(34.96);
+
+      const res = await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200);
+      expect(res.body.settings.paytables.roulette).toMatchObject({ targetRtp: 92 });
+      const { version: _v, createdAt: _c, ...input } = res.body.settings;
+
+      await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, rouletteTargetRtp: 150 }).expect(400);
+      const updated = await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, rouletteTargetRtp: 80 }).expect(200);
+      expect(updated.body.settings.paytables.roulette).toMatchObject({ targetRtp: 80, odds: { n: 30.4, six: 5.07, red: 1.69 } });
+      const straight = updated.body.rtp.find((r: { game: string; line: string }) => r.game === 'roulette' && r.line === 'straight');
+      expect(straight.rtpPercent).toBeCloseTo(80, 0);
+
+      at(50, 3);
+      const after = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:17', stakeCents: 2500 }] }).expect(201);
+      expect(after.body.lines[0].odds).toBe(30.4);
+      // Un enregistrement des taux Keno / Lucky seuls (sans cible) ne remet pas la roulette à zéro.
+      const keep = await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, paytables: { keno: input.paytables.keno, luckysix: input.paytables.luckysix, luckyx: input.paytables.luckyx } }).expect(200);
+      expect(keep.body.settings.paytables.roulette).toMatchObject({ targetRtp: 80 });
+      // Le ticket vendu avant le changement garde sa cote.
+      await ticket(before.body.id).expect(200).expect((r) => expect(r.body.lines[0].odds).toBe(34.96));
     });
   });
 });

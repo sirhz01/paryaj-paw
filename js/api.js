@@ -51,6 +51,7 @@
     PP.LUCKY_LADDER = cfg.paytables.luckysix;
     PP.LUCKYX_TIERS = cfg.paytables.luckyx.tiers;
     PP.LUCKYX_SINGLE_ODDS = cfg.paytables.luckyx.single;
+    PP.ROULETTE_ODDS = cfg.paytables.roulette ? cfg.paytables.roulette.odds : null;   // cotes réglées dans l'administration (RTP visé)
     PP.R.ORDER = cfg.wheelOrder;
     PP.CLOSE_MARGIN = cfg.closeMarginSeconds;
     PP.STAFF_TOTP = cfg.staffTotpRequired !== false;

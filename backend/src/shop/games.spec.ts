@@ -9,6 +9,7 @@ import {
   numbersLine,
   rouletteKeyNumbers,
   rouletteLine,
+  rouletteOddsForRtp,
   rtpReport,
   ticketWin,
   validatePaytables,
@@ -261,4 +262,29 @@ describe('RTP', () => {
     expect(validatePaytables({ ...PAYTABLES, luckysix: [1, 2, 3] }).join()).toMatch(/luckysix/);
     expect(validatePaytables({ ...PAYTABLES, keno: { '1': { '1': 3 } } }).join()).toMatch(/ligne 2 manquante/);
   });
+
+describe('RTP roulette configurable', () => {
+  it('cotes = RTP × 38 / cases couvertes', () => {
+    expect(rouletteOddsForRtp(92)).toMatchObject({ n: 34.96, sp: 17.48, st: 11.65, co: 8.74, six: 5.83, col: 2.91, red: 1.94, basket: 6.99 });
+    expect(rouletteOddsForRtp(94.74).n).toBeCloseTo(36, 1);
+  });
+
+  it('le RTP calculé suit la cible (à l arrondi près) pour chaque type de mise', () => {
+    for (const target of [60, 80, 92, 94.74]) {
+      const paytables = { ...PAYTABLES, roulette: { targetRtp: target, odds: rouletteOddsForRtp(target) } };
+      for (const r of rtpReport(paytables, true).filter((x) => x.game === 'roulette')) expect(Math.abs(r.rtpPercent - target)).toBeLessThan(0.6);
+    }
+  });
+
+  it('une ligne ticket utilise la table fournie, sinon les cotes par défaut', () => {
+    expect(rouletteLine('six:1', 10000, true, rouletteOddsForRtp(92))!.odds).toBe(5.83);
+    expect(rouletteLine('six:1', 10000, true)!.odds).toBe(2.53);
+  });
+
+  it('refuse une table incohérente', () => {
+    expect(validatePaytables({ ...PAYTABLES, roulette: { targetRtp: 120, odds: rouletteOddsForRtp(92) } }).join()).toMatch(/RTP visé/);
+    expect(validatePaytables({ ...PAYTABLES, roulette: { targetRtp: 92, odds: { ...rouletteOddsForRtp(92), n: 0 } } }).join()).toMatch(/cote « n »/);
+    expect(validatePaytables({ ...PAYTABLES, roulette: { targetRtp: 92, odds: { ...rouletteOddsForRtp(92), n: 40 } } }).join()).toMatch(/plus de 100/);
+  });
+});
 });

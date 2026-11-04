@@ -3,7 +3,7 @@ import { AuditService } from '../common/audit.service';
 import { AppError } from '../common/errors';
 import { DATABASE, Database, Queryable } from '../database/db';
 import { dayStartMs, nextDayKey, setTimingsProvider } from './clock';
-import { RtpLine, ShopPaytables, TIMINGS, Timings, rtpReport, validatePaytables, validateTimings } from './games';
+import { RtpLine, ShopPaytables, TIMINGS, Timings, rouletteOddsForRtp, rtpReport, validatePaytables, validateTimings } from './games';
 
 export interface ShopSettings {
   version: number;
@@ -26,7 +26,11 @@ export interface ShopSettings {
 /** Nom d'une caisse : imprimé sur les tickets et affiché dans la caisse, donc sans balisage. */
 const TERMINAL_NAME = /^[\p{L}\p{N} #._-]{1,32}$/u;
 
-export type ShopSettingsInput = Omit<ShopSettings, 'version' | 'createdAt' | 'timings'> & { timings?: Timings };
+export type ShopSettingsInput = Omit<ShopSettings, 'version' | 'createdAt' | 'timings'> & {
+  timings?: Timings;
+  /** RTP visé de la roulette (en %) : les cotes sont calculées par le serveur. Absent : la table de la version actuelle est conservée. */
+  rouletteTargetRtp?: number;
+};
 
 const COLUMNS = `version, point_of_sale AS "pointOfSale", issuer, terminals, stakes_cents AS "stakesCents",
   min_stake_cents AS "minStakeCents", max_stake_cents AS "maxStakeCents", max_ticket_cents AS "maxTicketCents",
@@ -101,8 +105,17 @@ export class ShopSettingsService implements OnModuleInit, OnApplicationShutdown 
   }
 
   async update(staffId: number, input: ShopSettingsInput): Promise<ShopSettings> {
-    const errors = validatePaytables(input.paytables);
-    const timings = input.timings ?? (await this.current()).timings;
+    const current = await this.current();
+    const target = input.rouletteTargetRtp;
+    const paytables: ShopPaytables = { ...input.paytables };
+    if (target !== undefined) {
+      if (!Number.isFinite(target) || target < 1 || target > 100) throw new AppError('INVALID_SETTINGS', 400, { errors: ['roulette : RTP visé entre 1 et 100 %'] });
+      paytables.roulette = { targetRtp: target, odds: rouletteOddsForRtp(target) };
+    } else if (!paytables.roulette && current.paytables.roulette) {
+      paytables.roulette = current.paytables.roulette;   // les taux Keno / Lucky enregistrés seuls ne touchent pas la roulette
+    }
+    const errors = validatePaytables(paytables);
+    const timings = input.timings ?? current.timings;
     errors.push(...validateTimings(timings));
     const ints = (list: unknown[]) => list.every((v) => Number.isSafeInteger(v) && (v as number) > 0);
     if (!input.terminals.length || input.terminals.some((t) => !TERMINAL_NAME.test(t))) errors.push('caisses invalides (lettres, chiffres, espace, # . _ - seulement, 32 caractères au plus)');
@@ -133,7 +146,7 @@ export class ShopSettingsService implements OnModuleInit, OnApplicationShutdown 
           input.maxPayoutCents,
           input.approvalThresholdCents,
           input.topLineEnabled,
-          JSON.stringify(input.paytables),
+          JSON.stringify(paytables),
           staffId,
           JSON.stringify(timings),
         ],

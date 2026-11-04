@@ -105,7 +105,7 @@ export class TicketsService {
         stakes.set(sel.key, (stakes.get(sel.key) ?? 0) + sel.stakeCents);
       }
       for (const [key, stakeCents] of stakes) {
-        const line = rouletteLine(key, stakeCents, s.topLineEnabled);
+        const line = rouletteLine(key, stakeCents, s.topLineEnabled, s.paytables.roulette?.odds);
         if (!line) throw bad('INVALID_BET', { reason: `mise inconnue : ${key}` });
         lines.push(line);
       }

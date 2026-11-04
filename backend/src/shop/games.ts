@@ -34,6 +34,11 @@ export interface ShopPaytables {
   /** Coefficient de la boule n° 6 à n° 35 qui complète les 6 numéros du joueur (30 valeurs). */
   luckysix: number[];
   luckyx: { single: number; tiers: Record<string, number> };
+  /**
+   * Cotes de la roulette, calculées à partir du RTP visé réglé dans l'administration (voir rouletteOddsForRtp).
+   * Absent dans les anciennes versions : DEFAULT_ROULETTE_ODDS s'applique alors.
+   */
+  roulette?: { targetRtp: number; odds: Record<string, number> };
 }
 
 export const LUCKYSIX_LADDER_SIZE = 30;
@@ -58,12 +63,26 @@ export function rouletteColor(n: string): RouletteColor {
 const range = (a: number, b: number): string[] => Array.from({ length: b - a + 1 }, (_, i) => String(a + i));
 const ALL = range(1, 36);
 
-/** Cote totale (mise comprise) par type de mise. Table américaine standard (avantage maison 5,26 %). */
-// Cotes (multiplicateur total de la mise) calées sur un RTP de 40 % : cote = 0,40 × 38 / (numéros couverts), sauf le numéro
-// plein (« n ») : 36 × la mise (50 G sur le 15 → 1 800 G), soit un RTP de 36/38 = 94,7 %. Avantage maison 60 % ailleurs. NB : les
-// chances simples (rouge/noir, pair/impair, manque/passe) rendent alors moins
-// que la mise (0,84×), conséquence mathématique d'un RTP de 40 % sur un pari gagné ~47 % du temps.
-const ROULETTE_ODDS: Record<string, number> = {
+/** Nombre de cases couvertes par type de mise (roulette américaine : 38 cases). */
+export const ROULETTE_COVERED: Record<string, number> = {
+  n: 1, sp: 2, st: 3, co: 4, six: 6, col: 12, doz: 12, red: 18, black: 18, even: 18, odd: 18, low: 18, high: 18, basket: 5,
+};
+const POCKETS = 38;
+
+/**
+ * Cotes (multiplicateur total de la mise) pour un RTP visé : cote = RTP × 38 / cases couvertes, arrondie au centième.
+ * Le tirage reste équiprobable (1/38 par case) ; seul ce que le jeu paie change, comme dans toute loterie réglementée.
+ */
+export function rouletteOddsForRtp(targetRtpPercent: number): Record<string, number> {
+  const odds: Record<string, number> = {};
+  for (const [kind, covered] of Object.entries(ROULETTE_COVERED)) {
+    odds[kind] = Math.round(((targetRtpPercent / 100) * POCKETS / covered) * 100) / 100;
+  }
+  return odds;
+}
+
+/** Cotes d'avant la configuration par RTP visé (versions de réglages sans table roulette) : elles restent valables pour ces versions. */
+export const DEFAULT_ROULETTE_ODDS: Record<string, number> = {
   n: 36, sp: 7.6, st: 5.07, co: 3.8, six: 2.53, col: 1.27, doz: 1.27, red: 0.84, black: 0.84, even: 0.84, odd: 0.84, low: 0.84, high: 0.84, basket: 3.04,
 };
 
@@ -147,7 +166,12 @@ function newLine(partial: Omit<TicketLine, 'possibleCents'>): TicketLine {
 }
 
 /** Ligne de ticket pour la roulette, ou null si la clé est inconnue (ou le top line désactivé). */
-export function rouletteLine(key: string, stakeCents: number, topLineEnabled: boolean): TicketLine | null {
+export function rouletteLine(
+  key: string,
+  stakeCents: number,
+  topLineEnabled: boolean,
+  odds: Record<string, number> = DEFAULT_ROULETTE_ODDS,
+): TicketLine | null {
   const numbers = rouletteKeyNumbers(key);
   if (!numbers || (key === 'basket' && !topLineEnabled)) return null;
   const kind = key.split(':')[0];
@@ -155,7 +179,7 @@ export function rouletteLine(key: string, stakeCents: number, topLineEnabled: bo
   const label =
     kind === 'col' ? `Colonne ${value}` : kind === 'doz' ? `Douzaine ${value}` : ROULETTE_LABELS[kind];
   const picks = ['n', 'sp', 'st', 'co', 'six', 'basket'].includes(kind) ? numbers : [label.toUpperCase()];
-  return newLine({ key, label, picks, odds: ROULETTE_ODDS[kind], stakeCents });
+  return newLine({ key, label, picks, odds: odds[kind] ?? DEFAULT_ROULETTE_ODDS[kind], stakeCents });
 }
 
 /** Cote maximale d'une combinaison, affichée sur le ticket. null si la table n'a pas cette ligne. */
@@ -264,12 +288,18 @@ export function rtpReport(paytables: ShopPaytables, topLineEnabled: boolean): Rt
   const add = (game: ShopGame, line: string, rtp: number) =>
     out.push({ game, line, rtpPercent: Math.round(rtp * 10000) / 100 });
 
-  for (const [type, covered] of [
-    ['straight', 1], ['split', 2], ['street', 3], ['corner', 4], ['six', 6], ['column/douzaine', 12], ['chance simple', 18], ['top line', 5],
+  const table = paytables.roulette?.odds ?? DEFAULT_ROULETTE_ODDS;
+  for (const [type, kind] of [
+    ['straight', 'n'], ['split', 'sp'], ['street', 'st'], ['corner', 'co'], ['six', 'six'], ['column/douzaine', 'col'], ['column/douzaine', 'doz'],
+    ['chance simple', 'red'], ['chance simple', 'black'], ['chance simple', 'even'], ['chance simple', 'odd'], ['chance simple', 'low'], ['chance simple', 'high'],
+    ['top line', 'basket'],
   ] as const) {
     if (type === 'top line' && !topLineEnabled) continue;
-    const odds = { straight: 36, split: 7.6, street: 5.07, corner: 3.8, six: 2.53, 'column/douzaine': 1.27, 'chance simple': 0.84, 'top line': 3.04 }[type];
-    add('roulette', type, (odds * covered) / 38);
+    // Une ligne par type de mise : le RTP le plus élevé parmi les mises de même type est affiché (le plus défavorable pour la boutique).
+    const rtp = ((table[kind] ?? DEFAULT_ROULETTE_ODDS[kind]) * ROULETTE_COVERED[kind]) / POCKETS;
+    const existing = out.find((o) => o.game === 'roulette' && o.line === type);
+    if (existing) existing.rtpPercent = Math.max(existing.rtpPercent, Math.round(rtp * 10000) / 100);
+    else add('roulette', type, rtp);
   }
   for (const [n, row] of Object.entries(paytables.keno)) {
     const picks = Number(n);
@@ -312,6 +342,13 @@ export function validatePaytables(paytables: ShopPaytables): string[] {
   if (!coefficient(paytables.luckyx?.single)) errors.push('luckyx : coefficient du pari simple invalide');
   for (let n = 2; n <= NUMBER_GAMES.luckyx.maxPick; n++) {
     if (!coefficient(paytables.luckyx?.tiers?.[String(n)])) errors.push(`luckyx : palier ${n} boules manquant`);
+  }
+  if (paytables.roulette !== undefined) {
+    const r = paytables.roulette;
+    if (typeof r.targetRtp !== 'number' || !Number.isFinite(r.targetRtp) || r.targetRtp < 1 || r.targetRtp > 100) errors.push('roulette : RTP visé entre 1 et 100 %');
+    for (const kind of Object.keys(ROULETTE_COVERED)) {
+      if (!coefficient(r.odds?.[kind]) || r.odds[kind] <= 0) errors.push(`roulette : cote « ${kind} » invalide`);
+    }
   }
   if (errors.length > 0) return errors;
 

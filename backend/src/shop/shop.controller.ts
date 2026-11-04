@@ -7,6 +7,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
@@ -182,6 +183,13 @@ class ShopSettingsDto {
 
   @IsObject()
   paytables!: ShopPaytables;
+
+  /** RTP visé de la roulette (%), de 1 à 100 : les cotes sont recalculées par le serveur. */
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  rouletteTargetRtp?: number;
 
   /** Durées des tours par jeu ; absentes, les durées actuelles sont conservées. */
   @IsOptional()

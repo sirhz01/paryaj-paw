@@ -54,7 +54,7 @@
   };
 
   /* Cote totale (mise comprise), comme sur les tickets de la boutique. */
-  R.odds = (key) => ({ n: 36, sp: 18, st: 12, co: 9, six: 6, col: 3, doz: 3, red: 2, black: 2, even: 2, odd: 2, low: 2, high: 2 })[key.split(':')[0]];
+  R.odds = (key) => { const k = key.split(':')[0], set = PP.ROULETTE_ODDS; return set && set[k] !== undefined ? set[k] : ({ n: 36, sp: 18, st: 12, co: 9, six: 6, col: 3, doz: 3, red: 2, black: 2, even: 2, odd: 2, low: 2, high: 2 })[k]; };
 
   R.label = function (key) {
     const [k, v] = key.split(':');
