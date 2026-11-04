@@ -1,4 +1,4 @@
-/* Écran TV : Lucky X. 36 boules sur 50, annoncées dans l'ordre croissant, en 6 colonnes de 6 boules (3 colonnes de chaque côté du tambour) ;
+/* Écran TV : Lucky X. 36 boules sur 50, tirées dans un ordre aléatoire, en 6 colonnes de 6 boules (3 colonnes de chaque côté du tambour) ;
    chaque colonne se remplit de haut en bas avant de passer à la suivante ;
    paliers N boules en bas, numéro de séquence au centre. */
 PP.ready.then(function () {

@@ -94,7 +94,7 @@
       case 'roulette': return { n: PP.R.ORDER[Math.floor(rnd() * 38)] };
       case 'keno': return { draw: sample(rnd, 80, 20) };
       case 'luckysix': return { draw: sample(rnd, 48, 35) };
-      case 'luckyx': return { draw: sample(rnd, 50, 36).sort((a, b) => a - b) };
+      case 'luckyx': return { draw: sample(rnd, 50, 36) };
     }
   };
 

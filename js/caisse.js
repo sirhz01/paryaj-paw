@@ -13,7 +13,7 @@ PP.ready.then(function () {
   const NUM = {   // paramètres des grilles de numéros
     keno:     { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80' },
     luckysix: { max: 48, min: 6, maxPick: 6,  text: 'Choisir exactement 6 numéros sur 48' },
-    luckyx:   { max: 50, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 50 (36 boules tirées, en ordre croissant)' },
+    luckyx:   { max: 50, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 50 (36 boules tirées au hasard)' },
   };
 
   /* ---------- En-tête ---------- */

@@ -25,7 +25,7 @@ PP.COLOR_NAMES = ['Noir', 'Rouge', 'Vert', 'Bleu clair', 'Bleu', 'Marron', 'Jaun
 PP.LUCKY_LADDER = [10000, 7500, 5000, 2500, 905, 455, 270, 180, 135, 91,
   82, 73, 63, 54, 45, 36, 27, 23, 18, 14, 9.1, 8.2, 7.3, 6.3, 5.4, 4.5, 3.6, 2.7, 1.8, 0.9];
 
-/* Lucky X : 36 boules sur 50, annoncées dans l'ordre croissant. 1 numéro parmi les 36 tirées = cote 1,27 ;
+/* Lucky X : 36 boules sur 50, tirées dans un ordre aléatoire. 1 numéro parmi les 36 tirées = cote 1,27 ;
    N numéros (2..10) tous tirés = LUCKYX_TIERS[N] × la mise. Chaque pari ~92 % de RTP (même valeur côté serveur). */
 PP.LUCKYX_TIERS = { 2: 1.78, 3: 2.52, 4: 3.59, 5: 5.17, 6: 7.5, 7: 11, 8: 16.3, 9: 24.4, 10: 37.1 };
 PP.LUCKYX_SINGLE_ODDS = 1.27;
