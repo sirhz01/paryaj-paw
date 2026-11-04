@@ -1,0 +1,90 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Lucky X (Lucky 10)</title>
+<style>
+body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1b1f2a;line-height:1.35}
+h1{font-size:24pt;color:#14285f;margin-bottom:0}
+h2{font-size:15pt;color:#14285f;border-bottom:2px solid #14285f;padding-bottom:2px;margin-top:20pt}
+h3{font-size:12pt;color:#c8201d}
+.sub{color:#555;font-size:11pt;margin-top:2pt}
+.note{background:#fff7dd;border-left:4px solid #e3b400;padding:6px 10px;margin:8px 0}
+td,th{vertical-align:top}
+</style></head><body>
+<p style="color:#c8201d;font-weight:bold;letter-spacing:2px">PARYAJ PAW · GUIDE TECHNIQUE</p>
+<h1>Lucky X (Lucky 10)</h1><p class="sub">36 boules sur 50, tous les numéros doivent sortir — règles, tirage, gains et RTP</p>
+<p class="sub">Version du 4 novembre 2026 · valeurs lues sur la configuration en ligne (réglages version 23).</p>
+
+<h2>1. Présentation</h2>
+<p>Lucky X (aussi appelé « Lucky 10 ») : grille de <b>50 numéros</b>. Le joueur choisit de <b>1 à 10 numéros</b> ; le serveur tire <b>36 boules</b>. Pour gagner, <b>tous</b> les numéros choisis doivent faire partie des 36 boules tirées. Plus le joueur choisit de numéros, plus la cote est grande (et plus c'est difficile).</p>
+<h2>2. Paramètres et temps</h2>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="38%">Paramètre</th><th style="background:#14285f;color:#fff;text-align:left" width="62%">Valeur</th></tr>
+<tr><td>Grille</td><td>1 à 50</td></tr>
+<tr><td>Boules tirées</td><td>36 (l'ordre de sortie est aléatoire ; il n'a pas d'effet sur le gain)</td></tr>
+<tr><td>Numéros choisis par le joueur</td><td>1 à 10</td></tr></table>
+<br><table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="38%">Paramètre</th><th style="background:#14285f;color:#fff;text-align:left" width="62%">Valeur</th></tr>
+<tr><td>Durée de la phase de mises</td><td>80 s</td></tr>
+<tr><td>Durée du tirage (animation à l'écran TV)</td><td>80 s</td></tr>
+<tr><td>Durée de l'écran de résultat</td><td>10 s</td></tr>
+<tr><td>Durée d'un tour</td><td>170 s (2,83 min)</td></tr>
+<tr><td>Tours par jour (jour d'Haïti, 00:00 à 24:00)</td><td>508</td></tr></table>
+<p>Les durées se règlent dans l'administration (« Temps de chaque jeu »). Un changement s'applique à partir du prochain minuit, heure d'Haïti, pour garder cohérents les numéros de tours et les tickets déjà vendus. Le numéro de tour affiché revient à 1 après 1000.</p>
+<h2>3. Tirage</h2>
+<p>Fisher-Yates partiel sur 50 numéros ; les 36 premières positions forment le tirage, dans un ordre aléatoire.</p>
+<h2>Tirage vérifiable (provably fair)</h2>
+<p>Chaque tour est créé <b>avant</b> la fermeture des mises, avec une graine secrète et son empreinte publique. Le résultat est fixé à ce moment-là : personne (ni la boutique) ne peut le changer ensuite.</p>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="12%">Étape</th><th style="background:#14285f;color:#fff;text-align:left" width="88%">Ce qui se passe</th></tr>
+<tr><td>1</td><td>Le serveur tire une <b>graine serveur</b> de 32 octets aléatoires (<i>newServerSeed</i>) et publie son empreinte SHA-256 (<i>serverSeedHash</i>) avant les mises.</td></tr>
+<tr><td>2</td><td>Le résultat est calculé par <i>drawRound(jeu, graine, jour, tour)</i> : flux de nombres de 32 bits = HMAC-SHA256(clé = graine serveur, message = « ${game}:AAAA-MM-JJ:numéro du tour:bloc »).</td></tr>
+<tr><td>3</td><td>Les nombres sont convertis en entiers uniformes par <i>uniformInt</i> (rejet des valeurs qui créeraient un biais de modulo).</td></tr>
+<tr><td>4</td><td>Après le début du tirage, la graine est publiée. Tout le monde peut vérifier : SHA-256(graine) = empreinte annoncée, et rejouer le calcul (POST /shop/verify {game, serverSeed, day, round}).</td></tr></table>
+
+<h2>4. Calcul du gain</h2>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">Si le joueur a choisi 1 numéro :
+    gain = arrondi( mise × single )     si ce numéro est parmi les 36 boules, sinon 0
+Si le joueur a choisi N numéros (2 à 10) :
+    gain = arrondi( mise × tiers[N] )   si les N numéros sont TOUS parmi les 36 boules, sinon 0</pre>
+<p>Exemple (mise 100 HTG) : 3 numéros choisis, tous tirés → 252 HTG. Un seul des 3 absent → 0. 1 numéro choisi et tiré → 127 HTG.</p>
+<h2>5. Tableau des gains en vigueur</h2>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="28%">Choix</th><th style="background:#14285f;color:#fff;text-align:left" width="8%">N</th><th style="background:#14285f;color:#fff;text-align:left" width="20%">Gain = mise ×</th><th style="background:#14285f;color:#fff;text-align:left" width="16%">RTP</th><th style="background:#14285f;color:#fff;text-align:left" width="28%">Probabilité de gagner</th></tr>
+<tr><td>1 numéro (pari simple)</td><td>1</td><td>1,27 ×</td><td>91,44 %</td><td>72 %</td></tr>
+<tr><td>2 numéros</td><td>2</td><td>1,78 ×</td><td>91,54 %</td><td>51,429 %</td></tr>
+<tr><td>3 numéros</td><td>3</td><td>2,52 ×</td><td>91,8 %</td><td>36,429 %</td></tr>
+<tr><td>4 numéros</td><td>4</td><td>3,59 ×</td><td>91,82 %</td><td>25,578 %</td></tr>
+<tr><td>5 numéros</td><td>5</td><td>5,17 ×</td><td>91,99 %</td><td>17,793 %</td></tr>
+<tr><td>6 numéros</td><td>6</td><td>7,5 ×</td><td>91,93 %</td><td>12,257 %</td></tr>
+<tr><td>7 numéros</td><td>7</td><td>11 ×</td><td>91,93 %</td><td>8,357 %</td></tr>
+<tr><td>8 numéros</td><td>8</td><td>16,3 ×</td><td>91,87 %</td><td>5,636 %</td></tr>
+<tr><td>9 numéros</td><td>9</td><td>24,4 ×</td><td>91,68 %</td><td>3,758 %</td></tr>
+<tr><td>10 numéros</td><td>10</td><td>37,1 ×</td><td>91,8 %</td><td>2,474 %</td></tr></table>
+<h2>6. RTP (retour au joueur)</h2>
+<p>La probabilité que N numéros choisis soient tous parmi les 36 boules tirées sur 50 vaut C(36, N) / C(50, N). Donc :</p>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">RTP (N numéros) = tiers[N] × C(36, N) / C(50, N)
+RTP (1 numéro)   = single × 36 / 50</pre>
+<p>Exemple : 3 numéros → 2,52 × C(36,3) / C(50,3) = 91,8 %. Les coefficients ont été fixés pour obtenir environ 92 % sur chaque ligne ; <i>validatePaytables</i> refuse tout tableau au-dessus de 100 %.</p>
+<h2>7. Écran TV</h2>
+<ul><li><b>Les 36 boules</b> sortent une à une : chaque boule apparaît d'abord en grand sur le tambour (le rythme s'adapte à la durée du tirage réglée : environ 2,2 s par boule avec 80 s de tirage), puis rejoint sa place dans <b>6 colonnes de 6 boules</b> (3 de chaque côté du tambour, chaque colonne se remplit de haut en bas).</li>
+<li><b>Couleurs</b> (reste de n ÷ 5) : 1 rouge, 2 bleu, 3 vert, 4 jaune, 5 (ou 0) mauve. Exemple : rouge = 1, 6, 11, 16, 21, 26, 31, 36, 41, 46.</li>
+<li><b>Bas de l'écran</b> : les paliers « N BALLS » éclairés au fur et à mesure, le numéro de séquence au centre.</li>
+<li><b>Résultat</b> : tableau des 50 boules rangées par couleur (les boules tirées en couleur, les autres éteintes), première et dernière boule, séquence de tirage complète.</li>
+<li>Pendant les mises, les boules du dernier tirage restent affichées.</li></ul>
+<h2>Où est le code</h2><table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="40%">Sujet</th><th style="background:#14285f;color:#fff;text-align:left" width="60%">Fichier</th></tr>
+<tr><td>Gain d'une ligne (<i>lineWin</i>) et RTP (<i>rtpReport</i>)</td><td>backend/src/shop/games.ts</td></tr>
+<tr><td>Grille 50 / 36 boules</td><td>backend/src/shop/games.ts (<i>NUMBER_GAMES.luckyx</i>)</td></tr>
+<tr><td>Tirage</td><td>backend/src/shop/draw.ts</td></tr>
+<tr><td>Tableau des gains (migration)</td><td>backend/migrations/015_luckyx_36_of_50.sql</td></tr>
+<tr><td>Écran TV</td><td>luckyx.html, js/luckyx.js, css/games.css</td></tr>
+<tr><td>Choix des numéros à la caisse (grille 50 colorée)</td><td>js/caisse.js</td></tr>
+<tr><td>Tests</td><td>backend/src/shop/games.spec.ts</td></tr></table>
+<h2>Sécurité et contrôles communs aux 4 jeux</h2>
+<ul>
+<li><b>Le serveur fait foi.</b> Les cotes, les gains et les résultats sont calculés uniquement côté serveur (<i>backend/src/shop/games.ts</i>). L'écran et la caisse n'en gardent qu'une copie d'affichage.</li>
+<li><b>Aucune ligne ne peut rendre plus que la mise.</b> <i>validatePaytables</i> refuse tout tableau de gains dont le RTP dépasse 100 % (l'administration affiche aussi en orange les lignes hors de la cible 90–95 %).</li>
+<li><b>Plafonds.</b> Mise par ligne 25 HTG à 5 000 HTG ; total d'un ticket 20 000 HTG ; gain maximum par ticket et seuil de validation par un responsable réglés dans l'administration (le ticket est refusé avec l'erreur PAYOUT_LIMIT si le gain possible dépasse le plafond).</li>
+<li><b>Anti-doublon.</b> Chaque vente porte une clé d'idempotence : un renvoi après une coupure réseau ne crée jamais un second ticket.</li>
+<li><b>Mises fermées 2 secondes avant la fin de la phase de mises</b> : la caisse bascule alors sur le tour suivant.</li>
+</ul>
+<p style="color:#777;font-size:9pt;margin-top:24pt">Document technique interne. Les numéros de version et de réglages peuvent changer : l'administration (onglet « Taux de gain ») reste la référence des cotes en vigueur.</p>
+</body></html>

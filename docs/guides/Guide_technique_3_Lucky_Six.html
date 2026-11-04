@@ -1,0 +1,107 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Lucky Six</title>
+<style>
+body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1b1f2a;line-height:1.35}
+h1{font-size:24pt;color:#14285f;margin-bottom:0}
+h2{font-size:15pt;color:#14285f;border-bottom:2px solid #14285f;padding-bottom:2px;margin-top:20pt}
+h3{font-size:12pt;color:#c8201d}
+.sub{color:#555;font-size:11pt;margin-top:2pt}
+.note{background:#fff7dd;border-left:4px solid #e3b400;padding:6px 10px;margin:8px 0}
+td,th{vertical-align:top}
+</style></head><body>
+<p style="color:#c8201d;font-weight:bold;letter-spacing:2px">PARYAJ PAW · GUIDE TECHNIQUE</p>
+<h1>Lucky Six</h1><p class="sub">35 boules sur 48, gain selon la position — règles, tirage, gains et RTP</p>
+<p class="sub">Version du 4 novembre 2026 · valeurs lues sur la configuration en ligne (réglages version 23).</p>
+
+<h2>1. Présentation</h2>
+<p>Lucky Six : grille de <b>48 numéros</b>. Le joueur choisit <b>exactement 6 numéros</b> ; le serveur tire <b>35 boules</b>, une à une. Le joueur gagne si ses 6 numéros sortent tous parmi ces 35 boules. <b>Plus vite</b> le dernier de ses 6 numéros sort, <b>plus le gain est grand</b>.</p>
+<h2>2. Paramètres et temps</h2>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="38%">Paramètre</th><th style="background:#14285f;color:#fff;text-align:left" width="62%">Valeur</th></tr>
+<tr><td>Grille</td><td>1 à 48</td></tr>
+<tr><td>Boules tirées</td><td>35 (les 5 premières sont les « pre-numbers », les 30 suivantes tombent chacune sur un palier de gain)</td></tr>
+<tr><td>Numéros choisis par le joueur</td><td>exactement 6</td></tr></table>
+<br><table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="38%">Paramètre</th><th style="background:#14285f;color:#fff;text-align:left" width="62%">Valeur</th></tr>
+<tr><td>Durée de la phase de mises</td><td>70 s</td></tr>
+<tr><td>Durée du tirage (animation à l'écran TV)</td><td>80 s</td></tr>
+<tr><td>Durée de l'écran de résultat</td><td>10 s</td></tr>
+<tr><td>Durée d'un tour</td><td>160 s (2,67 min)</td></tr>
+<tr><td>Tours par jour (jour d'Haïti, 00:00 à 24:00)</td><td>540</td></tr></table>
+<p>Les durées se règlent dans l'administration (« Temps de chaque jeu »). Un changement s'applique à partir du prochain minuit, heure d'Haïti, pour garder cohérents les numéros de tours et les tickets déjà vendus. Le numéro de tour affiché revient à 1 après 1000.</p>
+<h2>3. Tirage</h2>
+<p>Même procédé que le Keno : Fisher-Yates partiel sur 48 numéros, les 35 premières positions forment le tirage <b>dans l'ordre de sortie</b> (l'ordre compte pour le gain).</p>
+<h2>Tirage vérifiable (provably fair)</h2>
+<p>Chaque tour est créé <b>avant</b> la fermeture des mises, avec une graine secrète et son empreinte publique. Le résultat est fixé à ce moment-là : personne (ni la boutique) ne peut le changer ensuite.</p>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="12%">Étape</th><th style="background:#14285f;color:#fff;text-align:left" width="88%">Ce qui se passe</th></tr>
+<tr><td>1</td><td>Le serveur tire une <b>graine serveur</b> de 32 octets aléatoires (<i>newServerSeed</i>) et publie son empreinte SHA-256 (<i>serverSeedHash</i>) avant les mises.</td></tr>
+<tr><td>2</td><td>Le résultat est calculé par <i>drawRound(jeu, graine, jour, tour)</i> : flux de nombres de 32 bits = HMAC-SHA256(clé = graine serveur, message = « ${game}:AAAA-MM-JJ:numéro du tour:bloc »).</td></tr>
+<tr><td>3</td><td>Les nombres sont convertis en entiers uniformes par <i>uniformInt</i> (rejet des valeurs qui créeraient un biais de modulo).</td></tr>
+<tr><td>4</td><td>Après le début du tirage, la graine est publiée. Tout le monde peut vérifier : SHA-256(graine) = empreinte annoncée, et rejouer le calcul (POST /shop/verify {game, serverSeed, day, round}).</td></tr></table>
+
+<h2>4. Calcul du gain</h2>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">On lit les boules dans l'ordre de sortie, positions 1 à 35.
+Position P = la position de la boule qui complète les 6 numéros du joueur.
+Si P ≥ 6  : gain = arrondi( mise × palier[ P − 6 ] )
+Sinon (un numéro absent des 35 boules) : gain = 0</pre>
+<p>Exemple (mise 100 HTG) : les 6 numéros sont complets à la boule n° 6 → 1 000 000 HTG ; à la n° 7 → 750 000 HTG ; à la n° 20 → 2 500 HTG ; à la n° 35 → 100 HTG.</p>
+<h2>5. Échelle des gains en vigueur (30 paliers)</h2>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="34%">Position de la boule qui complète</th><th style="background:#14285f;color:#fff;text-align:left" width="33%">Gain = mise ×</th><th style="background:#14285f;color:#fff;text-align:left" width="33%">Part du RTP (position)</th></tr>
+<tr><td>6</td><td>10 000 ×</td><td>0,0815 %</td></tr>
+<tr><td>7</td><td>7 500 ×</td><td>0,3667 %</td></tr>
+<tr><td>8</td><td>5 000 ×</td><td>0,8556 %</td></tr>
+<tr><td>9</td><td>2 500 ×</td><td>1,1409 %</td></tr>
+<tr><td>10</td><td>1 000 ×</td><td>1,0268 %</td></tr>
+<tr><td>11</td><td>500 ×</td><td>1,0268 %</td></tr>
+<tr><td>12</td><td>300 ×</td><td>1,1294 %</td></tr>
+<tr><td>13</td><td>200 ×</td><td>1,2908 %</td></tr>
+<tr><td>14</td><td>150 ×</td><td>1,5732 %</td></tr>
+<tr><td>15</td><td>100 ×</td><td>1,6314 %</td></tr>
+<tr><td>16</td><td>80 ×</td><td>1,9577 %</td></tr>
+<tr><td>17</td><td>60 ×</td><td>2,1357 %</td></tr>
+<tr><td>18</td><td>40 ×</td><td>2,017 %</td></tr>
+<tr><td>19</td><td>30 ×</td><td>2,0946 %</td></tr>
+<tr><td>20</td><td>25 ×</td><td>2,3689 %</td></tr>
+<tr><td>21</td><td>20 ×</td><td>2,5268 %</td></tr>
+<tr><td>22</td><td>18 ×</td><td>2,9848 %</td></tr>
+<tr><td>23</td><td>16 ×</td><td>3,4335 %</td></tr>
+<tr><td>24</td><td>14 ×</td><td>3,8389 %</td></tr>
+<tr><td>25</td><td>12 ×</td><td>4,1564 %</td></tr>
+<tr><td>26</td><td>10 ×</td><td>4,3295 %</td></tr>
+<tr><td>27</td><td>9 ×</td><td>4,8243 %</td></tr>
+<tr><td>28</td><td>8 ×</td><td>5,2629 %</td></tr>
+<tr><td>29</td><td>7 ×</td><td>5,6062 %</td></tr>
+<tr><td>30</td><td>6 ×</td><td>5,8064 %</td></tr>
+<tr><td>31</td><td>5 ×</td><td>5,8064 %</td></tr>
+<tr><td>32</td><td>4 ×</td><td>5,5384 %</td></tr>
+<tr><td>33</td><td>3 ×</td><td>4,923 %</td></tr>
+<tr><td>34</td><td>2 ×</td><td>3,8681 %</td></tr>
+<tr><td>35</td><td>1 ×</td><td>2,2675 %</td></tr></table>
+<h2>6. RTP (retour au joueur)</h2>
+<p>La probabilité que les 6 numéros soient complets <b>exactement</b> à la position P est C(P−1, 5) / C(48, 6) (le dernier numéro est à la position P, et les 5 autres parmi les P−1 boules précédentes). Donc :</p>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">RTP = Σ (P = 6 à 35)   palier[P − 6] × C(P − 1, 5) / C(48, 6)</pre>
+<p><b>RTP actuel : 85,87 %</b> (la boutique garde 14,13 % en moyenne).</p>
+<div class="note"><b>Informations affichées à l'écran uniquement.</b> La barre du bas (paris de couleur, somme des 5 pre-numbers, pair/impair) est une information de lecture. Le serveur ne gère aucun pari de couleur ni de somme : seul le gain « 6 numéros » ci-dessus est payé.</div>
+<h2>7. Écran TV</h2>
+<ul><li><b>En haut au centre</b> : « CURRENT DRAW » (numéro de tour), tambour chromé avec la grosse boule qui sort ; à gauche, glissière des 5 pre-numbers.</li>
+<li><b>Paliers</b> : 30 disques répartis en colonne de gauche (9), quatre colonnes de 3 en bas (12), colonne de droite (9) ; chaque boule vient remplir le palier suivant avec son gain.</li>
+<li><b>Barre du bas</b> : couleurs (nombre de boules de chaque couleur), somme des pre-numbers (sous/sur 122,5), pair / impair.</li>
+<li><b>Couleur des boules</b> : selon le reste de n ÷ 8 (0 noir, 1 rouge, 2 vert, 3 bleu, 4 rose, 5 marron, 6 jaune, 7 orange).</li>
+<li>Pendant les mises, les boules du dernier tirage restent affichées.</li></ul>
+<h2>Où est le code</h2><table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="40%">Sujet</th><th style="background:#14285f;color:#fff;text-align:left" width="60%">Fichier</th></tr>
+<tr><td>Gain d'une ligne (<i>lineWin</i>) et RTP (<i>rtpReport</i>)</td><td>backend/src/shop/games.ts</td></tr>
+<tr><td>Tirage</td><td>backend/src/shop/draw.ts</td></tr>
+<tr><td>Écran TV</td><td>luckysix.html, js/luckysix.js, css/games.css</td></tr>
+<tr><td>Tests</td><td>backend/src/shop/games.spec.ts</td></tr></table>
+<h2>Sécurité et contrôles communs aux 4 jeux</h2>
+<ul>
+<li><b>Le serveur fait foi.</b> Les cotes, les gains et les résultats sont calculés uniquement côté serveur (<i>backend/src/shop/games.ts</i>). L'écran et la caisse n'en gardent qu'une copie d'affichage.</li>
+<li><b>Aucune ligne ne peut rendre plus que la mise.</b> <i>validatePaytables</i> refuse tout tableau de gains dont le RTP dépasse 100 % (l'administration affiche aussi en orange les lignes hors de la cible 90–95 %).</li>
+<li><b>Plafonds.</b> Mise par ligne 25 HTG à 5 000 HTG ; total d'un ticket 20 000 HTG ; gain maximum par ticket et seuil de validation par un responsable réglés dans l'administration (le ticket est refusé avec l'erreur PAYOUT_LIMIT si le gain possible dépasse le plafond).</li>
+<li><b>Anti-doublon.</b> Chaque vente porte une clé d'idempotence : un renvoi après une coupure réseau ne crée jamais un second ticket.</li>
+<li><b>Mises fermées 2 secondes avant la fin de la phase de mises</b> : la caisse bascule alors sur le tour suivant.</li>
+</ul>
+<p style="color:#777;font-size:9pt;margin-top:24pt">Document technique interne. Les numéros de version et de réglages peuvent changer : l'administration (onglet « Taux de gain ») reste la référence des cotes en vigueur.</p>
+</body></html>

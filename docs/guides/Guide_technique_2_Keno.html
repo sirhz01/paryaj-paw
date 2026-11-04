@@ -1,0 +1,85 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Keno 20 / 80</title>
+<style>
+body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1b1f2a;line-height:1.35}
+h1{font-size:24pt;color:#14285f;margin-bottom:0}
+h2{font-size:15pt;color:#14285f;border-bottom:2px solid #14285f;padding-bottom:2px;margin-top:20pt}
+h3{font-size:12pt;color:#c8201d}
+.sub{color:#555;font-size:11pt;margin-top:2pt}
+.note{background:#fff7dd;border-left:4px solid #e3b400;padding:6px 10px;margin:8px 0}
+td,th{vertical-align:top}
+</style></head><body>
+<p style="color:#c8201d;font-weight:bold;letter-spacing:2px">PARYAJ PAW · GUIDE TECHNIQUE</p>
+<h1>Keno 20 / 80</h1><p class="sub">Règles, tirage, calcul des gains et RTP</p>
+<p class="sub">Version du 4 novembre 2026 · valeurs lues sur la configuration en ligne (réglages version 23).</p>
+
+<h2>1. Présentation</h2>
+<p>Keno : grille de <b>80 numéros</b>. Le joueur choisit de <b>1 à 10 numéros</b> ; le serveur tire <b>20 boules</b>. Plus le joueur trouve de numéros parmi les 20 tirés, plus le gain est élevé (selon le nombre de numéros qu'il a choisis).</p>
+<h2>2. Paramètres et temps</h2>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="38%">Paramètre</th><th style="background:#14285f;color:#fff;text-align:left" width="62%">Valeur</th></tr>
+<tr><td>Grille</td><td>1 à 80</td></tr>
+<tr><td>Boules tirées</td><td>20</td></tr>
+<tr><td>Numéros choisis par le joueur</td><td>1 à 10</td></tr></table>
+<br><table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="38%">Paramètre</th><th style="background:#14285f;color:#fff;text-align:left" width="62%">Valeur</th></tr>
+<tr><td>Durée de la phase de mises</td><td>130 s</td></tr>
+<tr><td>Durée du tirage (animation à l'écran TV)</td><td>42 s</td></tr>
+<tr><td>Durée de l'écran de résultat</td><td>10 s</td></tr>
+<tr><td>Durée d'un tour</td><td>182 s (3,03 min)</td></tr>
+<tr><td>Tours par jour (jour d'Haïti, 00:00 à 24:00)</td><td>474</td></tr></table>
+<p>Les durées se règlent dans l'administration (« Temps de chaque jeu »). Un changement s'applique à partir du prochain minuit, heure d'Haïti, pour garder cohérents les numéros de tours et les tickets déjà vendus. Le numéro de tour affiché revient à 1 après 1000.</p>
+<h2>3. Tirage</h2>
+<p>Les 80 numéros sont mélangés par un <b>Fisher-Yates partiel</b> : pour la position i (0 à 19), le serveur tire j uniforme dans [i, 80) et échange pool[i] avec pool[j]. Les 20 premières positions forment le tirage, dans l'ordre de sortie. Chaque combinaison de 20 numéros est équiprobable.</p>
+<h2>Tirage vérifiable (provably fair)</h2>
+<p>Chaque tour est créé <b>avant</b> la fermeture des mises, avec une graine secrète et son empreinte publique. Le résultat est fixé à ce moment-là : personne (ni la boutique) ne peut le changer ensuite.</p>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="12%">Étape</th><th style="background:#14285f;color:#fff;text-align:left" width="88%">Ce qui se passe</th></tr>
+<tr><td>1</td><td>Le serveur tire une <b>graine serveur</b> de 32 octets aléatoires (<i>newServerSeed</i>) et publie son empreinte SHA-256 (<i>serverSeedHash</i>) avant les mises.</td></tr>
+<tr><td>2</td><td>Le résultat est calculé par <i>drawRound(jeu, graine, jour, tour)</i> : flux de nombres de 32 bits = HMAC-SHA256(clé = graine serveur, message = « ${game}:AAAA-MM-JJ:numéro du tour:bloc »).</td></tr>
+<tr><td>3</td><td>Les nombres sont convertis en entiers uniformes par <i>uniformInt</i> (rejet des valeurs qui créeraient un biais de modulo).</td></tr>
+<tr><td>4</td><td>Après le début du tirage, la graine est publiée. Tout le monde peut vérifier : SHA-256(graine) = empreinte annoncée, et rejouer le calcul (POST /shop/verify {game, serverSeed, day, round}).</td></tr></table>
+
+<h2>4. Calcul du gain</h2>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">trouvés = nombre de numéros du joueur présents dans les 20 boules tirées
+gain (centimes) = arrondi( mise × table[ numéros choisis ][ trouvés ] )   (0 si la case de la table est absente)</pre>
+<p>Exemple : le joueur choisit 3 numéros, mise 100 HTG. S'il en trouve 2 → gain 430 HTG ; s'il en trouve 3 → 2 400 HTG ; moins de 2 → 0.</p>
+<h2>5. Tableau des gains en vigueur</h2>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="16%">Numéros choisis</th><th style="background:#14285f;color:#fff;text-align:left" width="64%">Gain = mise ×</th><th style="background:#14285f;color:#fff;text-align:left" width="20%">RTP de la ligne</th></tr>
+<tr><td>1</td><td>1 trouvés → 2,7 ×</td><td>67,5 %</td></tr>
+<tr><td>2</td><td>2 trouvés → 15,5 ×</td><td>93,2 %</td></tr>
+<tr><td>3</td><td>2 trouvés → 4,3 ×<br>3 trouvés → 24 ×</td><td>92,96 %</td></tr>
+<tr><td>4</td><td>2 trouvés → 2,3 ×<br>3 trouvés → 6,4 ×<br>4 trouvés → 50 ×</td><td>91,9 %</td></tr>
+<tr><td>5</td><td>3 trouvés → 6 ×<br>4 trouvés → 23 ×<br>5 trouvés → 238 ×</td><td>93,52 %</td></tr>
+<tr><td>6</td><td>3 trouvés → 3,5 ×<br>4 trouvés → 8,9 ×<br>5 trouvés → 45 ×<br>6 trouvés → 600 ×</td><td>92,51 %</td></tr>
+<tr><td>7</td><td>3 trouvés → 2,5 ×<br>4 trouvés → 4,6 ×<br>5 trouvés → 15,5 ×<br>6 trouvés → 101 ×<br>7 trouvés → 1 670 ×</td><td>92,62 %</td></tr>
+<tr><td>8</td><td>4 trouvés → 5,4 ×<br>5 trouvés → 13 ×<br>6 trouvés → 56,5 ×<br>7 trouvés → 461 ×<br>8 trouvés → 9 375 ×</td><td>92,65 %</td></tr>
+<tr><td>9</td><td>4 trouvés → 3,8 ×<br>5 trouvés → 7,3 ×<br>6 trouvés → 23 ×<br>7 trouvés → 122 ×<br>8 trouvés → 1 220 ×<br>9 trouvés → 30 230 ×</td><td>93,7 %</td></tr>
+<tr><td>10</td><td>5 trouvés → 8,4 ×<br>6 trouvés → 20,5 ×<br>7 trouvés → 81,5 ×<br>8 trouvés → 534 ×<br>9 trouvés → 6 500 ×<br>10 trouvés → 195 120 ×</td><td>93,26 %</td></tr></table>
+<h2>6. RTP (retour au joueur)</h2>
+<p>La probabilité de trouver exactement h numéros sur n choisis suit la loi hypergéométrique (20 boules tirées parmi 80) :</p>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">P(h) = C(20, h) × C(60, n − h) / C(80, n)
+RTP de la ligne n = Σ  table[n][h] × P(h)</pre>
+<p>Exemple (1 numéro) : P(trouvé) = 20/80 = 25 %. Avec une cote de 2,7, RTP = 25 % × 2,7 = 67,5 %.</p>
+<p>Dans l'administration, le bouton « Calculer les taux standard automatiquement » propose un tableau pour un RTP visé donné (répartition du retour sur les niveaux gagnants, avec arrondi vers le bas) ; il faut ensuite enregistrer.</p>
+<h2>7. Écran TV</h2>
+<ul><li><b>Mises</b> : écran promotionnel (numéros à choisir, tableau des gains).</li>
+<li><b>Tirage</b> : les 20 boules sortent une à une et se placent sur la grille de 80 numéros ; la séquence de tirage s'affiche.</li>
+<li><b>Résultat</b> : les 20 numéros gagnants restent visibles.</li></ul>
+<h2>Où est le code</h2><table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="40%">Sujet</th><th style="background:#14285f;color:#fff;text-align:left" width="60%">Fichier</th></tr>
+<tr><td>Table de gains, gain d'une ligne, RTP</td><td>backend/src/shop/games.ts (<i>lineWin</i>, <i>rtpReport</i>)</td></tr>
+<tr><td>Tirage</td><td>backend/src/shop/draw.ts</td></tr>
+<tr><td>Écran TV</td><td>keno.html, js/keno.js</td></tr>
+<tr><td>Taux standard automatiques (administration)</td><td>js/admin.js (<i>kenoRow</i>)</td></tr>
+<tr><td>Tests</td><td>backend/src/shop/games.spec.ts</td></tr></table>
+<h2>Sécurité et contrôles communs aux 4 jeux</h2>
+<ul>
+<li><b>Le serveur fait foi.</b> Les cotes, les gains et les résultats sont calculés uniquement côté serveur (<i>backend/src/shop/games.ts</i>). L'écran et la caisse n'en gardent qu'une copie d'affichage.</li>
+<li><b>Aucune ligne ne peut rendre plus que la mise.</b> <i>validatePaytables</i> refuse tout tableau de gains dont le RTP dépasse 100 % (l'administration affiche aussi en orange les lignes hors de la cible 90–95 %).</li>
+<li><b>Plafonds.</b> Mise par ligne 25 HTG à 5 000 HTG ; total d'un ticket 20 000 HTG ; gain maximum par ticket et seuil de validation par un responsable réglés dans l'administration (le ticket est refusé avec l'erreur PAYOUT_LIMIT si le gain possible dépasse le plafond).</li>
+<li><b>Anti-doublon.</b> Chaque vente porte une clé d'idempotence : un renvoi après une coupure réseau ne crée jamais un second ticket.</li>
+<li><b>Mises fermées 2 secondes avant la fin de la phase de mises</b> : la caisse bascule alors sur le tour suivant.</li>
+</ul>
+<p style="color:#777;font-size:9pt;margin-top:24pt">Document technique interne. Les numéros de version et de réglages peuvent changer : l'administration (onglet « Taux de gain ») reste la référence des cotes en vigueur.</p>
+</body></html>

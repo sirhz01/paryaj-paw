@@ -1,0 +1,83 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Roulette américaine</title>
+<style>
+body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1b1f2a;line-height:1.35}
+h1{font-size:24pt;color:#14285f;margin-bottom:0}
+h2{font-size:15pt;color:#14285f;border-bottom:2px solid #14285f;padding-bottom:2px;margin-top:20pt}
+h3{font-size:12pt;color:#c8201d}
+.sub{color:#555;font-size:11pt;margin-top:2pt}
+.note{background:#fff7dd;border-left:4px solid #e3b400;padding:6px 10px;margin:8px 0}
+td,th{vertical-align:top}
+</style></head><body>
+<p style="color:#c8201d;font-weight:bold;letter-spacing:2px">PARYAJ PAW · GUIDE TECHNIQUE</p>
+<h1>Roulette américaine</h1><p class="sub">Règles, tirage, calcul des gains et RTP</p>
+<p class="sub">Version du 4 novembre 2026 · valeurs lues sur la configuration en ligne (réglages version 23).</p>
+
+<h2>1. Présentation</h2>
+<p>American Roulette : roue de <b>38 cases</b> (1 à 36, 0 et 00). Le joueur place une ou plusieurs mises sur le tapis ; un numéro gagnant est tiré à chaque tour. Les mises sur 0 ou 00 ne gagnent que sur ces numéros : les « chances simples » (rouge, noir, pair, impair, 1-18, 19-36) perdent quand sort 0 ou 00.</p>
+<h2>2. Paramètres et temps</h2>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="38%">Paramètre</th><th style="background:#14285f;color:#fff;text-align:left" width="62%">Valeur</th></tr>
+<tr><td>Durée de la phase de mises</td><td>90 s</td></tr>
+<tr><td>Durée du tirage (animation à l'écran TV)</td><td>25 s</td></tr>
+<tr><td>Durée de l'écran de résultat</td><td>10 s</td></tr>
+<tr><td>Durée d'un tour</td><td>125 s (2,08 min)</td></tr>
+<tr><td>Tours par jour (jour d'Haïti, 00:00 à 24:00)</td><td>691</td></tr></table>
+<p>Les durées se règlent dans l'administration (« Temps de chaque jeu »). Un changement s'applique à partir du prochain minuit, heure d'Haïti, pour garder cohérents les numéros de tours et les tickets déjà vendus. Le numéro de tour affiché revient à 1 après 1000.</p>
+<h2>3. Tirage</h2>
+<p>Un seul entier uniforme est tiré dans [0, 38) ; il désigne la case dans <i>WHEEL_ORDER</i>, qui est l'ordre physique de la roue américaine :</p>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">0, 28, 9, 26, 30, 11, 7, 20, 32, 17, 5, 22, 34, 15, 3, 24, 36, 13, 1,
+00, 27, 10, 25, 29, 12, 8, 19, 31, 18, 6, 21, 33, 16, 4, 23, 35, 14, 2</pre>
+<p>Les 38 cases ont exactement la même probabilité (1/38). Un test statistique (khi-deux sur 38 000 tirages) vérifie l'uniformité à chaque modification du code.</p>
+<h2>Tirage vérifiable (provably fair)</h2>
+<p>Chaque tour est créé <b>avant</b> la fermeture des mises, avec une graine secrète et son empreinte publique. Le résultat est fixé à ce moment-là : personne (ni la boutique) ne peut le changer ensuite.</p>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="12%">Étape</th><th style="background:#14285f;color:#fff;text-align:left" width="88%">Ce qui se passe</th></tr>
+<tr><td>1</td><td>Le serveur tire une <b>graine serveur</b> de 32 octets aléatoires (<i>newServerSeed</i>) et publie son empreinte SHA-256 (<i>serverSeedHash</i>) avant les mises.</td></tr>
+<tr><td>2</td><td>Le résultat est calculé par <i>drawRound(jeu, graine, jour, tour)</i> : flux de nombres de 32 bits = HMAC-SHA256(clé = graine serveur, message = « ${game}:AAAA-MM-JJ:numéro du tour:bloc »).</td></tr>
+<tr><td>3</td><td>Les nombres sont convertis en entiers uniformes par <i>uniformInt</i> (rejet des valeurs qui créeraient un biais de modulo).</td></tr>
+<tr><td>4</td><td>Après le début du tirage, la graine est publiée. Tout le monde peut vérifier : SHA-256(graine) = empreinte annoncée, et rejouer le calcul (POST /shop/verify {game, serverSeed, day, round}).</td></tr></table>
+
+<h2>4. Mises et clés de pari</h2>
+<p>Chaque mise est envoyée au serveur sous la forme d'une <b>clé</b> ; le serveur la valide (<i>rouletteKeyNumbers</i>) et énumère les numéros couverts. Une clé invalide (ex. <tt>n:37</tt>, <tt>st:2</tt>, <tt>col:4</tt>) est refusée.</p>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="34%">Type de mise</th><th style="background:#14285f;color:#fff;text-align:left" width="20%">Clé</th><th style="background:#14285f;color:#fff;text-align:left" width="12%">Cases couvertes</th><th style="background:#14285f;color:#fff;text-align:left" width="14%">Cote</th><th style="background:#14285f;color:#fff;text-align:left" width="20%">RTP de la mise</th></tr>
+<tr><td>Pari simple (numéro plein)</td><td><tt>n:17</tt></td><td>1</td><td>36 ×</td><td>94,74 %</td></tr>
+<tr><td>Cheval (2 numéros voisins)</td><td><tt>sp:1-4</tt></td><td>2</td><td>18 ×</td><td>94,74 %</td></tr>
+<tr><td>Street (3 numéros en ligne)</td><td><tt>st:19</tt></td><td>3</td><td>12 ×</td><td>94,74 %</td></tr>
+<tr><td>Carré (4 numéros)</td><td><tt>co:1</tt></td><td>4</td><td>9 ×</td><td>94,74 %</td></tr>
+<tr><td>Six lignes (6 numéros)</td><td><tt>six:31</tt></td><td>6</td><td>6 ×</td><td>94,74 %</td></tr>
+<tr><td>Colonne (12 numéros)</td><td><tt>col:2</tt></td><td>12</td><td>3 ×</td><td>94,74 %</td></tr>
+<tr><td>Douzaine (12 numéros)</td><td><tt>doz:3</tt></td><td>12</td><td>3 ×</td><td>94,74 %</td></tr>
+<tr><td>Chance simple : rouge, noir, pair, impair, manque 1-18, passe 19-36</td><td><tt>red, black, even, odd, low, high</tt></td><td>18</td><td>2 ×</td><td>94,74 %</td></tr>
+<tr><td>Top line (0, 00, 1, 2, 3) — désactivé actuellement</td><td><tt>basket</tt></td><td>5</td><td>7,2 ×</td><td>94,74 %</td></tr></table>
+<h2>5. Calcul du gain</h2>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">gain (centimes) = arrondi( mise (centimes) × cote )   si le numéro tiré est couvert par la clé
+gain = 0                                                      sinon</pre>
+<p>Exemple : 100 HTG sur le 17 (cote 36) → si le 17 sort, gain 3 600 HTG (mise comprise dans le coefficient). 100 HTG sur « rouge » (cote 2) → 200 HTG si le numéro tiré est rouge, 0 si noir, 0 ou 00.</p>
+<h2>6. RTP (retour au joueur)</h2>
+<p>RTP d'une mise = cote × (cases couvertes) / 38. Le RTP visé est un <b>réglage de l'administration</b> (actuellement 94,74 %) : les cotes sont alors calculées automatiquement par <i>rouletteOddsForRtp</i> :</p>
+<pre style="font-family:Consolas,monospace;font-size:9pt;background:#f3f5fb;border:1px solid #c9d1e6;padding:6px">cote = arrondi( RTP visé / 100 × 38 / cases couvertes , 2 décimales )</pre>
+<p>À 94,74 %, les cotes sont celles de l'American Roulette d'origine (pari simple 36, cheval 18, street 12, carré 9, six lignes 6, colonne et douzaine 3, chances simples 2, top line 7,2). La boutique garde 5,26 % en moyenne (c'est l'effet des cases 0 et 00).</p>
+<h2>7. Écran TV</h2>
+<ul><li><b>Mises</b> : tapis à gauche, bandeau qui présente tour à tour chaque type de mise (nom, description, cote), roue à droite avec statistiques des 50 derniers tirages (nombre de sorties de chaque case et histogramme chaud/froid), compte à rebours au centre de la roue, « Latest results » (10 derniers numéros).</li>
+<li><b>Tirage</b> : la roue vient au centre, tourne, la bille tombe dans la case sur les dernières secondes.</li>
+<li><b>Résultat</b> : « ROUND COMPLETED », numéro gagnant, mises gagnantes éclairées sur le tapis.</li></ul>
+<h2>Où est le code</h2><table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;width:100%;font-size:10pt">
+<tr><th style="background:#14285f;color:#fff;text-align:left" width="40%">Sujet</th><th style="background:#14285f;color:#fff;text-align:left" width="60%">Fichier</th></tr>
+<tr><td>Cotes, clés de pari, gains, RTP</td><td>backend/src/shop/games.ts</td></tr>
+<tr><td>Tirage (<i>drawRound</i>)</td><td>backend/src/shop/draw.ts</td></tr>
+<tr><td>Flux HMAC et tirage uniforme</td><td>backend/src/fairness/provably-fair.ts</td></tr>
+<tr><td>Création et publication des tours</td><td>backend/src/shop/rounds.service.ts</td></tr>
+<tr><td>Ventes, paiements, plafonds</td><td>backend/src/shop/tickets.service.ts</td></tr>
+<tr><td>Écran TV</td><td>roulette.html, js/roulette.js, js/roulette-core.js, css/roulette.css</td></tr>
+<tr><td>Tests</td><td>backend/src/shop/games.spec.ts</td></tr></table>
+<h2>Sécurité et contrôles communs aux 4 jeux</h2>
+<ul>
+<li><b>Le serveur fait foi.</b> Les cotes, les gains et les résultats sont calculés uniquement côté serveur (<i>backend/src/shop/games.ts</i>). L'écran et la caisse n'en gardent qu'une copie d'affichage.</li>
+<li><b>Aucune ligne ne peut rendre plus que la mise.</b> <i>validatePaytables</i> refuse tout tableau de gains dont le RTP dépasse 100 % (l'administration affiche aussi en orange les lignes hors de la cible 90–95 %).</li>
+<li><b>Plafonds.</b> Mise par ligne 25 HTG à 5 000 HTG ; total d'un ticket 20 000 HTG ; gain maximum par ticket et seuil de validation par un responsable réglés dans l'administration (le ticket est refusé avec l'erreur PAYOUT_LIMIT si le gain possible dépasse le plafond).</li>
+<li><b>Anti-doublon.</b> Chaque vente porte une clé d'idempotence : un renvoi après une coupure réseau ne crée jamais un second ticket.</li>
+<li><b>Mises fermées 2 secondes avant la fin de la phase de mises</b> : la caisse bascule alors sur le tour suivant.</li>
+</ul>
+<p style="color:#777;font-size:9pt;margin-top:24pt">Document technique interne. Les numéros de version et de réglages peuvent changer : l'administration (onglet « Taux de gain ») reste la référence des cotes en vigueur.</p>
+</body></html>
