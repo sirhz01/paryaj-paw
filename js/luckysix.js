@@ -82,9 +82,9 @@ PP.ready.then(function () {
     onPhase(s) {
       body.dataset.phase = s.phase;
       const key = (cur = s.day + ':' + s.round);
-      $('curDraw').textContent = s.phase === 'bet' ? Math.max(1, s.round - 1) : s.round;   // pendant les mises : le dernier tirage
+      $('curDraw').textContent = PP.roundNo(s.phase === 'bet' ? Math.max(1, s.round - 1) : s.round);   // pendant les mises : le dernier tirage
       if (s.phase === 'bet') {
-        $('nextRound').textContent = s.round;
+        $('nextRound').textContent = PP.roundNo(s.round);
         // Les boules du dernier tirage restent à l'écran pendant les mises ; après un rechargement de la page, on les récupère.
         if (shown === 0 && s.round > 1) PP.load('luckysix', s.day, s.round - 1).then((r) => { if (cur === key && shown === 0 && r) { res = r; reveal(35); } });
       } else if (s.phase === 'draw') {
@@ -93,7 +93,7 @@ PP.ready.then(function () {
       } else if (shown < 35) PP.load('luckysix', s.day, s.round).then((r) => { if (cur === key) res = r; });
       $('drumBox').classList.toggle('hidden', s.phase !== 'draw');
       $('resBox').classList.toggle('hidden', s.phase === 'draw' || (s.phase === 'bet' && s.round < 2));
-      $('resBox').textContent = s.phase === 'result' ? 'RESULTS ROUND ' + s.round : 'LAST DRAW · ROUND ' + (s.round - 1);
+      $('resBox').textContent = s.phase === 'result' ? 'RESULTS ROUND ' + PP.roundNo(s.round) : 'LAST DRAW · ROUND ' + PP.roundNo(s.round - 1);
       drum.setSpeed(s.phase === 'draw' ? 1.6 : 1);
     },
     onTick(s) {

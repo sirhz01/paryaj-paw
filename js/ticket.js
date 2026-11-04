@@ -38,7 +38,7 @@
     ${row('Délivré', PP.dateTime(t.time))}
     ${row('ID de ticket', t.id)}
     <hr>
-    <div class="tour">Tour: ${t.round}${drawTimeOf(t) ? ' &middot; Tirage: ' + drawTimeOf(t) : ''}</div>
+    <div class="tour">Tour: ${PP.roundNo(t.round)}${drawTimeOf(t) ? ' &middot; Tirage: ' + drawTimeOf(t) : ''}</div>
     <hr>`;
 
   /* Ticket de mise. */

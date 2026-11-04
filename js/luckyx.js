@@ -79,7 +79,7 @@ PP.ready.then(function () {
     const drawn = res.draw.slice(0, DRAWN), got = new Set(drawn);
     // Les 50 boules, rangée par couleur : rouge (1, 6, 11…), bleu, vert, jaune, mauve (5, 10, 15…).
     const all = [1, 2, 3, 4, 0].flatMap((c) => Array.from({ length: 10 }, (_, k) => (c === 0 ? 5 * (k + 1) : c + 5 * k)));
-    $('cyRes').innerHTML = '<div class="rt">RESULTS ROUND ' + s.round + '</div>'
+    $('cyRes').innerHTML = '<div class="rt">RESULTS ROUND ' + PP.roundNo(s.round) + '</div>'
       + '<div class="rall">' + all.map((n) => ballHTML(n, got.has(n) ? 'on' : 'off')).join('') + '</div>'
       + '<div class="rfl"><div><small>FIRST BALL</small>' + ballHTML(drawn[0]) + '</div><div><small>LAST BALL</small>' + ballHTML(drawn[drawn.length - 1]) + '</div></div>'
       + '<div class="rdr">' + drawn.map((n) => ballHTML(n)).join('') + '</div>';
@@ -104,7 +104,7 @@ PP.ready.then(function () {
         PP.load('luckyx', s.day, s.round).then((r) => { if (cur === key) res = r; });
       } else {
         if (shown < DRAWN) PP.load('luckyx', s.day, s.round).then((r) => { if (cur === key) res = r; });
-        $('doneRound').textContent = s.round;
+        $('doneRound').textContent = PP.roundNo(s.round);
       }
       drum.setSpeed(s.phase === 'draw' ? 1.6 : 1);
     },

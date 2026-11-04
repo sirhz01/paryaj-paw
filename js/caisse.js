@@ -286,7 +286,7 @@ PP.ready.then(function () {
     $('voidLast').classList.toggle('hidden', !lastSold);
     slip = []; picks = []; saved = []; syncNums(); renderSlip();
     const encaisse = (t.lines || []).reduce((a, l) => a + (l.stake || 0), 0);
-    flash(`Ticket ${t.id} · ${PP.money(encaisse)} encaissé · tour ${t.round}`);
+    flash(`Ticket ${t.id} · ${PP.money(encaisse)} encaissé · tour ${PP.roundNo(t.round)}`);
     renderHistory();
     refreshCash();
   });
@@ -328,7 +328,7 @@ PP.ready.then(function () {
     if (r.state === 'voided') return setPay('Ticket annulé.', 'err');
     if (online && r.state === 'pending') { voidTarget = r.t; $('voidBtn').classList.remove('hidden'); }
     if (r.state === 'paid') return setPay('Ticket déjà payé.', 'err');
-    if (r.state === 'pending') return setPay(`Tour ${r.t.round} pas encore terminé.`, 'err');
+    if (r.state === 'pending') return setPay(`Tour ${PP.roundNo(r.t.round)} pas encore terminé.`, 'err');
     if (r.state === 'lost') return setPay('Ticket perdant.', 'err');
     payTicket = { t: r.t, win: r.win };
     setPay(`Ticket gagnant : ${PP.money(r.win)}`, 'ok');
@@ -375,7 +375,7 @@ PP.ready.then(function () {
     if (t.game === 'roulette') slip = t.lines.map((l) => ({ key: l.key, stake: l.stake }));
     else { saved = t.lines.map((l) => ({ picks: [...l.picks], stake: l.stake })); picks = []; syncNums(); }
     renderSlip();
-    flash(`Mises du ticket ${t.id} reprises pour le tour ${PP.state(t.game).phase === 'bet' && PP.state(t.game).left > 2 ? PP.state(t.game).round : PP.state(t.game).round + 1} : vérifier puis imprimer.`);
+    flash(`Mises du ticket ${t.id} reprises pour le tour ${PP.roundNo(PP.state(t.game).phase === 'bet' && PP.state(t.game).left > 2 ? PP.state(t.game).round : PP.state(t.game).round + 1)} : vérifier puis imprimer.`);
     setPay('');
   });
   $('payBtn').addEventListener('click', async () => {
@@ -408,7 +408,7 @@ PP.ready.then(function () {
       rows = PP.tickets.all().slice(-15).reverse().map((t) => [t, t.status === 'paid' ? 'paid' : (({ pending: 'open', won: 'won', lost: 'lost' })[PP.bets.settle(t).state])]);
     }
     rows.forEach(([t]) => { recent[t.id] = t; });
-    $('hist').innerHTML = rows.map(([t, st]) => `<tr data-id="${t.id}"><td><b>${t.id}</b></td><td>${t.gameTicket}</td><td>${t.round}</td>
+    $('hist').innerHTML = rows.map(([t, st]) => `<tr data-id="${t.id}"><td><b>${t.id}</b></td><td>${t.gameTicket}</td><td>${PP.roundNo(t.round)}</td>
         <td>${PP.money(t.lines.reduce((a, l) => a + l.stake, 0))}</td><td><span class="st ${st}">${LABEL[st]}</span></td></tr>`).join('')
       || '<tr><td colspan="5" class="hint">Aucun ticket.</td></tr>';
   }
@@ -421,7 +421,7 @@ PP.ready.then(function () {
   /* ---------- Horloge du tour ---------- */
   setInterval(() => {
     const s = PP.state(game), open = s.phase === 'bet' && s.left > (PP.CLOSE_MARGIN || 2);
-    $('roundTxt').textContent = `${PP.GAMES[game].name} · Tour ${open ? s.round : s.round + 1}`;
+    $('roundTxt').textContent = `${PP.GAMES[game].name} · Tour ${PP.roundNo(open ? s.round : s.round + 1)}`;
     const p = $('roundLeft'); p.classList.toggle('closed', !open);
     const toNext = (s.start + PP.cycle(game) * 1000 - PP.now()) / 1000;   // ouverture des mises du tour suivant
     p.textContent = open ? 'Mises ouvertes · ' + PP.clock(s.left) : 'Mises fermées · ouverture dans ' + PP.clock(toNext);

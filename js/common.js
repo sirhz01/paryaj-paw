@@ -128,6 +128,9 @@
   };
 
   /* ---------- Barre du haut ---------- */
+  /* Numéro de tour affiché : après 1000, on recommence à 1 (affichage seulement ; le tour réel garde son numéro pour les tickets et les rapports). */
+  PP.roundNo = (n) => ((Math.max(1, n) - 1) % 1000) + 1;
+
   PP.topbar = function (title) {
     const el = document.getElementById('topbar');
     el.innerHTML = `
@@ -136,7 +139,7 @@
       <div class="meta"><span class="lbl">ROUND<br>NUMBER</span><b id="tbRound">–</b><span class="status" id="tbStatus"></span></div>`;
     const r = el.querySelector('#tbRound'), st = el.querySelector('#tbStatus');
     return (s) => {
-      r.textContent = s.round;
+      r.textContent = PP.roundNo(s.round);
       st.textContent = s.phase === 'bet' ? 'CLOSES IN ' + PP.clock(s.left) : s.phase === 'draw' ? 'DRAWING' : 'COMPLETED';
     };
   };
