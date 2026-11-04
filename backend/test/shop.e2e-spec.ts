@@ -168,7 +168,7 @@ describe('Boutique (e2e)', () => {
       expect(res.body).toMatchObject({ game: 'roulette', day: DAY, round: 12, terminal: 'CAISSE #1', status: 'pending', stakeCents: 22500 });
       expect(res.body.id).toMatch(/^[A-HJ-NP-Z2-9]{9}$/);
       expect(res.body.lines).toEqual([
-        { key: 'n:17', label: 'Pari simple', picks: ['17'], odds: 15.2, stakeCents: 15000, possibleCents: 228000 },
+        { key: 'n:17', label: 'Pari simple', picks: ['17'], odds: 36, stakeCents: 15000, possibleCents: 540000 },
         { key: 'doz:2', label: 'Douzaine 2', picks: ['DOUZAINE 2'], odds: 1.27, stakeCents: 2500, possibleCents: 3175 },
         { key: 'red', label: 'Rouge', picks: ['ROUGE'], odds: 0.84, stakeCents: 5000, possibleCents: 4200 },
       ]);
@@ -256,10 +256,10 @@ describe('Boutique (e2e)', () => {
       const t = await winningTicket(2500);
       at(21, 36);
       const view = await ticket(t.id).expect(200);
-      expect(view.body).toMatchObject({ status: 'won', winCents: 38000 });
+      expect(view.body).toMatchObject({ status: 'won', winCents: 90000 });
 
       const paid = await pay(t.id).expect(200);
-      expect(paid.body).toMatchObject({ status: 'paid', payoutCents: 38000, paidTerminal: 'CAISSE #1' });
+      expect(paid.body).toMatchObject({ status: 'paid', payoutCents: 90000, paidTerminal: 'CAISSE #1' });
       const again = await pay(t.id).expect(409);
       expect(again.body.code).toBe('ALREADY_PAID');
       const { rows } = await db.query('SELECT count(*)::int AS n FROM shop_payouts WHERE ticket_id = $1', [t.id]);
@@ -285,11 +285,8 @@ describe('Boutique (e2e)', () => {
       await pay(res.body.id).expect(409).expect((r) => expect(r.body.code).toBe('TICKET_LOST'));
     });
 
-    // Avec un RTP de 40 % (migration 014), aucun ticket valide ne peut dépasser le seuil d'approbation :
-    // le gain plafonne à 40 % de la mise, et le plafond du ticket (20 000 HTG) borne le gain à ~8 000 HTG,
-    // sous le seuil de 10 000 HTG. Le scénario « gros gain » n'est donc plus atteignable ; la logique
-    // d'approbation reste en place mais dormante. À réactiver si les cotes ou les plafonds changent.
-    it.skip('un gros gain demande un responsable', async () => {
+    // Le numéro plein paie 36× (RTP 94,7 %) : 40 000 de mise sur chaque case donnent 1 440 000 de gain, au-dessus du seuil d'approbation.
+    it('un gros gain demande un responsable', async () => {
       at(24, 2);
       const t = await winningTicket(40000);
       at(24, 36);
@@ -367,7 +364,7 @@ describe('Boutique (e2e)', () => {
     it('paramètres : le RTP de chaque ligne est publié, une ligne > 100 % est refusée', async () => {
       const res = await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200);
       const keno2 = res.body.rtp.find((r: { game: string; line: string }) => r.game === 'keno' && r.line === '2 numéros');
-      expect(keno2.rtpPercent).toBeGreaterThan(90); // tables certifiées ~92 %
+      expect(keno2.rtpPercent).toBeGreaterThan(30); // RTP ~40 % depuis le choix d'avantage maison de 60 %
       expect(keno2.rtpPercent).toBeLessThanOrEqual(100);
 
       const { version: _v, createdAt: _c, ...input } = res.body.settings;
@@ -416,5 +413,40 @@ describe('Boutique (e2e)', () => {
 
   it('les numéros de la roue sont ceux du tapis', () => {
     for (const n of WHEEL_ORDER) expect(n === '0' || n === '00' || rouletteKeyNumbers(`n:${n}`) !== null).toBe(true);
+  });
+
+  describe('annulation d un ticket', () => {
+    const voidIt = (id: string, token = cashier) => api().post(`/api/v1/shop/tickets/${id}/void`).set(auth(token));
+    const stakes = async () => Number((await api().get(`/api/v1/shop/report?day=${DAY}`).set(auth(cashier)).expect(200)).body.totals.stakesCents);
+
+    it('retire la mise de la caisse, bloque le paiement, et reste sans effet au second appel', async () => {
+      at(40, 2);
+      const before = await stakes();
+      const sold = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:17', stakeCents: 2500 }] }).expect(201);
+      expect(await stakes()).toBe(before + 2500);
+
+      const voided = await voidIt(sold.body.id).expect(200);
+      expect(voided.body.status).toBe('voided');
+      expect(await stakes()).toBe(before);
+      await voidIt(sold.body.id).expect(200);           // idempotent
+      expect(await stakes()).toBe(before);
+
+      at(40, 60);                                         // tour terminé : un ticket annulé n'est jamais réglé ni payé
+      await rounds.settleDue();
+      const { rows } = await db.query('SELECT 1 FROM shop_ticket_results WHERE ticket_id = $1', [sold.body.id]);
+      expect(rows).toHaveLength(0);
+      await ticket(sold.body.id).expect(200).expect((r) => expect(r.body.status).toBe('voided'));
+      await pay(sold.body.id).expect(409).expect((r) => expect(r.body.code).toBe('TICKET_VOIDED'));
+    });
+
+    it('refusé pour un autre caissier, et une fois le tirage commencé', async () => {
+      at(41, 2);
+      const sold = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:5', stakeCents: 2500 }] }).expect(201);
+      const other = await login('cashier');
+      await voidIt(sold.body.id, other).expect(403).expect((r) => expect(r.body.code).toBe('NOT_YOUR_TICKET'));
+      at(41, 30);                                         // tirage commencé (mises : 25 s)
+      await voidIt(sold.body.id).expect(409).expect((r) => expect(r.body.code).toBe('VOID_TOO_LATE'));
+      await ticket(sold.body.id).expect(200).expect((r) => expect(r.body.status).toBe('pending'));
+    });
   });
 });

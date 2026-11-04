@@ -17,8 +17,8 @@ describe('loadConfig : code TOTP du back-office', () => {
     expect(loadConfig({ NODE_ENV: 'development', STAFF_TOTP: 'off' }).staffTotpRequired).toBe(false);
   });
 
-  it('refuse STAFF_TOTP=off en production et toute autre valeur', () => {
-    expect(() => loadConfig({ NODE_ENV: 'production', STAFF_TOTP: 'off', ...SECRETS })).toThrow(/interdit en production/);
+  it('autorise STAFF_TOTP=off en production (choix assumé, voir b261f67) mais refuse toute autre valeur', () => {
+    expect(loadConfig({ NODE_ENV: 'production', STAFF_TOTP: 'off', ...SECRETS }).staffTotpRequired).toBe(false);
     expect(() => loadConfig({ NODE_ENV: 'development', STAFF_TOTP: 'non' })).toThrow(/on ou off/);
   });
 });
