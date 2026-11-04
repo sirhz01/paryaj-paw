@@ -8,7 +8,7 @@ PP.ready.then(function () {
   let picks = [];           // autres jeux : numéros choisis
   let pendingCell = null;   // 1re case touchée en mode Cheval / Carré (2 touches)
   let payTicket = null;
-  let reprintTicket = null;
+  let replayTicket = null;
 
   const NUM = {   // paramètres des grilles de numéros
     keno:     { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80' },
@@ -290,13 +290,13 @@ PP.ready.then(function () {
   }
   async function checkTicket(id) {
     $('payBtn').classList.add('hidden'); payTicket = null;
-    $('reprintBtn').classList.add('hidden'); reprintTicket = null;
+    $('replayBtn').classList.add('hidden'); replayTicket = null;
     setPay('Vérification…');
     let r;
     try { r = await lookup(id || $('payId').value); } catch (e) { return setPay(errText(e), 'err'); }
     recent[r.t.id] = r.t;
-    // Quel que soit l'état du ticket (même perdu ou déjà payé), le caissier peut le réimprimer : le client n'a qu'à le présenter.
-    reprintTicket = r.t; $('reprintBtn').classList.remove('hidden'); showTicket(PP.ticketHTML(r.t, true));
+    // Quel que soit l'état du ticket, le caissier peut refaire les mêmes mises pour le prochain tour.
+    replayTicket = r.t; $('replayBtn').classList.remove('hidden'); showTicket(PP.ticketHTML(r.t));
     if (r.state === 'paid') return setPay('Ticket déjà payé.', 'err');
     if (r.state === 'pending') return setPay(`Tour ${r.t.round} pas encore terminé.`, 'err');
     if (r.state === 'lost') return setPay('Ticket perdant.', 'err');
@@ -321,11 +321,15 @@ PP.ready.then(function () {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || !$('login').classList.contains('hidden')) return;
     $('payId').focus(); $('payId').select();
   });
-  $('reprintBtn').addEventListener('click', () => {
-    if (!reprintTicket) return;
-    const html = PP.ticketHTML(reprintTicket, true);
-    showTicket(html); PP.printHTML(html);
-    setPay(`Duplicata du ticket ${reprintTicket.id} imprimé.`, 'ok');
+  /* « Rejouer » : les mises du ticket scanné sont remises dans le ticket en cours ; le caissier imprime = nouvelle vente pour le tour ouvert. */
+  $('replayBtn').addEventListener('click', () => {
+    const t = replayTicket; if (!t) return;
+    document.querySelector(`#tabs button[data-g="${t.game}"]`).click();   // change de jeu et vide le ticket en cours
+    if (t.game === 'roulette') slip = t.lines.map((l) => ({ key: l.key, stake: l.stake }));
+    else { picks = [...t.lines[0].picks]; stake = t.lines[0].stake; $('stake').value = stake; syncChips(); syncNums(); }
+    renderSlip();
+    flash(`Mises du ticket ${t.id} reprises pour le tour ${PP.state(t.game).phase === 'bet' && PP.state(t.game).left > 2 ? PP.state(t.game).round : PP.state(t.game).round + 1} : vérifier puis imprimer.`);
+    setPay('');
   });
   $('payBtn').addEventListener('click', async () => {
     if (!payTicket) return;
