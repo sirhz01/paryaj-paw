@@ -135,6 +135,9 @@
     ROUND_PENDING: 'Tour pas encore terminé.',
     TICKET_LOST: 'Ticket perdant.',
     ALREADY_PAID: 'Ticket déjà payé.',
+    TICKET_VOIDED: 'Ticket annulé.',
+    VOID_TOO_LATE: 'Trop tard : le tirage de ce tour a commencé, le ticket ne peut plus être annulé.',
+    NOT_YOUR_TICKET: 'Ce ticket a été vendu par un autre caissier.',
     APPROVAL_REQUIRED: 'Gain au-dessus du seuil : un responsable doit décaisser.',
     VALIDATION_ERROR: 'Données invalides.',
   };
@@ -173,6 +176,7 @@
     sell: (game, terminal, lines, idempotencyKey) => A.call('POST', '/shop/tickets', { game, terminal, lines, idempotencyKey }),
     ticket: (id) => A.call('GET', '/shop/tickets/' + encodeURIComponent(id.trim().toUpperCase())),
     pay: (id, terminal) => A.call('POST', `/shop/tickets/${encodeURIComponent(id)}/pay`, { terminal }),
+    void: (id) => A.call('POST', `/shop/tickets/${encodeURIComponent(id)}/void`),
     list: (limit) => A.call('GET', '/shop/tickets?limit=' + limit),
     report: (day) => A.call('GET', '/shop/report' + (day ? '?day=' + day : '')),
   };

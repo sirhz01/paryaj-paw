@@ -281,6 +281,15 @@ export class ShopController {
     return this.tickets.pay(staff, id, dto.terminal);
   }
 
+  /** Annule un ticket (impression annulée, erreur) tant que le tirage du tour n'a pas commencé. */
+  @Post('tickets/:id/void')
+  @HttpCode(200)
+  @UseGuards(StaffGuard)
+  @Roles('cashier', 'super_admin')
+  voidTicket(@CurrentStaff() staff: StaffPrincipal, @Param('id') id: string) {
+    return this.tickets.voidTicket(staff, id);
+  }
+
   /** Déconnexion du caissier : enregistre son rapport de session et coupe son jeton. */
   @Post('logout')
   @HttpCode(200)

@@ -87,6 +87,7 @@
         <label class="stake">Mise (HTG) <input id="stake" type="number" inputmode="numeric" min="25" max="100000" step="25" value="100" required></label>
         <div class="total"><span>Total</span><b id="total">0.00 HTG</b></div>
         <div id="msg" class="msg"></div>
+        <button id="voidLast" class="ghost hidden"></button>
         <div class="actions"><button class="primary" id="printBtn"><i class="fa-solid fa-print" aria-hidden="true"></i> Imprimer le ticket</button><button class="ghost" id="resetBtn">Vider</button></div>
       </section>
 
@@ -95,6 +96,7 @@
         <div class="payrow"><input id="payId" placeholder="ID de ticket" aria-label="ID de ticket" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" minlength="4" pattern="[A-Za-z0-9-]{4,12}" required><button id="checkBtn" class="primary">Vérifier</button></div>
         <div id="payMsg" class="msg"></div>
         <button id="payBtn" class="primary hidden">Payer et imprimer le décaissement</button>
+        <button id="voidBtn" class="ghost hidden"><i class="fa-solid fa-ban" aria-hidden="true"></i> Annuler ce ticket</button>
         <button id="replayBtn" class="ghost hidden"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Rejouer ce ticket (prochain tour)</button>
       </section>
     </aside>

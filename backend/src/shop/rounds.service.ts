@@ -168,7 +168,8 @@ export class RoundsService {
     const { rows } = await this.db.query<{ id: string; lines: TicketLine[]; settingsVersion: number }>(
       `SELECT t.id, t.lines, t.settings_version AS "settingsVersion"
          FROM shop_tickets t LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
-        WHERE t.game = $1 AND t.day = $2 AND t.round_no = $3 AND r.ticket_id IS NULL`,
+        WHERE t.game = $1 AND t.day = $2 AND t.round_no = $3 AND r.ticket_id IS NULL
+          AND NOT EXISTS (SELECT 1 FROM shop_ticket_voids v WHERE v.ticket_id = t.id)`,
       [game, day, round],
     );
     if (rows.length === 0) return 0;
@@ -191,7 +192,7 @@ export class RoundsService {
     const { rows } = await this.db.query<{ game: ShopGame; day: string; round: number }>(
       `SELECT DISTINCT t.game, t.day::text AS day, t.round_no AS round
          FROM shop_tickets t LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
-        WHERE r.ticket_id IS NULL`,
+        WHERE r.ticket_id IS NULL AND NOT EXISTS (SELECT 1 FROM shop_ticket_voids v WHERE v.ticket_id = t.id)`,
     );
     let settled = 0;
     for (const r of rows) settled += await this.settleRound(r.game, r.day, r.round);

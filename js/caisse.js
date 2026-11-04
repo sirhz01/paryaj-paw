@@ -10,6 +10,8 @@ PP.ready.then(function () {
   let pendingCell = null;   // 1re case touchée en mode Cheval / Carré (2 touches)
   let payTicket = null;
   let replayTicket = null;
+  let voidTarget = null;
+  let lastSold = null;      // dernier ticket vendu : annulable tant que le tirage n'a pas commencé (ex. fenêtre d'impression annulée)
 
   const NUM = {   // paramètres des grilles de numéros
     keno:     { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80' },
@@ -272,13 +274,16 @@ PP.ready.then(function () {
       if (!stake) return flash('Choisir une mise', true);
     }
     const btn = $('printBtn');
-    btn.disabled = true;
+    btn.disabled = true; $('voidLast').classList.add('hidden'); lastSold = null;
     let t;
     try { t = online ? await sellOnline(lines) : sellLocal(lines); }
     catch (e) { return flash(errText(e), true); }
     finally { btn.disabled = false; }
     showTicket(PP.ticketHTML(t));
     PP.printHTML(PP.ticketHTML(t));
+    lastSold = online ? t : null;
+    $('voidLast').textContent = lastSold ? `Annuler le ticket ${t.id} (impression annulée ou erreur)` : '';
+    $('voidLast').classList.toggle('hidden', !lastSold);
     slip = []; picks = []; saved = []; syncNums(); renderSlip();
     const encaisse = (t.lines || []).reduce((a, l) => a + (l.stake || 0), 0);
     flash(`Ticket ${t.id} · ${PP.money(encaisse)} encaissé · tour ${t.round}`);
@@ -313,13 +318,15 @@ PP.ready.then(function () {
   }
   async function checkTicket(id) {
     $('payBtn').classList.add('hidden'); payTicket = null;
-    $('replayBtn').classList.add('hidden'); replayTicket = null;
+    $('replayBtn').classList.add('hidden'); replayTicket = null; $('voidBtn').classList.add('hidden'); voidTarget = null;
     setPay('Vérification…');
     let r;
     try { r = await lookup(id || $('payId').value); } catch (e) { return setPay(errText(e), 'err'); }
     recent[r.t.id] = r.t;
     // Quel que soit l'état du ticket, le caissier peut refaire les mêmes mises pour le prochain tour.
     replayTicket = r.t; $('replayBtn').classList.remove('hidden'); showTicket(PP.ticketHTML(r.t));
+    if (r.state === 'voided') return setPay('Ticket annulé.', 'err');
+    if (online && r.state === 'pending') { voidTarget = r.t; $('voidBtn').classList.remove('hidden'); }
     if (r.state === 'paid') return setPay('Ticket déjà payé.', 'err');
     if (r.state === 'pending') return setPay(`Tour ${r.t.round} pas encore terminé.`, 'err');
     if (r.state === 'lost') return setPay('Ticket perdant.', 'err');
@@ -345,6 +352,23 @@ PP.ready.then(function () {
     $('payId').focus(); $('payId').select();
   });
   /* « Rejouer » : les mises du ticket scanné sont remises dans le ticket en cours ; le caissier imprime = nouvelle vente pour le tour ouvert. */
+  /* Annulation : le serveur refuse si le tirage a commencé ou si le ticket est payé ; sinon la mise sort de la caisse et des rapports. */
+  async function doVoid(t, out) {
+    const total = (t.lines || []).reduce((a, l) => a + (l.stake || 0), 0);
+    if (!window.confirm(`Annuler le ticket ${t.id} (${PP.money(total)}) ? La mise sera retirée de la caisse.`)) return false;
+    try { await PP.api.void(t.id); } catch (e) { out(errText(e), 'err'); return false; }
+    out(`Ticket ${t.id} annulé : ${PP.money(total)} retiré de la caisse.`, 'ok');
+    renderHistory(); refreshCash();
+    return true;
+  }
+  $('voidLast').addEventListener('click', async () => {
+    if (!lastSold) return;
+    if (await doVoid(lastSold, (m, c) => flash(m, c === 'err'))) { lastSold = null; $('voidLast').classList.add('hidden'); $('paper').innerHTML = '<p class="hint">Ticket annulé.</p>'; }
+  });
+  $('voidBtn').addEventListener('click', async () => {
+    if (!voidTarget) return;
+    if (await doVoid(voidTarget, setPay)) { voidTarget = null; $('voidBtn').classList.add('hidden'); $('replayBtn').classList.add('hidden'); }
+  });
   $('replayBtn').addEventListener('click', () => {
     const t = replayTicket; if (!t) return;
     document.querySelector(`#tabs button[data-g="${t.game}"]`).click();   // change de jeu et vide le ticket en cours
@@ -372,7 +396,7 @@ PP.ready.then(function () {
   });
 
   /* ---------- Historique ---------- */
-  const LABEL = { open: 'En cours', won: 'Gagnant', lost: 'Perdant', paid: 'Payé' };
+  const LABEL = { open: 'En cours', won: 'Gagnant', lost: 'Perdant', paid: 'Payé', voided: 'Annulé' };
   const recent = {};   // tickets affichés, par ID, pour rouvrir l'aperçu
   async function renderHistory() {
     let rows;

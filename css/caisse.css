@@ -83,7 +83,8 @@ button { font: inherit; cursor: pointer; }
 .history td { padding: .35rem .3rem; border-bottom: 1px solid #eef1f7; cursor: pointer; }
 .history tr:hover td { background: #f4f7fc; }
 .st { font-weight: 700; font-size: .75rem; padding: .1rem .5rem; border-radius: 99px; background: #e5e9f2; }
-.st.won { background: #d5f2df; color: #12803f; } .st.lost { background: #fbdcda; color: var(--red); } .st.paid { background: #dbe7ff; color: var(--navy); }
+.st.won { background: #d5f2df; color: #12803f; } .st.lost { background: #fbdcda; color: var(--red); } .st.paid { background: #dbe7ff; color: var(--navy); } .st.voided { background: #e6e8ee; color: var(--muted); text-decoration: line-through; }
+#voidLast, #voidBtn { color: var(--red); border-color: var(--red); margin-top: .4rem; }
 
 @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
 

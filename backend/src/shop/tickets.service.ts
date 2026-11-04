@@ -22,7 +22,7 @@ import { ShopSettings, ShopSettingsService } from './settings.service';
 const ID_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ID_LENGTH = 9;
 
-export type TicketStatus = 'pending' | 'won' | 'lost' | 'paid';
+export type TicketStatus = 'pending' | 'won' | 'lost' | 'paid' | 'voided';
 
 export interface TicketView {
   id: string;
@@ -52,14 +52,20 @@ interface TicketRow {
   winCents: number | null;
   paidAt: Date | null;
   paidTerminal: string | null;
+  voidedAt: Date | null;
 }
 
 const SELECT_TICKET = `
   SELECT t.id, t.game, t.day::text AS day, t.round_no AS round, t.terminal, t.lines, t.stake_cents AS "stakeCents",
-         t.created_at AS "createdAt", r.win_cents AS "winCents", p.created_at AS "paidAt", p.terminal AS "paidTerminal"
+         t.created_at AS "createdAt", r.win_cents AS "winCents", p.created_at AS "paidAt", p.terminal AS "paidTerminal",
+         v.created_at AS "voidedAt"
     FROM shop_tickets t
     LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
-    LEFT JOIN shop_payouts p ON p.ticket_id = t.id`;
+    LEFT JOIN shop_payouts p ON p.ticket_id = t.id
+    LEFT JOIN shop_ticket_voids v ON v.ticket_id = t.id`;
+
+/** Condition « ticket non annulé » (a = alias ou nom de la table des tickets). */
+const LIVE = (a: string) => `NOT EXISTS (SELECT 1 FROM shop_ticket_voids vv WHERE vv.ticket_id = ${a}.id)`;
 
 const DAY_RANGE = (column: string, param: string) =>
   `${column} >= (${param}::date::timestamp AT TIME ZONE '${HAITI_TIME_ZONE}')
@@ -164,7 +170,9 @@ export class TicketsService {
 
   private toView(row: TicketRow, now = this.rounds.now()): TicketView {
     const complete = now >= roundWindow(row.game, row.day, row.round).drawEndMs;
-    const status: TicketStatus = row.paidAt
+    const status: TicketStatus = row.voidedAt
+      ? 'voided'
+      : row.paidAt
       ? 'paid'
       : !complete || row.winCents === null
         ? 'pending'
@@ -221,6 +229,39 @@ export class TicketsService {
     return rows.map((r) => this.toView(r));
   }
 
+  // Annulation ----------------------------------------------------------------
+
+  /**
+   * Annule un ticket vendu (impression annulée, erreur) : seulement par son caissier, tant que le tirage du tour n'a pas commencé
+   * et que le ticket n'est pas payé. Le ticket n'est plus compté dans la caisse ni les rapports. Un second appel ne fait rien.
+   */
+  async voidTicket(staff: Seller, id: string): Promise<TicketView> {
+    const ticketId = id.trim().toUpperCase();
+    const { rows } = await this.db.query<{ staffId: number; game: ShopGame; day: string; round: number; terminal: string }>(
+      'SELECT staff_id AS "staffId", game, day::text AS day, round_no AS round, terminal FROM shop_tickets WHERE id = $1',
+      [ticketId],
+    );
+    const t = rows[0];
+    if (!t) throw new AppError('TICKET_NOT_FOUND', HttpStatus.NOT_FOUND);
+    if (staff.role === 'cashier' && t.staffId !== staff.id) throw new AppError('NOT_YOUR_TICKET', HttpStatus.FORBIDDEN);
+    const current = await this.get(ticketId);
+    if (current.status === 'voided') return current;
+    if (current.status === 'paid') throw new AppError('ALREADY_PAID', HttpStatus.CONFLICT);
+    if (this.rounds.now() >= roundWindow(t.game, t.day, t.round).drawStartMs) throw new AppError('VOID_TOO_LATE', HttpStatus.CONFLICT);
+    try {
+      await this.db.transaction(async (tx) => {
+        await tx.query(
+          'INSERT INTO shop_ticket_voids (ticket_id, staff_id, terminal, created_at) VALUES ($1, $2, $3, to_timestamp($4::double precision / 1000))',
+          [ticketId, staff.id, t.terminal, this.rounds.now()],
+        );
+        await this.audit.log(staff.id, 'shop.void', { type: 'shop_ticket', id: ticketId }, { stakeCents: current.stakeCents, terminal: t.terminal }, tx);
+      });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+    }
+    return this.get(ticketId);
+  }
+
   // Décaissement --------------------------------------------------------------
 
   async pay(staff: Seller, id: string, terminal: string): Promise<TicketView & { payoutCents: number }> {
@@ -229,6 +270,7 @@ export class TicketsService {
     checkTerminal(staff, terminal);
 
     const ticket = await this.get(id);
+    if (ticket.status === 'voided') throw new AppError('TICKET_VOIDED', HttpStatus.CONFLICT);
     if (ticket.status === 'paid') {
       throw new AppError('ALREADY_PAID', HttpStatus.CONFLICT, { paidAt: ticket.paidAt, terminal: ticket.paidTerminal });
     }
@@ -282,8 +324,8 @@ export class TicketsService {
          SELECT $1,
                 COALESCE($3, (SELECT terminal FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4 ORDER BY created_at DESC LIMIT 1)),
                 $2,
-                (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4),
-                (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4),
+                (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4 AND ${LIVE('shop_tickets')}),
+                (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $4 AND ${LIVE('shop_tickets')}),
                 (SELECT count(*) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $4),
                 (SELECT COALESCE(sum(amount_cents), 0) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $4),
                 (SELECT (details->>'openingCents')::bigint FROM audit_log WHERE staff_id = $1 AND action = 'shift.open' AND created_at >= $2 ORDER BY id DESC LIMIT 1),
@@ -327,8 +369,8 @@ export class TicketsService {
       payoutsCents: number;
       opening: number | null;
     }>(
-      `SELECT (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2)::int AS tickets,
-              (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2)::bigint AS stakes,
+      `SELECT (SELECT count(*) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2 AND ${LIVE('shop_tickets')})::int AS tickets,
+              (SELECT COALESCE(sum(stake_cents), 0) FROM shop_tickets WHERE staff_id = $1 AND created_at >= $2 AND ${LIVE('shop_tickets')})::bigint AS stakes,
               (SELECT count(*) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $2)::int AS payouts,
               (SELECT COALESCE(sum(amount_cents), 0) FROM shop_payouts WHERE staff_id = $1 AND created_at >= $2)::bigint AS "payoutsCents",
               (SELECT (details->>'openingCents')::bigint FROM audit_log
@@ -370,7 +412,7 @@ export class TicketsService {
   async report(day: string) {
     const sales = await this.db.query<{ terminal: string; tickets: number; stakesCents: number }>(
       `SELECT terminal, count(*)::int AS tickets, sum(stake_cents)::bigint AS "stakesCents"
-         FROM shop_tickets WHERE ${DAY_RANGE('created_at', '$1')} GROUP BY terminal`,
+         FROM shop_tickets WHERE ${DAY_RANGE('created_at', '$1')} AND ${LIVE('shop_tickets')} GROUP BY terminal`,
       [day],
     );
     const payouts = await this.db.query<{ terminal: string; payouts: number; payoutsCents: number }>(
@@ -394,7 +436,7 @@ export class TicketsService {
          FROM shop_tickets t
          LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
          LEFT JOIN shop_payouts p ON p.ticket_id = t.id
-        WHERE t.day = $1::date GROUP BY t.game ORDER BY t.game`,
+        WHERE t.day = $1::date AND ${LIVE('t')} GROUP BY t.game ORDER BY t.game`,
       [day],
     );
     // Sessions de caissier terminées ce jour-là : argent déclaré au début et à la fin, écart avec l'attendu.
@@ -439,7 +481,7 @@ export class TicketsService {
          FROM shop_tickets t
          LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
          LEFT JOIN shop_payouts p ON p.ticket_id = t.id
-        WHERE t.day BETWEEN $1::date AND $2::date
+        WHERE t.day BETWEEN $1::date AND $2::date AND ${LIVE('t')}
         GROUP BY t.day, t.game ORDER BY t.day, t.game`,
       [from, to],
     );
