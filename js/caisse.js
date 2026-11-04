@@ -8,6 +8,7 @@ PP.ready.then(function () {
   let picks = [];           // autres jeux : numéros choisis
   let pendingCell = null;   // 1re case touchée en mode Cheval / Carré (2 touches)
   let payTicket = null;
+  let reprintTicket = null;
 
   const NUM = {   // paramètres des grilles de numéros
     keno:     { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80' },
@@ -289,10 +290,13 @@ PP.ready.then(function () {
   }
   async function checkTicket(id) {
     $('payBtn').classList.add('hidden'); payTicket = null;
+    $('reprintBtn').classList.add('hidden'); reprintTicket = null;
     setPay('Vérification…');
     let r;
     try { r = await lookup(id || $('payId').value); } catch (e) { return setPay(errText(e), 'err'); }
     recent[r.t.id] = r.t;
+    // Quel que soit l'état du ticket (même perdu ou déjà payé), le caissier peut le réimprimer : le client n'a qu'à le présenter.
+    reprintTicket = r.t; $('reprintBtn').classList.remove('hidden'); showTicket(PP.ticketHTML(r.t, true));
     if (r.state === 'paid') return setPay('Ticket déjà payé.', 'err');
     if (r.state === 'pending') return setPay(`Tour ${r.t.round} pas encore terminé.`, 'err');
     if (r.state === 'lost') return setPay('Ticket perdant.', 'err');
@@ -316,6 +320,12 @@ PP.ready.then(function () {
     if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || !/[A-Za-z0-9*]/.test(e.key)) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || !$('login').classList.contains('hidden')) return;
     $('payId').focus(); $('payId').select();
+  });
+  $('reprintBtn').addEventListener('click', () => {
+    if (!reprintTicket) return;
+    const html = PP.ticketHTML(reprintTicket, true);
+    showTicket(html); PP.printHTML(html);
+    setPay(`Duplicata du ticket ${reprintTicket.id} imprimé.`, 'ok');
   });
   $('payBtn').addEventListener('click', async () => {
     if (!payTicket) return;

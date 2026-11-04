@@ -55,6 +55,8 @@ button { font: inherit; cursor: pointer; }
 .slip .ln { display: grid; grid-template-columns: 1fr auto auto; gap: .2rem .6rem; align-items: center; padding: .4rem .5rem; background: #f4f7fc; border-radius: 6px; font-size: .85rem; }
 .slip .ln small { grid-column: 1 / -1; color: var(--muted); }
 .slip .ln button { border: 0; background: transparent; color: var(--red); font-size: 1rem; }
+.slip .ln > button[data-i] { width: 2rem; height: 2rem; border-radius: 50%; background: #fde8e8; cursor: pointer; }
+.slip .ln > button[data-i]:hover { background: #f8c9c9; }
 .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
 .chips button { padding: .35rem .7rem; border-radius: 99px; border: 1px solid var(--navy); background: #fff; color: var(--navy); font-weight: 600; }
 .chips button.on { background: var(--navy); color: #fff; }

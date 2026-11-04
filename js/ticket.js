@@ -42,7 +42,7 @@
     <hr>`;
 
   /* Ticket de mise. */
-  PP.ticketHTML = function (t) {
+  PP.ticketHTML = function (t, copy) {
     const lines = t.lines.map((l) => `
       <div class="line">
         <div class="kind">(${l.label})</div>
@@ -52,7 +52,7 @@
         ${row('Gain possible:', PP.money(l.possible))}
       </div>`).join('<hr class="thin">');
     const total = t.lines.reduce((a, l) => a + l.stake, 0);
-    return `<div class="tk">${head(t.gameTicket, t)}${lines}<hr>
+    return `<div class="tk">${copy ? '<div class="big">*** DUPLICATA ***</div>' : ''}${head(t.gameTicket, t)}${lines}<hr>
       ${row('Mise:', PP.money(total))}${row('Paiement de taxe:', PP.money(0))}${row('Paiement:', PP.money(total))}
       ${barcode(t.id)}</div>`;
   };
