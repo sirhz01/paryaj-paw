@@ -82,6 +82,7 @@
     .tk .line .kind{text-align:center;font-size:10px;margin-top:2mm}
     .tk .line .picks{text-align:center;font-size:17px;margin:1mm 0 2mm;word-spacing:3mm;overflow-wrap:anywhere}
     .tk .line .picks.many{font-size:13px;word-spacing:.8mm;white-space:nowrap;overflow-wrap:normal}
+    .tk,.tk .line,.tk .bc{break-inside:avoid;page-break-inside:avoid}
     .tk .big{margin-top:3mm}
     .tk .total{text-align:center;font-size:19px;margin:1mm 0 3mm}
     .tk .bc{display:block;width:100%;height:13mm;margin:4mm auto 0;fill:#000}`;
@@ -96,7 +97,13 @@
     f.contentDocument.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${base}">
       <style>@page{size:80mm auto;margin:0}html,body{margin:0;background:#fff}${PP.ticketCSS}</style></head><body>${html}</body></html>`);
     f.contentDocument.close();
-    const go = () => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 2000); };
+    /* Un seul morceau de papier : la hauteur de la page = la hauteur du ticket (sinon une longue liste de mises est coupée en 2 pages,
+       donc en 2 tickets, et le code-barres se retrouve seul sur le second). */
+    const go = () => {
+      const d = f.contentDocument, mm = Math.ceil(d.documentElement.scrollHeight * 25.4 / 96) + 6;
+      const st = d.createElement('style'); st.textContent = '@page{size:80mm ' + mm + 'mm;margin:0}html,body{height:' + mm + 'mm;overflow:hidden}'; d.head.appendChild(st);
+      f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 2000);
+    };
     const img = f.contentDocument.querySelector('img');
     if (img && !img.complete) img.addEventListener('load', go); else setTimeout(go, 50);
   };
