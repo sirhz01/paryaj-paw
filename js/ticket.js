@@ -46,7 +46,7 @@
     const lines = t.lines.map((l) => `
       <div class="line">
         <div class="kind">(${l.label})</div>
-        <div class="picks">${l.picks.join(' ')}</div>
+        <div class="picks${l.picks.length > 6 ? ' many' : ''}">${l.picks.join(' ')}</div>
         ${row('Cotes:', l.odds.toFixed(2))}
         ${row('Mise:', PP.money(l.stake))}
         ${row('Gain possible:', PP.money(l.possible))}
@@ -81,6 +81,7 @@
     .tk .tour{text-align:center;font-size:10px;margin:1mm 0}
     .tk .line .kind{text-align:center;font-size:10px;margin-top:2mm}
     .tk .line .picks{text-align:center;font-size:17px;margin:1mm 0 2mm;word-spacing:3mm;overflow-wrap:anywhere}
+    .tk .line .picks.many{font-size:13px;word-spacing:.8mm;white-space:nowrap;overflow-wrap:normal}
     .tk .big{margin-top:3mm}
     .tk .total{text-align:center;font-size:19px;margin:1mm 0 3mm}
     .tk .bc{display:block;width:100%;height:13mm;margin:4mm auto 0;fill:#000}`;
