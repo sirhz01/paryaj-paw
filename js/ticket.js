@@ -104,7 +104,7 @@
     .tk .line .picks{text-align:center;font-size:23px;font-weight:900;margin:1mm 0 1mm;word-spacing:2mm;line-height:1.2;overflow-wrap:anywhere}
     .tk .line .picks.big5{font-size:25px;word-spacing:3mm}
     .tk .line .picks:last-of-type{margin-bottom:2mm}
-    .tk,.tk .line,.tk .bc{break-inside:avoid;page-break-inside:avoid}
+    .tk .line,.tk .bc,.tk .rd{break-inside:avoid;page-break-inside:avoid}
     .tk .rn .n{font-size:19px;font-weight:900}
     .tk .rd{margin:1.5mm 0;padding-bottom:1mm;border-bottom:1px dotted #000}
     .tk .rst{text-align:right;font-size:10px}
@@ -115,7 +115,7 @@
   /* Impression via un iframe caché : le reste de la page n'est jamais imprimé. */
   PP.printHTML = function (html) {
     const f = document.createElement('iframe');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    f.style.cssText = 'position:fixed;left:-9999px;top:0;width:80mm;height:120mm;border:0';   /* hors écran mais de vraie taille : un iframe de 0 px s'imprime parfois en blanc */
     document.body.appendChild(f);
     const base = new URL('.', location.href).href;
     f.contentDocument.open();
@@ -124,12 +124,14 @@
     f.contentDocument.close();
     /* Un seul morceau de papier : la hauteur de la page = la hauteur du ticket (sinon une longue liste de mises est coupée en 2 pages,
        donc en 2 tickets, et le code-barres se retrouve seul sur le second). */
+    let done = false;
     const go = () => {
+      if (done) return; done = true;
       const d = f.contentDocument, mm = Math.ceil(d.documentElement.scrollHeight * 25.4 / 96) + 6;
       const st = d.createElement('style'); st.textContent = '@page{size:80mm ' + mm + 'mm;margin:0}html,body{height:' + mm + 'mm;overflow:hidden}'; d.head.appendChild(st);
       f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 2000);
     };
     const img = f.contentDocument.querySelector('img');
-    if (img && !img.complete) img.addEventListener('load', go); else setTimeout(go, 50);
+    if (img && !img.complete) { img.addEventListener('load', go); img.addEventListener('error', go); setTimeout(go, 3000); } else setTimeout(go, 150);
   };
 })();

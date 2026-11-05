@@ -48,10 +48,10 @@ body.roulette {
 .wheel-wrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
 #rotor, #ballRot { transform-origin: 0 0; }
 #ball { transition: transform .9s cubic-bezier(.3, 1.6, .5, 1); }
-#ball.in { transform: translateY(28px); }
+#ball.in { transform: translateY(31px); }
 /* La bille reste sur la piste, au-dessus des numéros, et fait de petits sauts sur les butées ; elle ne traverse les numéros que dans les derniers instants pour tomber dans sa case (28 = de la piste jusqu'à la case). */
 #ball.drop { animation: ballDrop 3.2s ease-in-out forwards; }
-@keyframes ballDrop { 0% { transform: translateY(0); } 14% { transform: translateY(-1.5px); } 28% { transform: translateY(1.5px); } 42% { transform: translateY(-1.2px); } 56% { transform: translateY(1.2px); } 70% { transform: translateY(-.8px); } 86% { transform: translateY(0); } 93% { transform: translateY(17px); } 97% { transform: translateY(22px); } 100% { transform: translateY(28px); } }
+@keyframes ballDrop { 0% { transform: translateY(0); } 14% { transform: translateY(-1.5px); } 28% { transform: translateY(1.5px); } 42% { transform: translateY(-1.2px); } 56% { transform: translateY(1.2px); } 70% { transform: translateY(-.8px); } 86% { transform: translateY(0); } 93% { transform: translateY(20px); } 97% { transform: translateY(25px); } 100% { transform: translateY(31px); } }
 .hub { position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.6rem; font-weight: 800; font-variant-numeric: tabular-nums; pointer-events: none; text-shadow: 0 .1rem .4rem #000; }
 
 /* ---- Résultat ---- */

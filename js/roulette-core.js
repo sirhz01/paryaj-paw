@@ -54,7 +54,7 @@
   };
 
   /* Cote totale (mise comprise), comme sur les tickets de la boutique. */
-  R.odds = (key) => { const k = key.split(':')[0], set = PP.ROULETTE_ODDS; return set && set[k] !== undefined ? set[k] : ({ n: 5.7, sp: 2.85, st: 1.9, co: 1.43, six: 0.95, col: 0.48, doz: 0.48, red: 0.32, black: 0.32, even: 0.32, odd: 0.32, low: 0.32, high: 0.32, basket: 1.14 })[k]; };
+  R.odds = (key) => { const k = key.split(':')[0], set = PP.ROULETTE_ODDS; return set && set[k] !== undefined ? set[k] : ({ n: 36, sp: 18, st: 12, co: 9, six: 6, col: 3, doz: 3, red: 2, black: 2, even: 2, odd: 2, low: 2, high: 2, basket: 7.2 })[k]; };
 
   R.label = function (key) {
     const [k, v] = key.split(':');
@@ -114,14 +114,16 @@
     grad('gHub', { cx: '38%', cy: '32%', r: '80%' }, [['0', '#9a4a22'], ['.5', '#6a2c13'], ['1', '#2e0f06']]);
     grad('gBrass', { cx: '40%', cy: '35%', r: '70%' }, [['0', '#fff1b0'], ['.45', '#d9b44a'], ['1', '#7d5a14']]);
     el('circle', { r: 99.2, fill: 'url(#gBowl)', stroke: '#c9a24a', 'stroke-width': 1.4 });
-    el('circle', { r: 94, fill: 'none', stroke: 'rgba(255,255,255,.07)', 'stroke-width': 6 });
-    el('circle', { r: 90.4, fill: 'none', stroke: '#c9a24a', 'stroke-width': .7 });
+    el('circle', { r: 90.8, fill: 'none', stroke: 'rgba(255,255,255,.07)', 'stroke-width': 11 });   // piste de la bille : large, loin des numéros
+    el('circle', { r: 83.6, fill: 'none', stroke: '#c9a24a', 'stroke-width': .7 });
     [90, 270].forEach((deg) => {            /* butées en losange : la bille y rebondit */
-      const [cx, cy] = pt(94.3, deg);
+      const [cx, cy] = pt(90.8, deg);
       el('path', { d: 'M0 -5.2L3.4 0L0 5.2L-3.4 0Z', transform: 'translate(' + cx + ' ' + cy + ') rotate(' + (deg - 90) + ')', fill: 'url(#gBrass)', stroke: '#4a3408', 'stroke-width': .4 });
     });
 
-    const rotor = el('g', { id: 'rotor' });
+    /* La roue est réduite à 90 % pour laisser une piste large à la bille entre les numéros et le bord. */
+    const rotorBox = el('g', { transform: 'scale(.9)' });
+    const rotor = el('g', { id: 'rotor' }, rotorBox);
     const sector = (r0, r1, a0, a1) => {
       const [x0, y0] = pt(r1, a0), [x1, y1] = pt(r1, a1), [x2, y2] = pt(r0, a1), [x3, y3] = pt(r0, a0);
       return `M${x0} ${y0}A${r1} ${r1} 0 0 1 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 0 0 ${x3} ${y3}Z`;
@@ -144,7 +146,7 @@
     el('circle', { r: 3.2, fill: '#f6e3a0', stroke: '#7d5a14', 'stroke-width': .4 }, rotor);
 
     const ball = el('g', { id: 'ballRot' });
-    const b = el('circle', { id: 'ball', cx: 0, cy: -94.3, r: 2.9, fill: '#f6f6f2', stroke: '#9a9a90', 'stroke-width': .4 }, ball);
+    const b = el('circle', { id: 'ball', cx: 0, cy: -90.8, r: 3.1, fill: '#f6f6f2', stroke: '#9a9a90', 'stroke-width': .4 }, ball);
     /* reflet vitré fixe sur le cœur (ne tourne pas avec la roue) */
     el('ellipse', { cx: -17, cy: -26, rx: 30, ry: 13, fill: 'rgba(255,255,255,.17)', transform: 'rotate(-28 -17 -26)', 'pointer-events': 'none' });
     /* Statistiques des derniers tirages (visibles pendant les mises, la roue est alors sur le côté) :

@@ -168,9 +168,9 @@ describe('Boutique (e2e)', () => {
       expect(res.body).toMatchObject({ game: 'roulette', day: DAY, round: 12, terminal: 'CAISSE #1', status: 'pending', stakeCents: 22500 });
       expect(res.body.id).toMatch(/^[A-HJ-NP-Z2-9]{9}$/);
       expect(res.body.lines).toEqual([
-        { key: 'n:17', label: 'Pari simple', picks: ['17'], odds: 5.7, stakeCents: 15000, possibleCents: 85500 },
-        { key: 'doz:2', label: 'Douzaine 2', picks: ['DOUZAINE 2'], odds: 0.48, stakeCents: 2500, possibleCents: 1200 },
-        { key: 'red', label: 'Rouge', picks: ['ROUGE'], odds: 0.32, stakeCents: 5000, possibleCents: 1600 },
+        { key: 'n:17', label: 'Pari simple', picks: ['17'], odds: 36, stakeCents: 15000, possibleCents: 540000 },
+        { key: 'doz:2', label: 'Douzaine 2', picks: ['DOUZAINE 2'], odds: 3, stakeCents: 2500, possibleCents: 7500 },
+        { key: 'red', label: 'Rouge', picks: ['ROUGE'], odds: 2, stakeCents: 5000, possibleCents: 10000 },
       ]);
     });
 
@@ -256,10 +256,10 @@ describe('Boutique (e2e)', () => {
       const t = await winningTicket(2500);
       at(21, 36);
       const view = await ticket(t.id).expect(200);
-      expect(view.body).toMatchObject({ status: 'won', winCents: 14250 });
+      expect(view.body).toMatchObject({ status: 'won', winCents: 90000 });
 
       const paid = await pay(t.id).expect(200);
-      expect(paid.body).toMatchObject({ status: 'paid', payoutCents: 14250, paidTerminal: 'CAISSE #1' });
+      expect(paid.body).toMatchObject({ status: 'paid', payoutCents: 90000, paidTerminal: 'CAISSE #1' });
       const again = await pay(t.id).expect(409);
       expect(again.body.code).toBe('ALREADY_PAID');
       const { rows } = await db.query('SELECT count(*)::int AS n FROM shop_payouts WHERE ticket_id = $1', [t.id]);
@@ -285,7 +285,7 @@ describe('Boutique (e2e)', () => {
       await pay(res.body.id).expect(409).expect((r) => expect(r.body.code).toBe('TICKET_LOST'));
     });
 
-    // RTP roulette de 15 % : le numéro plein paie 5,7× ; 40 000 de mise sur chaque case donnent 228 000 de gain.
+    // Roulette à 36× : 40 000 de mise sur le numéro gagnant donnent 1 440 000 de gain.
     // Ce montant est sous le seuil d'approbation de 1 000 000 (plafond de ticket 2 000 000) : on abaisse le seuil le temps du test.
     it('un gros gain demande un responsable', async () => {
       const current = (await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200)).body.settings;
@@ -298,8 +298,8 @@ describe('Boutique (e2e)', () => {
         const t = await winningTicket(40000);
         at(24, 36);
         const refused = await pay(t.id).expect(403);
-        expect(refused.body).toMatchObject({ code: 'APPROVAL_REQUIRED', amountCents: 228_000 });
-        await pay(t.id, admin).expect(200).expect((r) => expect(r.body.payoutCents).toBe(228_000));
+        expect(refused.body).toMatchObject({ code: 'APPROVAL_REQUIRED', amountCents: 1_440_000 });
+        await pay(t.id, admin).expect(200).expect((r) => expect(r.body.payoutCents).toBe(1_440_000));
       } finally {
         await setThreshold(input.approvalThresholdCents);
       }
@@ -333,7 +333,7 @@ describe('Boutique (e2e)', () => {
       at(30, 40);
       expect(await rounds.settleDue()).toBeGreaterThanOrEqual(1);
       const { rows } = await db.query('SELECT win_cents FROM shop_ticket_results WHERE ticket_id = $1', [t.id]);
-      expect(rows).toEqual([{ win_cents: 14250 }]);
+      expect(rows).toEqual([{ win_cents: 90000 }]);
       expect(await rounds.settleDue()).toBe(0);
     });
 
@@ -511,21 +511,21 @@ describe('Boutique (e2e)', () => {
       // Tour 1 terminé : seul son gain est payable, il reste 2 tours.
       at(60, 40);
       const v1 = await ticket(b.id).expect(200);
-      expect(v1.body).toMatchObject({ status: 'won', winCents: 14250 });
-      expect(v1.body.bundle).toMatchObject({ payableCents: 14250, pendingRounds: 2 });
-      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(14250);
+      expect(v1.body).toMatchObject({ status: 'won', winCents: 90000 });
+      expect(v1.body.bundle).toMatchObject({ payableCents: 90000, pendingRounds: 2 });
+      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(90000);
       await pay(b.id).expect(409).expect((r) => expect(r.body.code).toBe('ROUND_PENDING'));
 
       // Tour 2 (mise doublée) : le gain double ; un ticket d'un tour suivant se règle avec la même fiche.
       at(61, 40);
       const v2 = await ticket(b.id).expect(200);
-      expect(v2.body).toMatchObject({ status: 'won', winCents: 28500 });
-      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(28500);
+      expect(v2.body).toMatchObject({ status: 'won', winCents: 180000 });
+      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(180000);
 
       at(62, 40);
-      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(14250);
+      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(90000);
       const done = await ticket(b.id).expect(200);
-      expect(done.body).toMatchObject({ status: 'paid', winCents: 14250 + 28500 + 14250 });
+      expect(done.body).toMatchObject({ status: 'paid', winCents: 90000 + 180000 + 90000 });
       await pay(b.id).expect(409).expect((r) => expect(r.body.code).toBe('ALREADY_PAID'));
       // Chaque tour n'a été payé qu'une fois.
       const paid = await db.query('SELECT count(*)::int AS n FROM shop_payouts WHERE ticket_id IN (SELECT id FROM shop_tickets WHERE bundle_id = $1)', [b.id]);
@@ -569,13 +569,13 @@ describe('Boutique (e2e)', () => {
   });
 
   describe('roulette : RTP visé réglé dans l administration', () => {
-    it('la migration pose 15 % ; changer la cible recalcule les cotes pour les ventes suivantes seulement', async () => {
+    it('la migration 026 pose 94,74 % ; changer la cible recalcule les cotes pour les ventes suivantes seulement', async () => {
       at(50, 2);
       const before = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:17', stakeCents: 2500 }] }).expect(201);
-      expect(before.body.lines[0].odds).toBe(5.7);
+      expect(before.body.lines[0].odds).toBe(36);
 
       const res = await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200);
-      expect(res.body.settings.paytables.roulette).toMatchObject({ targetRtp: 15 });
+      expect(res.body.settings.paytables.roulette).toMatchObject({ targetRtp: 94.74 });
       const { version: _v, createdAt: _c, ...input } = res.body.settings;
 
       await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, rouletteTargetRtp: 150 }).expect(400);
@@ -591,7 +591,7 @@ describe('Boutique (e2e)', () => {
       const keep = await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, paytables: { keno: input.paytables.keno, luckysix: input.paytables.luckysix, luckyx: input.paytables.luckyx } }).expect(200);
       expect(keep.body.settings.paytables.roulette).toMatchObject({ targetRtp: 80 });
       // Le ticket vendu avant le changement garde sa cote.
-      await ticket(before.body.id).expect(200).expect((r) => expect(r.body.lines[0].odds).toBe(5.7));
+      await ticket(before.body.id).expect(200).expect((r) => expect(r.body.lines[0].odds).toBe(36));
     });
   });
 });

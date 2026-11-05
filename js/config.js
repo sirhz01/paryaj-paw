@@ -21,10 +21,10 @@ PP.COLORS = ['#2b2f33', '#e53935', '#1fbf55', '#38b6ff', '#d65db1', '#7a5a3a', '
 PP.COLOR_NAMES = ['Noir', 'Rouge', 'Vert', 'Bleu clair', 'Bleu', 'Marron', 'Jaune', 'Orange'];
 
 /* Lucky Six : 35 boules tirées sur 48. La boule n°6..35 qui complète les 6 numéros du joueur
-   paie LADDER[position - 6] × la mise. Valeur par défaut, RTP 15 % (avantage maison 85 %) ; le serveur
+   paie LADDER[position - 6] × la mise. Barème de l'écran de référence (10 000 à 1) ; le serveur
    fournit la table en vigueur (api.js) et fait foi. */
-PP.LUCKY_LADDER = [1620, 1220, 810, 405, 147, 73.8, 43.8, 29.2, 21.9, 14.7,
-  13.3, 11.8, 10.2, 8.73, 7.31, 5.85, 4.38, 3.72, 2.92, 2.27, 1.47, 1.33, 1.18, 1.02, 0.873, 0.731, 0.585, 0.438, 0.292, 0.146];
+PP.LUCKY_LADDER = [10000, 7500, 5000, 2500, 1000, 500, 300, 200, 150, 100,
+  80, 60, 40, 30, 25, 20, 18, 16, 14, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 
 /* Lucky X : 36 boules sur 50, tirées dans un ordre aléatoire. 1 numéro parmi les 36 tirées = cote LUCKYX_SINGLE_ODDS ;
    N numéros (2..10) tous tirés = LUCKYX_TIERS[N] × la mise. RTP 15 % par pari (valeur par défaut, le serveur fait foi). */
