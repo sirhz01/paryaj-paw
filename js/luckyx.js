@@ -4,7 +4,7 @@
 PP.ready.then(function () {
   const $ = (id) => document.getElementById(id), body = document.body, DRAWN = 36, PER_SIDE = 18;
   /* Chaque boule : le tambour tourne PAUSE secondes, puis la boule reste BALL secondes à l'écran avant que le tambour reparte. */
-  const BALL = 1.14, PAUSE = 1.26, STEP = BALL + PAUSE;   // 2,4 s par boule
+  const BALL = 1.43, PAUSE = 1.57, STEP = BALL + PAUSE;   // 3 s par boule
   /* Nombre de boules sorties à l'instant s.t du tirage. Si le tirage réglé est plus court que nécessaire, le rythme est resserré. */
   const targetAt = (s) => {
     const step = Math.max(0.6, Math.min(STEP, s.dur / DRAWN)), pause = step * PAUSE / STEP, k = Math.floor(s.t / step);
