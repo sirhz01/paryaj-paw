@@ -75,3 +75,8 @@ body.admin { overflow-x: hidden; }
 .kpi b { font-size: 1.1rem; }
 .kpi b.neg { color: #c8201d; } .kpi b.pos { color: #1c7a3a; }
 .admin .tbl button.danger { color: #c8201d; border-color: #e3b0ae; }
+
+.legend { display: flex; gap: 1rem; font-size: .8rem; margin: .2rem 0; }
+.legend .lg i { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; margin-right: .3rem; }
+.stchart { width: 100%; height: auto; max-height: 260px; }
+.kpi small { font-size: .7rem; } .kpi small.pos { color: #1c7a3a; } .kpi small.neg { color: #c8201d; }

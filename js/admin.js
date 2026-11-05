@@ -246,7 +246,7 @@ PP.ready.then(function () {
     const row = {};
     for (let h = 0; h <= n; h++) { const v = Number($('rateForm').elements[`k:${n}:${h}`].value); if (v > 0) row[h] = v; }
     const r = kenoRtpOf(n, row), el = document.getElementById('kr' + n);
-    el.textContent = 'RTP ' + r.toFixed(1) + ' %'; el.className = 'krtp ' + (r > 100 ? 'rtp-bad' : r < 90 || r > 95 ? 'rtp-warn' : 'rtp-ok');
+    el.textContent = 'RTP ' + r.toFixed(1) + ' %'; el.className = 'krtp ' + (r > 100 ? 'rtp-bad' : 'rtp-ok');
   }
   $('kenoAuto').addEventListener('click', () => {
     const rtp = Number($('kenoRtp').value) / 100;
@@ -288,7 +288,7 @@ PP.ready.then(function () {
   $('kenoAuto').addEventListener('click', saveRatesLater);
 
   function renderRtp(list) {
-    const cls = (v) => v > 100 ? 'rtp-bad' : v < 90 || v > 95 ? 'rtp-warn' : 'rtp-ok';
+    const cls = (v) => v > 100 ? 'rtp-bad' : 'rtp-ok';
     $('rtpTbl').innerHTML = '<thead><tr><th>Jeu</th><th>Ligne de gain</th><th>RTP</th></tr></thead><tbody>'
       + list.map((r) => `<tr><td>${GAMES[r.game] || esc(r.game)}</td><td>${esc(r.line)}</td><td class="${cls(r.rtpPercent)}">${r.rtpPercent.toFixed(2)} %</td></tr>`).join('') + '</tbody>';
   }

@@ -477,7 +477,8 @@ export class TicketsService {
     const { rows } = await this.db.query(
       `SELECT t.day::text AS day, t.game, count(*)::int AS tickets, sum(t.stake_cents)::bigint AS "stakesCents",
               COALESCE(sum(r.win_cents), 0)::bigint AS "winsCents", COALESCE(sum(p.amount_cents), 0)::bigint AS "paidCents",
-              (sum(t.stake_cents) - COALESCE(sum(r.win_cents), 0))::bigint AS "ggrCents"
+              (sum(t.stake_cents) - COALESCE(sum(r.win_cents), 0))::bigint AS "ggrCents",
+              COALESCE(sum(t.stake_cents) FILTER (WHERE r.ticket_id IS NOT NULL), 0)::bigint AS "settledStakesCents"
          FROM shop_tickets t
          LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
          LEFT JOIN shop_payouts p ON p.ticket_id = t.id
@@ -486,6 +487,41 @@ export class TicketsService {
       [from, to],
     );
     return rows;
+  }
+
+  /**
+   * Ventilation d'une période (jours de tirage) par caissier et par heure d'émission (heure d'Haïti).
+   * Mêmes définitions que dashboard : gains dus = résultats réglés, bénéfice = mises − gains dus, tickets annulés exclus.
+   * settledStakesCents = mises des tickets dont le tirage est réglé : base du RTP constaté (un ticket en attente n'a pas encore de gain).
+   */
+  async breakdown(from: string, to: string) {
+    const cashiers = await this.db.query(
+      `SELECT t.staff_id::text AS "staffId", s.email, t.terminal, count(*)::int AS tickets, sum(t.stake_cents)::bigint AS "stakesCents",
+              COALESCE(sum(r.win_cents), 0)::bigint AS "winsCents", COALESCE(sum(p.amount_cents), 0)::bigint AS "paidCents",
+              (sum(t.stake_cents) - COALESCE(sum(r.win_cents), 0))::bigint AS "ggrCents",
+              COALESCE(sum(t.stake_cents) FILTER (WHERE r.ticket_id IS NOT NULL), 0)::bigint AS "settledStakesCents",
+              (SELECT count(*) FROM shop_ticket_voids vv JOIN shop_tickets vt ON vt.id = vv.ticket_id
+                WHERE vt.staff_id = t.staff_id AND vt.terminal = t.terminal AND vt.day BETWEEN $1::date AND $2::date)::int AS voids
+         FROM shop_tickets t
+         JOIN staff s ON s.id = t.staff_id
+         LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
+         LEFT JOIN shop_payouts p ON p.ticket_id = t.id
+        WHERE t.day BETWEEN $1::date AND $2::date AND ${LIVE('t')}
+        GROUP BY t.staff_id, s.email, t.terminal ORDER BY sum(t.stake_cents) DESC`,
+      [from, to],
+    );
+    const hours = await this.db.query(
+      `SELECT EXTRACT(HOUR FROM t.created_at AT TIME ZONE '${HAITI_TIME_ZONE}')::int AS hour, count(*)::int AS tickets,
+              sum(t.stake_cents)::bigint AS "stakesCents", COALESCE(sum(r.win_cents), 0)::bigint AS "winsCents",
+              (sum(t.stake_cents) - COALESCE(sum(r.win_cents), 0))::bigint AS "ggrCents",
+              COALESCE(sum(t.stake_cents) FILTER (WHERE r.ticket_id IS NOT NULL), 0)::bigint AS "settledStakesCents"
+         FROM shop_tickets t
+         LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
+        WHERE t.day BETWEEN $1::date AND $2::date AND ${LIVE('t')}
+        GROUP BY 1 ORDER BY 1`,
+      [from, to],
+    );
+    return { cashiers: cashiers.rows, hours: hours.rows };
   }
 }
 

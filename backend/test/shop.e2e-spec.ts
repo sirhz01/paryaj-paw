@@ -87,7 +87,7 @@ describe('Boutique (e2e)', () => {
       expect(res.body.timings.roulette).toEqual({ bet: 25, draw: 11, result: 8 });
       expect(res.body.grids.luckysix).toMatchObject({ max: 48, min: 6, maxPick: 6, drawn: 35 });
       expect(res.body.stakesCents).toEqual([2500, 5000, 10000, 25000, 50000, 100000]);
-      expect(res.body.paytables.keno['9']['9']).toBe(4322);
+      expect(res.body.paytables.keno['9']['9']).toBe(1620); // migration 024 (RTP 15 %)
       expect(res.body.wheelOrder).toHaveLength(38);
       expect(res.body.serverTime).toBe(now);
     });
@@ -168,9 +168,9 @@ describe('Boutique (e2e)', () => {
       expect(res.body).toMatchObject({ game: 'roulette', day: DAY, round: 12, terminal: 'CAISSE #1', status: 'pending', stakeCents: 22500 });
       expect(res.body.id).toMatch(/^[A-HJ-NP-Z2-9]{9}$/);
       expect(res.body.lines).toEqual([
-        { key: 'n:17', label: 'Pari simple', picks: ['17'], odds: 34.96, stakeCents: 15000, possibleCents: 524400 },
-        { key: 'doz:2', label: 'Douzaine 2', picks: ['DOUZAINE 2'], odds: 2.91, stakeCents: 2500, possibleCents: 7275 },
-        { key: 'red', label: 'Rouge', picks: ['ROUGE'], odds: 1.94, stakeCents: 5000, possibleCents: 9700 },
+        { key: 'n:17', label: 'Pari simple', picks: ['17'], odds: 5.7, stakeCents: 15000, possibleCents: 85500 },
+        { key: 'doz:2', label: 'Douzaine 2', picks: ['DOUZAINE 2'], odds: 0.48, stakeCents: 2500, possibleCents: 1200 },
+        { key: 'red', label: 'Rouge', picks: ['ROUGE'], odds: 0.32, stakeCents: 5000, possibleCents: 1600 },
       ]);
     });
 
@@ -182,7 +182,7 @@ describe('Boutique (e2e)', () => {
       expect(again.body.id).toBe(first.body.id);
       const { rows } = await db.query('SELECT count(*)::int AS n FROM shop_tickets WHERE idempotency_key = $1', ['meme-vente-001']);
       expect(rows[0]).toEqual({ n: 1 });
-      expect(first.body.lines[0]).toMatchObject({ label: 'Keno 3 numéros', picks: [1, 2, 3], odds: 15.9, possibleCents: 79500 });
+      expect(first.body.lines[0]).toMatchObject({ label: 'Keno 3 numéros', picks: [1, 2, 3], odds: 5.97, possibleCents: 29850 });
     });
 
     it('refuse les mises invalides avec un code', async () => {
@@ -256,10 +256,10 @@ describe('Boutique (e2e)', () => {
       const t = await winningTicket(2500);
       at(21, 36);
       const view = await ticket(t.id).expect(200);
-      expect(view.body).toMatchObject({ status: 'won', winCents: 87400 });
+      expect(view.body).toMatchObject({ status: 'won', winCents: 14250 });
 
       const paid = await pay(t.id).expect(200);
-      expect(paid.body).toMatchObject({ status: 'paid', payoutCents: 87400, paidTerminal: 'CAISSE #1' });
+      expect(paid.body).toMatchObject({ status: 'paid', payoutCents: 14250, paidTerminal: 'CAISSE #1' });
       const again = await pay(t.id).expect(409);
       expect(again.body.code).toBe('ALREADY_PAID');
       const { rows } = await db.query('SELECT count(*)::int AS n FROM shop_payouts WHERE ticket_id = $1', [t.id]);
@@ -285,14 +285,24 @@ describe('Boutique (e2e)', () => {
       await pay(res.body.id).expect(409).expect((r) => expect(r.body.code).toBe('TICKET_LOST'));
     });
 
-    // RTP roulette de 92 % : le numéro plein paie 34,96× ; 40 000 de mise sur chaque case donnent 1 398 400 de gain, au-dessus du seuil d'approbation.
+    // RTP roulette de 15 % : le numéro plein paie 5,7× ; 40 000 de mise sur chaque case donnent 228 000 de gain.
+    // Ce montant est sous le seuil d'approbation de 1 000 000 (plafond de ticket 2 000 000) : on abaisse le seuil le temps du test.
     it('un gros gain demande un responsable', async () => {
-      at(24, 2);
-      const t = await winningTicket(40000);
-      at(24, 36);
-      const refused = await pay(t.id).expect(403);
-      expect(refused.body).toMatchObject({ code: 'APPROVAL_REQUIRED', amountCents: 1_398_400 });
-      await pay(t.id, admin).expect(200).expect((r) => expect(r.body.payoutCents).toBe(1_398_400));
+      const current = (await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200)).body.settings;
+      const { version: _v, createdAt: _c, ...input } = current;
+      const setThreshold = (approvalThresholdCents: number) =>
+        api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, approvalThresholdCents }).expect(200);
+      await setThreshold(100_000);
+      try {
+        at(24, 2);
+        const t = await winningTicket(40000);
+        at(24, 36);
+        const refused = await pay(t.id).expect(403);
+        expect(refused.body).toMatchObject({ code: 'APPROVAL_REQUIRED', amountCents: 228_000 });
+        await pay(t.id, admin).expect(200).expect((r) => expect(r.body.payoutCents).toBe(228_000));
+      } finally {
+        await setThreshold(input.approvalThresholdCents);
+      }
     });
 
     it('chaque jeu règle ses tickets comme les règles du serveur', async () => {
@@ -323,7 +333,7 @@ describe('Boutique (e2e)', () => {
       at(30, 40);
       expect(await rounds.settleDue()).toBeGreaterThanOrEqual(1);
       const { rows } = await db.query('SELECT win_cents FROM shop_ticket_results WHERE ticket_id = $1', [t.id]);
-      expect(rows).toEqual([{ win_cents: 87400 }]);
+      expect(rows).toEqual([{ win_cents: 14250 }]);
       expect(await rounds.settleDue()).toBe(0);
     });
 
@@ -359,12 +369,25 @@ describe('Boutique (e2e)', () => {
       expect(roulette.tickets).toBeGreaterThan(5);
       expect(roulette.ggrCents).toBe(roulette.stakesCents - roulette.winsCents);
       expect(roulette.paidCents).toBeGreaterThan(0);
+      expect(roulette.settledStakesCents).toBeLessThanOrEqual(roulette.stakesCents); // seuls les tickets réglés servent de base au RTP constaté
+      expect(roulette.settledStakesCents).toBeGreaterThan(0);
+    });
+
+    it('ventilation par caissier et par heure', async () => {
+      const res = await api().get(`/api/v1/admin/shop/breakdown?from=${DAY}&to=${DAY}`).set(auth(admin)).expect(200);
+      expect(res.body.cashiers.length).toBeGreaterThan(0);
+      const ticketsByCashier = res.body.cashiers.reduce((n: number, r: { tickets: number }) => n + r.tickets, 0);
+      const ticketsByHour = res.body.hours.reduce((n: number, r: { tickets: number }) => n + r.tickets, 0);
+      expect(ticketsByHour).toBe(ticketsByCashier);
+      for (const r of [...res.body.cashiers, ...res.body.hours]) expect(Number(r.settledStakesCents)).toBeLessThanOrEqual(Number(r.stakesCents));
+      for (const h of res.body.hours) expect(h.hour).toBeGreaterThanOrEqual(0);
+      await api().get(`/api/v1/admin/shop/breakdown?from=${DAY}&to=${DAY}`).set(auth(cashier)).expect(403);
     });
 
     it('paramètres : le RTP de chaque ligne est publié, une ligne > 100 % est refusée', async () => {
       const res = await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200);
       const keno2 = res.body.rtp.find((r: { game: string; line: string }) => r.game === 'keno' && r.line === '2 numéros');
-      expect(keno2.rtpPercent).toBeGreaterThan(30); // RTP ~40 % depuis le choix d'avantage maison de 60 %
+      expect(keno2.rtpPercent).toBeGreaterThan(10); // RTP ~15 % depuis le choix d'avantage maison de 85 % (migration 024)
       expect(keno2.rtpPercent).toBeLessThanOrEqual(100);
 
       const { version: _v, createdAt: _c, ...input } = res.body.settings;
@@ -398,7 +421,7 @@ describe('Boutique (e2e)', () => {
       expect(rows[0]).toEqual({ settings_version: version + 1 });
       // Les tickets déjà vendus gardent la version de leurs paramètres.
       const old = await db.query('SELECT count(*)::int AS n FROM shop_tickets WHERE settings_version = $1', [version]);
-      expect(old.rows[0].n).toBeGreaterThan(5);
+      expect(old.rows[0].n).toBeGreaterThan(3); // le test « gros gain » ouvre deux versions de paramètres avant celle-ci
     });
 
     it('exports CSV des tickets et des tours, sans graine', async () => {
@@ -451,13 +474,13 @@ describe('Boutique (e2e)', () => {
   });
 
   describe('roulette : RTP visé réglé dans l administration', () => {
-    it('la migration pose 92 % ; changer la cible recalcule les cotes pour les ventes suivantes seulement', async () => {
+    it('la migration pose 15 % ; changer la cible recalcule les cotes pour les ventes suivantes seulement', async () => {
       at(50, 2);
       const before = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:17', stakeCents: 2500 }] }).expect(201);
-      expect(before.body.lines[0].odds).toBe(34.96);
+      expect(before.body.lines[0].odds).toBe(5.7);
 
       const res = await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200);
-      expect(res.body.settings.paytables.roulette).toMatchObject({ targetRtp: 92 });
+      expect(res.body.settings.paytables.roulette).toMatchObject({ targetRtp: 15 });
       const { version: _v, createdAt: _c, ...input } = res.body.settings;
 
       await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, rouletteTargetRtp: 150 }).expect(400);
@@ -473,7 +496,7 @@ describe('Boutique (e2e)', () => {
       const keep = await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, paytables: { keno: input.paytables.keno, luckysix: input.paytables.luckysix, luckyx: input.paytables.luckyx } }).expect(200);
       expect(keep.body.settings.paytables.roulette).toMatchObject({ targetRtp: 80 });
       // Le ticket vendu avant le changement garde sa cote.
-      await ticket(before.body.id).expect(200).expect((r) => expect(r.body.lines[0].odds).toBe(34.96));
+      await ticket(before.body.id).expect(200).expect((r) => expect(r.body.lines[0].odds).toBe(5.7));
     });
   });
 });

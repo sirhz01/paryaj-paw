@@ -24,6 +24,7 @@
 
   <nav class="tabs" id="tabs">
     <button data-tab="report" class="on">Rapport</button>
+    <button data-tab="stats">Statistiques</button>
     <button data-tab="settings">Réglages</button>
     <button data-tab="rates">Taux de gain</button>
     <button data-tab="cashiers" id="tabCashiers">Caissiers</button>
@@ -59,6 +60,37 @@
         </div>
         <table class="tbl" id="rngTbl"></table>
         <p class="hint">Bénéfice = mises − gains dus. « Payé » = gains déjà remis aux clients.</p>
+      </div>
+    </section>
+
+    <section id="tab-stats" class="pane hidden">
+      <div class="card">
+        <h2>Évolution du système</h2>
+        <div class="filters">
+          <label>Période <select id="stRange"><option value="7">7 derniers jours</option><option value="14">14 derniers jours</option><option value="30" selected>30 derniers jours</option><option value="90">90 derniers jours</option></select></label>
+          <label>Jeu <select id="stGame"><option value="">Tous les jeux</option><option value="roulette">Roulette</option><option value="keno">Keno</option><option value="luckysix">Lucky Six</option><option value="luckyx">Lucky X</option></select></label>
+          <button class="ghost" id="stGo">Actualiser</button>
+        </div>
+        <p class="hint" id="stMsg"></p>
+        <div class="kpis" id="stKpis"></div>
+        <h3>Ventes et gains par jour</h3>
+        <div id="stChart1"></div>
+        <h3>Bénéfice cumulé</h3>
+        <div id="stChart2"></div>
+        <h3>Par jeu (toujours sur tous les jeux)</h3>
+        <table class="tbl" id="stGames"></table>
+        <h3>Par caissier</h3>
+        <table class="tbl" id="stCashiers"></table>
+        <h3>Par heure de la journée</h3>
+        <div id="stHours"></div>
+        <p class="hint" id="stHoursNote"></p>
+        <h3>Exporter (CSV)</h3>
+        <div class="filters">
+          <button class="ghost" id="stCsvDays">Par jour et par jeu</button>
+          <button class="ghost" id="stCsvCashiers">Par caissier</button>
+          <button class="ghost" id="stCsvHours">Par heure</button>
+        </div>
+        <p class="hint">Bénéfice = mises − gains dus, sur les tickets dont le tirage est réglé (les tickets en attente sont exclus). RTP constaté = gains dus ÷ mises réglées. RTP théorique = moyenne des lignes de gain en vigueur (onglet Taux de gain). Un écart en rouge dépasse 10 points.</p>
       </div>
     </section>
 
@@ -98,13 +130,13 @@
         <p class="hint">Un coefficient de 19 veut dire : mise de 100 HTG → gain de 1 900 HTG. Laisser vide ou 0 = pas de gain. Le serveur refuse tout taux qui rend plus de 100 % aux joueurs.</p>
         <h3>Roulette américaine : RTP visé</h3>
         <div class="filters">
-          <label>RTP visé (%) <input type="number" id="rouletteRtp" min="1" max="100" step="0.01" value="92"></label>
+          <label>RTP visé (%) <input type="number" id="rouletteRtp" min="1" max="100" step="0.01" value="15"></label>
         </div>
         <p class="hint">Le serveur calcule les cotes de toutes les mises (cote = RTP × 38 ÷ cases couvertes). Le tirage ne change pas : chaque case garde 1 chance sur 38. S’applique aux nouveaux tickets seulement ; les tickets déjà vendus gardent leur cote.</p>
         <div id="rouletteOdds" class="hint"></div>
         <h3>Keno : numéros choisis × numéros trouvés</h3>
         <div class="filters">
-          <label>RTP visé (%) <input type="number" id="kenoRtp" min="50" max="99" step="0.1" value="94"></label>
+          <label>RTP visé (%) <input type="number" id="kenoRtp" min="1" max="99" step="0.1" value="15"></label>
           <button type="button" class="ghost" id="kenoAuto">Calculer les taux standard automatiquement</button>
         </div>
         <p class="hint">Les taux sont calculés d’après la probabilité exacte de chaque résultat (20 numéros tirés sur 80), comme pour la roulette. Les changements sont enregistrés automatiquement.</p>
@@ -118,7 +150,7 @@
       </form>
       <div class="card">
         <h2>Retour au joueur (RTP) par ligne</h2>
-        <p class="hint">Cible du cahier des charges : 90 à 95 %. En rouge : au-dessus de 100 % (refusé). En orange : hors de la cible.</p>
+        <p class="hint">Politique actuelle de l’exploitant : 15 % de retour (la maison garde 85 %). En rouge : au-dessus de 100 % (refusé).</p>
         <table class="tbl" id="rtpTbl"></table>
       </div>
     </section>
@@ -204,6 +236,7 @@
   <script src="js/common.js"></script>
   <script src="js/api.js"></script>
   <script src="js/admin.js"></script>
+  <script src="js/stats.js"></script>
   <script>if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw-admin.js').catch(() => {});</script>
 </body>
 </html>

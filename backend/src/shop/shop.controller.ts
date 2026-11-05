@@ -362,6 +362,13 @@ export class ShopAdminController {
     return this.tickets.dashboard(q.from, q.to);
   }
 
+  /** Ventilation d'une période par caissier et par heure d'émission. */
+  @Get('breakdown')
+  @Roles('super_admin', 'finance', 'auditor')
+  breakdown(@Query() q: RangeQuery) {
+    return this.tickets.breakdown(q.from, q.to);
+  }
+
   /** Rapports de session des caissiers (un par déconnexion). */
   @Get('cashier-reports')
   @Roles('super_admin', 'finance', 'auditor')
