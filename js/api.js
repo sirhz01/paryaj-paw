@@ -174,7 +174,7 @@
     async call(method, path, body) {
       try { return await http(method, path, body, A.token); } catch (e) { if (e.status === 401) { A.token = null; if (A.onExpire) A.onExpire(); } throw e; }
     },
-    sell: (game, terminal, lines, idempotencyKey) => A.call('POST', '/shop/tickets', { game, terminal, lines, idempotencyKey }),
+    sell: (game, terminal, lines, idempotencyKey, later) => A.call('POST', '/shop/tickets', { game, terminal, lines, idempotencyKey, ...(later && later.length ? { later } : {}) }),
     ticket: (id) => A.call('GET', '/shop/tickets/' + encodeURIComponent(id.trim().toUpperCase())),
     pay: (id, terminal) => A.call('POST', `/shop/tickets/${encodeURIComponent(id)}/pay`, { terminal }),
     void: (id) => A.call('POST', `/shop/tickets/${encodeURIComponent(id)}/void`),
@@ -187,6 +187,13 @@
     id: t.id, game: t.game, gameTicket: PP.GAMES[t.game].ticket, round: t.round, day: PP.dayStartOfKey(t.day),
     time: t.issuedAt, caisse: t.terminal, status: t.status === 'paid' ? 'paid' : 'open', serverStatus: t.status,
     win: t.winCents === undefined ? undefined : t.winCents / 100,
+    /* Total payé pour le ticket (tous les tours d'une fiche multi-tours). */
+    totalStake: t.stakeCents / 100,
+    /* Fiche multi-tours : état de chaque tour ; null pour un ticket ordinaire. */
+    bundle: t.bundle ? {
+      count: t.bundle.count, pending: t.bundle.pendingRounds, payable: t.bundle.payableCents / 100, paid: t.bundle.paidCents / 100,
+      rounds: t.bundle.rounds.map((r) => ({ id: r.id, round: r.round, day: PP.dayStartOfKey(r.day), stake: r.stakeCents / 100, possible: r.possibleCents / 100, status: r.status, win: r.winCents === undefined ? undefined : r.winCents / 100 })),
+    } : null,
     lines: t.lines.map((l) => ({ key: l.key, label: l.label, picks: l.picks, odds: l.odds, stake: l.stakeCents / 100, possible: l.possibleCents / 100 })),
   });
 })();

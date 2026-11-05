@@ -178,3 +178,11 @@ button { font: inherit; cursor: pointer; }
   .slip .ln > button[data-i] { width: 2.6rem; height: 2.6rem; }
 }
 @media print { .tabs { overflow: visible; } }
+
+/* Fiche multi-tours : mêmes boules sur plusieurs tours, une mise par tour. */
+.multi { margin-bottom: .6rem; }
+.multi > .stake select { padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 6px; max-width: 13rem; }
+.roundstakes { display: grid; gap: .35rem; margin-top: .5rem; }
+.rs-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .88rem; font-weight: 600; }
+.rs-row input { width: 7.5rem; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 6px; text-align: right; font-size: 1rem; }
+.rs-first { color: var(--muted); font-weight: 500; }

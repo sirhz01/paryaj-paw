@@ -30,6 +30,14 @@
     if (!g || !t.day || !t.round) return '';
     return PP.dateTime(t.day + (t.round - 1) * PP.cycle(t.game) * 1000 + g.bet * 1000, false);
   };
+  const STATUS_LABEL = { pending: 'En attente', won: 'Gagnant', lost: 'Perdant', paid: 'Payé', voided: 'Annulé' };
+  /* Fiche multi-tours : une rangée par tour (tour, tirage, mise, gain maximum, et l'état une fois le tour joué). */
+  const roundRows = (t) => t.bundle.rounds.map((r) => `
+      <div class="rd">
+        <div class="r"><span>Tour ${PP.roundNo(r.round)}</span><span>${drawTimeOf({ game: t.game, day: r.day, round: r.round })}</span></div>
+        <div class="r"><span>Mise: ${PP.money(r.stake)}</span><span>Gain max: ${PP.money(r.possible)}</span></div>
+        ${r.status !== 'pending' ? `<div class="rst">${STATUS_LABEL[r.status] || ''}${r.win ? ' ' + PP.money(r.win) : ''}</div>` : ''}
+      </div>`).join('');
   const head = (title, t) => `
     <img class="logo" src="assets/logo.jpg" alt="La Référence Paryaj Paw">
     <div class="shop">Point de vente: ${PP.esc(PP.SHOP.pointDeVente)}<br>Périphérique: ${PP.esc(t.caisse)}<br>Émetteur: ${PP.esc(PP.SHOP.emetteur)}</div>
@@ -38,7 +46,9 @@
     ${row('Délivré', PP.dateTime(t.time))}
     ${row('ID de ticket', t.id)}
     <hr>
-    <div class="tour">Tour: ${PP.roundNo(t.round)}${drawTimeOf(t) ? ' &middot; Tirage: ' + drawTimeOf(t) : ''}</div>
+    <div class="tour">${t.bundle
+      ? 'Fiche de ' + t.bundle.count + ' tours: ' + PP.roundNo(t.bundle.rounds[0].round) + ' à ' + PP.roundNo(t.bundle.rounds[t.bundle.count - 1].round) + (drawTimeOf(t) ? ' &middot; 1er tirage: ' + drawTimeOf(t) : '')
+      : 'Tour: ' + PP.roundNo(t.round) + (drawTimeOf(t) ? ' &middot; Tirage: ' + drawTimeOf(t) : '')}</div>
     <hr>`;
 
   /* Ticket de mise. */
@@ -48,20 +58,21 @@
         <div class="kind">(${l.label})</div>
         <div class="picks${l.picks.length > 6 ? ' many' : ''}">${l.picks.join(' ')}</div>
         ${row('Cotes:', l.odds.toFixed(2))}
-        ${row('Mise:', PP.money(l.stake))}
-        ${row('Gain possible:', PP.money(l.possible))}
+        ${t.bundle ? '' : row('Mise:', PP.money(l.stake)) + row('Gain possible:', PP.money(l.possible))}
       </div>`).join('<hr class="thin">');
-    const total = t.lines.reduce((a, l) => a + l.stake, 0);
-    return `<div class="tk">${copy ? '<div class="big">*** DUPLICATA ***</div>' : ''}${head(t.gameTicket, t)}${lines}<hr>
-      ${row('Mise:', PP.money(total))}${row('Paiement de taxe:', PP.money(0))}${row('Paiement:', PP.money(total))}
+    const total = t.totalStake != null ? t.totalStake : t.lines.reduce((a, l) => a + l.stake, 0);
+    const rounds = t.bundle ? `<hr><div class="kind">Tours joués (mêmes numéros)</div>${roundRows(t)}` : '';
+    return `<div class="tk">${copy ? '<div class="big">*** DUPLICATA ***</div>' : ''}${head(t.gameTicket, t)}${lines}${rounds}<hr>
+      ${row(t.bundle ? 'Mise totale:' : 'Mise:', PP.money(total))}${row('Paiement de taxe:', PP.money(0))}${row('Paiement:', PP.money(total))}
       ${barcode(t.id)}</div>`;
   };
 
   /* Ticket de décaissement (paiement d'un ticket gagnant). */
   PP.payoutHTML = function (t, win) {
-    const total = t.lines.reduce((a, l) => a + l.stake, 0), now = { ...t, time: PP.now() };
+    const total = t.totalStake != null ? t.totalStake : t.lines.reduce((a, l) => a + l.stake, 0), now = { ...t, time: PP.now() };
+    const paidRounds = t.bundle ? t.bundle.rounds.filter((r) => r.status === 'won').map((r) => row('Tour ' + PP.roundNo(r.round) + ':', PP.money(r.win))).join('') : '';
     return `<div class="tk">${head(t.gameTicket + ' Décaissement', now)}
-      ${row('Mise:', PP.money(total))}
+      ${row(t.bundle ? 'Mise totale:' : 'Mise:', PP.money(total))}${paidRounds}
       ${row('Gains:', PP.money(win))}
       ${row('Taxes sur les retraits:', PP.money(0))}
       <hr>
@@ -83,6 +94,8 @@
     .tk .line .picks{text-align:center;font-size:17px;margin:1mm 0 2mm;word-spacing:3mm;overflow-wrap:anywhere}
     .tk .line .picks.many{font-size:13px;word-spacing:.8mm;white-space:nowrap;overflow-wrap:normal}
     .tk,.tk .line,.tk .bc{break-inside:avoid;page-break-inside:avoid}
+    .tk .rd{margin:1.5mm 0;padding-bottom:1mm;border-bottom:1px dotted #000}
+    .tk .rst{text-align:right;font-size:10px}
     .tk .big{margin-top:3mm}
     .tk .total{text-align:center;font-size:19px;margin:1mm 0 3mm}
     .tk .bc{display:block;width:100%;height:13mm;margin:4mm auto 0;fill:#000}`;

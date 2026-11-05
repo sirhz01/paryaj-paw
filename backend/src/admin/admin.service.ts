@@ -39,7 +39,7 @@ const EXPORT_QUERIES: Record<ExportKind, string> = {
   payments: `SELECT id, user_id, agent_id, created_at, updated_at, direction, provider, amount_cents, status, provider_ref, failure_reason, reviewed_by
                FROM payments WHERE ${IN_RANGE} ORDER BY id LIMIT ${MAX_EXPORT_ROWS + 1}`,
   // Tickets de la boutique, avec leur gain et leur décaissement.
-  shop_tickets: `SELECT id, created_at, terminal, staff_id, game, day, round_no, lines::text AS lines, stake_cents, settings_version,
+  shop_tickets: `SELECT id, created_at, terminal, staff_id, game, day, round_no, lines::text AS lines, stake_cents, settings_version, bundle_id,
                    (SELECT win_cents FROM shop_ticket_results r WHERE r.ticket_id = id) AS win_cents,
                    (SELECT created_at FROM shop_payouts p WHERE p.ticket_id = id) AS paid_at
               FROM shop_tickets WHERE ${IN_RANGE} ORDER BY created_at, id LIMIT ${MAX_EXPORT_ROWS + 1}`,

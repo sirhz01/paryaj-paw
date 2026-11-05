@@ -88,6 +88,11 @@ export function roundsInDay(game: ShopGame, day: string): number {
   return Math.floor((dayStartMs(nextDayKey(day)) - dayStartMs(day)) / (cycleSeconds(game, day) * 1000));
 }
 
+/** Tour qui suit (day, round) : le suivant du même jour, ou le premier tour du lendemain après le dernier. */
+export function nextRoundOf(game: ShopGame, day: string, round: number): { day: string; round: number } {
+  return round < roundsInDay(game, day) ? { day, round: round + 1 } : { day: nextDayKey(day), round: 1 };
+}
+
 export function roundWindow(game: ShopGame, day: string, round: number) {
   const { bet, draw } = timingsOf(game, day);
   const cycle = cycleSeconds(game, day) * 1000;

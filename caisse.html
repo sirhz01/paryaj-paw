@@ -85,7 +85,18 @@
         <div id="slip" class="slip"></div>
         <div class="chips" id="chips"></div>
         <label class="stake">Mise (HTG) <input id="stake" type="number" inputmode="numeric" min="25" max="100000" step="25" value="100" required></label>
-        <div class="total"><span>Total</span><b id="total">0.00 HTG</b></div>
+        <div class="multi hidden" id="multi">
+          <label class="stake">Jouer aussi sur les tours suivants
+            <select id="extraRounds">
+              <option value="0">Ce tour seulement</option>
+              <option value="1">+ 1 tour (2 tours)</option><option value="2">+ 2 tours (3 tours)</option><option value="3">+ 3 tours (4 tours)</option>
+              <option value="4">+ 4 tours (5 tours)</option><option value="5">+ 5 tours (6 tours)</option><option value="6">+ 6 tours (7 tours)</option>
+              <option value="7">+ 7 tours (8 tours)</option><option value="8">+ 8 tours (9 tours)</option><option value="9">+ 9 tours (10 tours)</option>
+            </select>
+          </label>
+          <div class="roundstakes" id="roundStakes"></div>
+        </div>
+        <div class="total"><span id="totalLbl">Total</span><b id="total">0.00 HTG</b></div>
         <div id="msg" class="msg"></div>
         <button id="voidLast" class="ghost hidden"></button>
         <div class="actions"><button class="primary" id="printBtn"><i class="fa-solid fa-print" aria-hidden="true"></i> Imprimer le ticket</button><button class="ghost" id="resetBtn">Vider</button></div>

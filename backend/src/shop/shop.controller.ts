@@ -45,6 +45,17 @@ class LineDto {
   stakeCents!: number;
 }
 
+/** Mises d'un tour en plus d'une fiche multi-tours : une mise par ligne du ticket, dans le même ordre. */
+class LaterRoundDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(MAX_MONEY_CENTS, { each: true })
+  stakesCents!: number[];
+}
+
 class SellDto {
   @IsIn(SHOP_GAMES)
   game!: ShopGame;
@@ -62,6 +73,14 @@ class SellDto {
   @ValidateNested({ each: true })
   @Type(() => LineDto)
   lines!: LineDto[];
+
+  /** Fiche multi-tours : mêmes mises sur les tours suivants (jusqu'à 9), avec une mise par tour. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(9)
+  @ValidateNested({ each: true })
+  @Type(() => LaterRoundDto)
+  later?: LaterRoundDto[];
 }
 
 /** Argent déclaré par le caissier (centimes) à l'ouverture et à la fermeture de sa caisse. */

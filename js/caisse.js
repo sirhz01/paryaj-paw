@@ -11,6 +11,8 @@ PP.ready.then(function () {
   let payTicket = null;
   let replayTicket = null;
   let voidTarget = null;
+  let extra = 0;            // fiche multi-tours : nombre de tours en plus du tour ouvert (0 à 9)
+  let roundStakes = [];     // mise totale (HTG) de chaque tour en plus ; undefined = la même que ce tour
   let lastSold = null;      // dernier ticket vendu : annulable tant que le tirage n'a pas commencé (ex. fenêtre d'impression annulée)
 
   const NUM = {   // paramètres des grilles de numéros
@@ -106,7 +108,7 @@ PP.ready.then(function () {
   document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
     game = b.dataset.g;
     document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
-    slip = []; picks = []; saved = []; clearPending();
+    slip = []; picks = []; saved = []; clearPending(); resetMulti();
     renderBoard(); renderSlip();
   }));
 
@@ -211,7 +213,7 @@ PP.ready.then(function () {
         ${game === 'roulette' ? '' : `<div class="pk">${l.picks.map((n) => `<button data-p="${n}" data-l="${i}" title="Retirer le ${n}">${n} <i class="fa-solid fa-xmark" aria-hidden="true"></i></button>`).join('')}${i < saved.length ? `<button class="ed" data-e="${i}" title="Reprendre cette mise pour ajouter des numéros"><i class="fa-solid fa-pen" aria-hidden="true"></i> Modifier</button>` : ''}</div>`}
         <small>${l.picks.join(' ')} · cote ${l.odds.toFixed(2)} · gain possible ${PP.money(l.possible)}</small></div>`).join('')
       : '<div class="empty">Aucune mise. Choisir sur le plateau.</div>';
-    $('total').textContent = PP.money(lines.reduce((a, l) => a + l.stake, 0));
+    syncMulti();
     if (game === 'roulette') document.querySelectorAll('#rtable .rc').forEach((c) => {
       const keys = slip.filter((l) => l.key === c.dataset.key || (/^(sp|st|co|six):/.test(l.key) && c.dataset.key.startsWith('n:') && R.keyNumbers(l.key).includes(c.dataset.key.slice(2))));
       c.classList.toggle('sel', keys.length > 0);
@@ -239,18 +241,73 @@ PP.ready.then(function () {
     if (game === 'roulette') slip.splice(i, 1); else if (i < saved.length) saved.splice(i, 1); else { picks = []; syncNums(); }
     renderSlip();
   });
-  $('resetBtn').addEventListener('click', () => { slip = []; picks = []; saved = []; clearPending(); syncNums(); renderSlip(); flash(''); });
+  $('resetBtn').addEventListener('click', () => { slip = []; picks = []; saved = []; clearPending(); resetMulti(); syncNums(); renderSlip(); flash(''); });
 
   function flash(text, err) { const m = $('msg'); m.textContent = text; m.className = 'msg' + (err ? ' err' : text ? ' ok' : ''); }
+
+  /* ---------- Fiche multi-tours ----------
+     Un seul ticket joue les mêmes numéros sur 1 à 9 tours en plus du tour ouvert, avec une mise par tour (modifiable).
+     Le caissier encaisse le total de tous les tours ; un seul ID à scanner pour décaisser les gains de tous les tours. */
+  const baseTotal = () => currentLines().reduce((a, l) => a + l.stake, 0);
+  const firstRound = () => { const st = PP.state(game); return st.phase === 'bet' && st.left > (PP.CLOSE_MARGIN || 2) ? st.round : st.round + 1; };
+  const stakeOfRound = (i) => (roundStakes[i] === undefined ? baseTotal() : roundStakes[i]);   // mise totale du tour en plus n° i + 1
+  function syncTotal() {
+    let all = baseTotal();
+    for (let i = 0; i < extra; i++) all += Number(stakeOfRound(i)) || 0;
+    $('total').textContent = PP.money(all);
+    $('totalLbl').textContent = extra ? `Total (${extra + 1} tours)` : 'Total';
+  }
+  function renderMulti() {
+    $('extraRounds').value = String(extra);
+    const box = $('roundStakes');
+    if (!extra) { box.innerHTML = ''; return syncTotal(); }
+    const r0 = firstRound();
+    box.innerHTML = `<div class="rs-row rs-first"><span>Tour ${PP.roundNo(r0)} (ce ticket)</span><b>${PP.money(baseTotal())}</b></div>`
+      + Array.from({ length: extra }, (_, i) => `<label class="rs-row"><span>Tour ${PP.roundNo(r0 + i + 1)}</span>
+        <input type="number" inputmode="decimal" min="0" step="any" data-rs="${i}" value="${stakeOfRound(i)}" aria-label="Mise du tour ${PP.roundNo(r0 + i + 1)} en HTG"></label>`).join('');
+    syncTotal();
+  }
+  /* Appelé à chaque changement du ticket : les tours dont la mise n'a pas été modifiée suivent la mise de ce tour. */
+  function syncMulti() {
+    const typing = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.rs !== undefined;
+    if (extra && !typing) renderMulti(); else syncTotal();
+  }
+  function resetMulti() { extra = 0; roundStakes = []; renderMulti(); }
+  $('extraRounds').addEventListener('change', () => { extra = +$('extraRounds').value; roundStakes = roundStakes.slice(0, extra); renderMulti(); });
+  $('roundStakes').addEventListener('input', (e) => {
+    const i = e.target.dataset.rs; if (i === undefined) return;
+    roundStakes[+i] = e.target.value === '' ? 0 : Number(e.target.value);
+    syncTotal();
+  });
+  /** Répartit la mise totale d'un tour entre les lignes du ticket, proportionnellement (une seule ligne : exactement la mise saisie). */
+  function scaleStakes(lineCents, targetCents) {
+    const base = lineCents.reduce((a, b) => a + b, 0);
+    if (targetCents === base) return lineCents.slice();
+    const out = lineCents.map((c) => Math.round((c * targetCents) / base));
+    out[out.indexOf(Math.max(...out))] += targetCents - out.reduce((a, b) => a + b, 0);   // l'écart d'arrondi va sur la plus grosse mise
+    return out;
+  }
+  function laterRounds(lineCents) {
+    const out = [];
+    for (let i = 0; i < extra; i++) {
+      const total = Math.round(Number(stakeOfRound(i)) * 100);
+      if (!Number.isFinite(total) || total <= 0) throw Object.assign(new Error('mise'), { local: `Mise invalide pour le tour ${PP.roundNo(firstRound() + i + 1)}.` });
+      out.push({ stakesCents: scaleStakes(lineCents, total) });
+    }
+    return out;
+  }
+  const ticketTotal = (t) => (t.totalStake != null ? t.totalStake : (t.lines || []).reduce((a, l) => a + (l.stake || 0), 0));
+  const roundsText = (t) => (t.bundle ? `${t.bundle.count} tours (${PP.roundNo(t.bundle.rounds[0].round)} à ${PP.roundNo(t.bundle.rounds[t.bundle.count - 1].round)})` : `tour ${PP.roundNo(t.round)}`);
 
   /* ---------- Impression ---------- */
   /* Même clé tant que la vente n'a pas abouti : un renvoi après coupure ne crée jamais un second ticket. */
   let pending = null;
   async function sellOnline(lines) {
     const body = lines.map((l) => ({ ...(game === 'roulette' ? { key: l.key } : { picks: l.picks }), stakeCents: Math.round(l.stake * 100) }));
-    const terminal = $('caisseSel').value, sig = game + '|' + terminal + '|' + JSON.stringify(body);
+    const later = laterRounds(body.map((b) => b.stakeCents));
+    const terminal = $('caisseSel').value, sig = game + '|' + terminal + '|' + JSON.stringify(body) + '|' + JSON.stringify(later);
     if (!pending || pending.sig !== sig) pending = { sig, key: 'v' + PP.newId() + Date.now().toString(36) };
-    const t = PP.fromServerTicket(await PP.api.sell(game, terminal, body, pending.key));
+    const t = PP.fromServerTicket(await PP.api.sell(game, terminal, body, pending.key, later));
     pending = null;
     return t;
   }
@@ -277,16 +334,15 @@ PP.ready.then(function () {
     btn.disabled = true; $('voidLast').classList.add('hidden'); lastSold = null;
     let t;
     try { t = online ? await sellOnline(lines) : sellLocal(lines); }
-    catch (e) { return flash(errText(e), true); }
+    catch (e) { return flash(e.local || errText(e), true); }
     finally { btn.disabled = false; }
     showTicket(PP.ticketHTML(t));
     PP.printHTML(PP.ticketHTML(t));
     lastSold = online ? t : null;
-    $('voidLast').textContent = lastSold ? `Annuler le ticket ${t.id} (impression annulée ou erreur)` : '';
+    $('voidLast').textContent = lastSold ? `Annuler ${t.bundle ? 'la fiche' : 'le ticket'} ${t.id} (impression annulée ou erreur)` : '';
     $('voidLast').classList.toggle('hidden', !lastSold);
-    slip = []; picks = []; saved = []; syncNums(); renderSlip();
-    const encaisse = (t.lines || []).reduce((a, l) => a + (l.stake || 0), 0);
-    flash(`Ticket ${t.id} · ${PP.money(encaisse)} encaissé · tour ${PP.roundNo(t.round)}`);
+    slip = []; picks = []; saved = []; resetMulti(); syncNums(); renderSlip();
+    flash(`${t.bundle ? 'Fiche' : 'Ticket'} ${t.id} · ${PP.money(ticketTotal(t))} encaissé · ${roundsText(t)}`);
     renderHistory();
     refreshCash();
   });
@@ -327,11 +383,12 @@ PP.ready.then(function () {
     replayTicket = r.t; $('replayBtn').classList.remove('hidden'); showTicket(PP.ticketHTML(r.t));
     if (r.state === 'voided') return setPay('Ticket annulé.', 'err');
     if (online && r.state === 'pending') { voidTarget = r.t; $('voidBtn').classList.remove('hidden'); }
-    if (r.state === 'paid') return setPay('Ticket déjà payé.', 'err');
-    if (r.state === 'pending') return setPay(`Tour ${PP.roundNo(r.t.round)} pas encore terminé.`, 'err');
-    if (r.state === 'lost') return setPay('Ticket perdant.', 'err');
+    const b = r.t.bundle;
+    if (r.state === 'paid') return setPay(b ? 'Fiche déjà payée : tous les gains ont été décaissés.' : 'Ticket déjà payé.', 'err');
+    if (r.state === 'pending') return setPay(b ? `${b.pending} tour(s) pas encore terminé(s).` : `Tour ${PP.roundNo(r.t.round)} pas encore terminé.`, 'err');
+    if (r.state === 'lost') return setPay(b ? 'Fiche perdante : aucun tour gagnant.' : 'Ticket perdant.', 'err');
     payTicket = { t: r.t, win: r.win };
-    setPay(`Ticket gagnant : ${PP.money(r.win)}`, 'ok');
+    setPay(`${b ? 'Fiche gagnante' : 'Ticket gagnant'} : ${PP.money(r.win)}${b && b.pending ? ` · ${b.pending} tour(s) encore à jouer` : ''}`, 'ok');
     $('payBtn').classList.remove('hidden');
   }
   $('checkBtn').addEventListener('click', () => checkTicket());
@@ -354,10 +411,10 @@ PP.ready.then(function () {
   /* « Rejouer » : les mises du ticket scanné sont remises dans le ticket en cours ; le caissier imprime = nouvelle vente pour le tour ouvert. */
   /* Annulation : le serveur refuse si le tirage a commencé ou si le ticket est payé ; sinon la mise sort de la caisse et des rapports. */
   async function doVoid(t, out) {
-    const total = (t.lines || []).reduce((a, l) => a + (l.stake || 0), 0);
-    if (!window.confirm(`Annuler le ticket ${t.id} (${PP.money(total)}) ? La mise sera retirée de la caisse.`)) return false;
+    const total = ticketTotal(t), what = t.bundle ? `la fiche ${t.id} (${t.bundle.count} tours)` : `le ticket ${t.id}`;
+    if (!window.confirm(`Annuler ${what} (${PP.money(total)}) ? La mise sera retirée de la caisse.`)) return false;
     try { await PP.api.void(t.id); } catch (e) { out(errText(e), 'err'); return false; }
-    out(`Ticket ${t.id} annulé : ${PP.money(total)} retiré de la caisse.`, 'ok');
+    out(`${t.bundle ? 'Fiche' : 'Ticket'} ${t.id} annulé${t.bundle ? 'e' : ''} : ${PP.money(total)} retiré de la caisse.`, 'ok');
     renderHistory(); refreshCash();
     return true;
   }
@@ -390,7 +447,7 @@ PP.ready.then(function () {
     const html = PP.payoutHTML(t, win);
     showTicket(html); PP.printHTML(html);
     btn.classList.add('hidden'); payTicket = null;
-    setPay(`Décaissement de ${PP.money(win)} imprimé.`, 'ok');
+    setPay(`Décaissement de ${PP.money(win)} imprimé.${t.bundle && t.bundle.pending ? ` Il reste ${t.bundle.pending} tour(s) à jouer sur cette fiche : la scanner de nouveau plus tard.` : ''}`, 'ok');
     renderHistory();
     refreshCash();
   });
@@ -408,8 +465,8 @@ PP.ready.then(function () {
       rows = PP.tickets.all().slice(-15).reverse().map((t) => [t, t.status === 'paid' ? 'paid' : (({ pending: 'open', won: 'won', lost: 'lost' })[PP.bets.settle(t).state])]);
     }
     rows.forEach(([t]) => { recent[t.id] = t; });
-    $('hist').innerHTML = rows.map(([t, st]) => `<tr data-id="${t.id}"><td><b>${t.id}</b></td><td>${t.gameTicket}</td><td>${PP.roundNo(t.round)}</td>
-        <td>${PP.money(t.lines.reduce((a, l) => a + l.stake, 0))}</td><td><span class="st ${st}">${LABEL[st]}</span></td></tr>`).join('')
+    $('hist').innerHTML = rows.map(([t, st]) => `<tr data-id="${t.id}"><td><b>${t.id}</b></td><td>${t.gameTicket}</td><td>${PP.roundNo(t.round)}${t.bundle ? ` +${t.bundle.count - 1}` : ''}</td>
+        <td>${PP.money(ticketTotal(t))}</td><td><span class="st ${st}">${LABEL[st]}</span></td></tr>`).join('')
       || '<tr><td colspan="5" class="hint">Aucun ticket.</td></tr>';
   }
   $('hist').addEventListener('click', (e) => {
@@ -426,6 +483,7 @@ PP.ready.then(function () {
     const toNext = (s.start + PP.cycle(game) * 1000 - PP.now()) / 1000;   // ouverture des mises du tour suivant
     p.textContent = open ? 'Mises ouvertes · ' + PP.clock(s.left) : 'Mises fermées · ouverture dans ' + PP.clock(toNext);
     $('clock').textContent = PP.dateTime(PP.now());
+    $('multi').classList.toggle('hidden', !online);
   }, 500);
   setInterval(renderHistory, 5000);
 

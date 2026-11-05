@@ -10,7 +10,7 @@ import { loadConfig } from '../src/config';
 import { DATABASE, Database } from '../src/database/db';
 import { migrate } from '../src/database/migrate';
 import { hashServerSeed } from '../src/fairness/provably-fair';
-import { SHOP_CLOCK } from '../src/shop/clock';
+import { SHOP_CLOCK, nextDayKey, roundsInDay } from '../src/shop/clock';
 import { dayStartMs, roundWindow } from '../src/shop/clock';
 import { lineWin, rouletteKeyNumbers, TicketLine, WHEEL_ORDER } from '../src/shop/games';
 import { RoundsService } from '../src/shop/rounds.service';
@@ -470,6 +470,101 @@ describe('Boutique (e2e)', () => {
       at(41, 30);                                         // tirage commencé (mises : 25 s)
       await voidIt(sold.body.id).expect(409).expect((r) => expect(r.body.code).toBe('VOID_TOO_LATE'));
       await ticket(sold.body.id).expect(200).expect((r) => expect(r.body.status).toBe('pending'));
+    });
+  });
+
+  describe('fiche multi-tours', () => {
+    /** Mises gagnantes à coup sûr sur chaque tour : une mise par case, avec une mise différente par tour. */
+    const allStraight = (stakeCents: number) => ALL_STRAIGHT.map(() => stakeCents);
+    const straightLines = ALL_STRAIGHT.map((key) => ({ key, stakeCents: 2500 }));
+    const bundleSell = (later: number[], extra: Record<string, unknown> = {}) =>
+      sell(cashier, { game: 'roulette', lines: straightLines, later: later.map((c) => ({ stakesCents: allStraight(c) })), ...extra });
+    const countBundle = async (id: string) =>
+      (await db.query<{ n: number }>('SELECT count(*)::int AS n FROM shop_tickets WHERE bundle_id = $1', [id])).rows[0].n;
+
+    it('une fiche joue les mêmes mises sur plusieurs tours, avec une mise par tour, payée en une fois', async () => {
+      at(60, 2);
+      const key = 'fiche-multi-001-abcdef';
+      const res = await bundleSell([5000, 2500], { idempotencyKey: key }).expect(201);
+      const b = res.body;
+      expect(b).toMatchObject({ round: 60, status: 'pending', stakeCents: 38 * (2500 + 5000 + 2500) });
+      expect(b.bundle).toMatchObject({ id: b.id, count: 3, payableCents: 0, paidCents: 0, pendingRounds: 3 });
+      expect(b.bundle.rounds.map((r: { round: number }) => r.round)).toEqual([60, 61, 62]);
+      expect(b.bundle.rounds.map((r: { stakeCents: number }) => r.stakeCents)).toEqual([95000, 190000, 95000]);
+      expect(await countBundle(b.id)).toBe(3);
+
+      // Rejouer la même requête ne crée rien de plus.
+      const again = await bundleSell([5000, 2500], { idempotencyKey: key }).expect(201);
+      expect(again.body.id).toBe(b.id);
+      expect(await countBundle(b.id)).toBe(3);
+
+      // Les tours à venir ont été créés (graine scellée) à l'avance.
+      const made = await db.query('SELECT 1 FROM shop_rounds WHERE game = $1 AND day = $2 AND round_no IN (61, 62)', ['roulette', DAY]);
+      expect(made.rows).toHaveLength(2);
+
+      // Une seule ligne dans l'historique, pas une par tour.
+      const list = (await api().get('/api/v1/shop/tickets?limit=100').set(auth(cashier)).expect(200)).body as { id: string }[];
+      expect(list.filter((t) => t.id === b.id)).toHaveLength(1);
+      const siblings = (await db.query<{ id: string }>('SELECT id FROM shop_tickets WHERE bundle_id = $1 AND id <> $1', [b.id])).rows;
+      for (const s of siblings) expect(list.some((t) => t.id === s.id)).toBe(false);
+
+      // Tour 1 terminé : seul son gain est payable, il reste 2 tours.
+      at(60, 40);
+      const v1 = await ticket(b.id).expect(200);
+      expect(v1.body).toMatchObject({ status: 'won', winCents: 14250 });
+      expect(v1.body.bundle).toMatchObject({ payableCents: 14250, pendingRounds: 2 });
+      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(14250);
+      await pay(b.id).expect(409).expect((r) => expect(r.body.code).toBe('ROUND_PENDING'));
+
+      // Tour 2 (mise doublée) : le gain double ; un ticket d'un tour suivant se règle avec la même fiche.
+      at(61, 40);
+      const v2 = await ticket(b.id).expect(200);
+      expect(v2.body).toMatchObject({ status: 'won', winCents: 28500 });
+      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(28500);
+
+      at(62, 40);
+      expect((await pay(b.id).expect(200)).body.payoutCents).toBe(14250);
+      const done = await ticket(b.id).expect(200);
+      expect(done.body).toMatchObject({ status: 'paid', winCents: 14250 + 28500 + 14250 });
+      await pay(b.id).expect(409).expect((r) => expect(r.body.code).toBe('ALREADY_PAID'));
+      // Chaque tour n'a été payé qu'une fois.
+      const paid = await db.query('SELECT count(*)::int AS n FROM shop_payouts WHERE ticket_id IN (SELECT id FROM shop_tickets WHERE bundle_id = $1)', [b.id]);
+      expect(paid.rows[0]).toEqual({ n: 3 });
+      // Un ticket d'un tour suivant mène à la même fiche.
+      expect((await ticket(siblings[0].id).expect(200)).body.bundle.id).toBe(b.id);
+    });
+
+    it('refuse une fiche invalide sans rien enregistrer', async () => {
+      at(63, 2);
+      const before = (await db.query<{ n: number }>('SELECT count(*)::int AS n FROM shop_tickets')).rows[0].n;
+      await bundleSell(Array(10).fill(2500)).expect(400);                       // 10 tours en plus : trop
+      await bundleSell([2500, 100]).expect(400).expect((r) => expect(r.body.code).toBe('STAKE_TOO_LOW'));
+      await sell(cashier, { game: 'roulette', lines: straightLines, later: [{ stakesCents: [2500] }] }).expect(400)
+        .expect((r) => expect(r.body.code).toBe('INVALID_BET'));                   // une mise par ligne attendue
+      expect((await db.query<{ n: number }>('SELECT count(*)::int AS n FROM shop_tickets')).rows[0].n).toBe(before);
+    });
+
+    it('annuler la fiche annule tous ses tours, tant que le premier tirage n a pas commencé', async () => {
+      at(70, 2);
+      const b = (await bundleSell([2500, 2500]).expect(201)).body;
+      const out = await api().post(`/api/v1/shop/tickets/${b.id}/void`).set(auth(cashier)).expect(200);
+      expect(out.body.status).toBe('voided');
+      const voided = await db.query('SELECT count(*)::int AS n FROM shop_ticket_voids WHERE ticket_id IN (SELECT id FROM shop_tickets WHERE bundle_id = $1)', [b.id]);
+      expect(voided.rows[0]).toEqual({ n: 3 });
+      await pay(b.id).expect(409).expect((r) => expect(r.body.code).toBe('TICKET_VOIDED'));
+
+      at(72, 2);
+      const late = (await bundleSell([2500]).expect(201)).body;
+      at(72, 30);                                                                  // tirage commencé (mises : 25 s)
+      await api().post(`/api/v1/shop/tickets/${late.id}/void`).set(auth(cashier)).expect(409).expect((r) => expect(r.body.code).toBe('VOID_TOO_LATE'));
+    });
+
+    it('une fiche qui passe minuit continue sur le premier tour du lendemain', async () => {
+      const last = roundsInDay('roulette', DAY);
+      at(last, 2);
+      const b = (await bundleSell([2500, 2500]).expect(201)).body;
+      expect(b.bundle.rounds.map((r: { day: string; round: number }) => [r.day, r.round]))
+        .toEqual([[DAY, last], [nextDayKey(DAY), 1], [nextDayKey(DAY), 2]]);
     });
   });
 

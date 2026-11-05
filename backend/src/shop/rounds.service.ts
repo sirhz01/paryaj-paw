@@ -60,9 +60,10 @@ export class RoundsService {
 
   /**
    * Crée le tour (graine, hash, résultat) tant que son tirage n'a pas commencé et qu'il ne démarre pas
-   * dans plus d'un cycle. Renvoie undefined si le tour a été manqué : aucun ticket ne peut alors exister.
+   * dans plus de `horizonCycles` cycles (1 par défaut ; une fiche multi-tours crée à l'avance les tours qu'elle joue).
+   * Renvoie undefined si le tour a été manqué : aucun ticket ne peut alors exister.
    */
-  async ensure(game: ShopGame, day: string, round: number, q: Queryable = this.db): Promise<RoundRow | undefined> {
+  async ensure(game: ShopGame, day: string, round: number, q: Queryable = this.db, horizonCycles = 1): Promise<RoundRow | undefined> {
     if (!DAY_FORMAT.test(day) || round < 1 || round > roundsInDay(game, day)) {
       throw new AppError('ROUND_NOT_FOUND', HttpStatus.NOT_FOUND);
     }
@@ -71,7 +72,7 @@ export class RoundsService {
 
     const w = roundWindow(game, day, round);
     const now = this.now();
-    if (now >= w.drawStartMs || w.startMs > now + (w.nextStartMs - w.startMs)) return undefined;
+    if (now >= w.drawStartMs || w.startMs > now + horizonCycles * (w.nextStartMs - w.startMs)) return undefined;
 
     const serverSeed = newServerSeed();
     await q.query(

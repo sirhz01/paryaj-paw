@@ -5,7 +5,7 @@ import { StaffRole } from '../common/auth';
 import { AppError } from '../common/errors';
 import { HAITI_TIME_ZONE } from '../common/haiti';
 import { DATABASE, Database, isUniqueViolation } from '../database/db';
-import { roundWindow } from './clock';
+import { nextRoundOf, roundWindow } from './clock';
 import {
   LineSelection,
   NUMBER_GAMES,
@@ -21,8 +21,43 @@ import { ShopSettings, ShopSettingsService } from './settings.service';
 
 const ID_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ID_LENGTH = 9;
+/** Tours en plus du tour ouvert pour une fiche multi-tours (donc 10 tours au plus). */
+export const MAX_LATER_ROUNDS = 9;
 
 export type TicketStatus = 'pending' | 'won' | 'lost' | 'paid' | 'voided';
+
+/** Un tour d'une fiche multi-tours. */
+export interface BundleRound {
+  id: string;
+  day: string;
+  round: number;
+  stakeCents: number;
+  /** Gain maximum de ce tour (somme des gains possibles de ses lignes). */
+  possibleCents: number;
+  status: TicketStatus;
+  /** Gain, connu une fois le tirage de ce tour terminé. */
+  winCents?: number;
+  lines: TicketLine[];
+}
+
+/**
+ * Fiche multi-tours : un seul ticket imprimé qui joue les mêmes mises sur plusieurs tours de suite, avec une mise par tour.
+ * Sur la vue du ticket, `id` est celui de la fiche (premier tour), `stakeCents` le total payé pour tous les tours et `status`
+ * l'état de la fiche : 'won' = il y a des gains à décaisser maintenant (`winCents`), 'pending' = des tours restent à jouer,
+ * 'paid' = tous les gains sont décaissés, 'lost' = aucun tour gagnant, 'voided' = annulée.
+ */
+export interface BundleView {
+  id: string;
+  /** Nombre de tours de la fiche. */
+  count: number;
+  /** Gains des tours terminés pas encore décaissés. */
+  payableCents: number;
+  /** Gains déjà décaissés. */
+  paidCents: number;
+  /** Tours dont le tirage n'est pas terminé. */
+  pendingRounds: number;
+  rounds: BundleRound[];
+}
 
 export interface TicketView {
   id: string;
@@ -38,6 +73,8 @@ export interface TicketView {
   winCents?: number;
   paidAt?: number;
   paidTerminal?: string;
+  /** Présent seulement pour une fiche multi-tours. */
+  bundle?: BundleView;
 }
 
 interface TicketRow {
@@ -53,12 +90,13 @@ interface TicketRow {
   paidAt: Date | null;
   paidTerminal: string | null;
   voidedAt: Date | null;
+  bundleId: string | null;
 }
 
 const SELECT_TICKET = `
   SELECT t.id, t.game, t.day::text AS day, t.round_no AS round, t.terminal, t.lines, t.stake_cents AS "stakeCents",
          t.created_at AS "createdAt", r.win_cents AS "winCents", p.created_at AS "paidAt", p.terminal AS "paidTerminal",
-         v.created_at AS "voidedAt"
+         v.created_at AS "voidedAt", t.bundle_id AS "bundleId"
     FROM shop_tickets t
     LEFT JOIN shop_ticket_results r ON r.ticket_id = t.id
     LEFT JOIN shop_payouts p ON p.ticket_id = t.id
@@ -131,9 +169,14 @@ export class TicketsService {
     return lines;
   }
 
+  /**
+   * Vend un ticket pour le tour ouvert. Avec `later`, c'est une fiche multi-tours : les mêmes mises (mêmes boules) sont jouées
+   * sur les tours suivants (jusqu'à 9), chacun avec ses propres mises ligne par ligne (`stakesCents`, dans l'ordre de `lines`).
+   * Tout est enregistré en une seule transaction : la fiche est vendue en entier ou pas du tout.
+   */
   async sell(
     staff: Seller,
-    input: { game: ShopGame; terminal: string; idempotencyKey: string; lines: LineSelection[] },
+    input: { game: ShopGame; terminal: string; idempotencyKey: string; lines: LineSelection[]; later?: { stakesCents: number[] }[] },
   ): Promise<TicketView> {
     const replay = await this.byIdempotencyKey(staff.id, input.idempotencyKey);
     if (replay) return replay;
@@ -143,9 +186,20 @@ export class TicketsService {
     checkTerminal(staff, input.terminal);
     const lines = this.buildLines(input.game, input.lines, s);
 
+    const later = input.later ?? [];
+    if (later.length > MAX_LATER_ROUNDS) throw new AppError('INVALID_BET', HttpStatus.BAD_REQUEST, { reason: `au plus ${MAX_LATER_ROUNDS} tours en plus` });
+    const roundLines: TicketLine[][] = [lines];
+    later.forEach((l, i) => {
+      if (l.stakesCents.length !== input.lines.length) {
+        throw new AppError('INVALID_BET', HttpStatus.BAD_REQUEST, { reason: `tour ${i + 2} : une mise par ligne attendue` });
+      }
+      roundLines.push(this.buildLines(input.game, input.lines.map((sel, j) => ({ ...sel, stakeCents: l.stakesCents[j] })), s));
+    });
+
     const { day, round } = this.rounds.targetRound(input.game);
     const row = await this.rounds.ensure(input.game, day, round);
     if (!row) throw new AppError('ROUND_CLOSED', HttpStatus.CONFLICT);
+    if (later.length > 0) return this.sellBundle(staff, input, s.version, roundLines, { day, round });
 
     const stakeCents = lines.reduce((sum, l) => sum + l.stakeCents, 0);
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -157,6 +211,53 @@ export class TicketsService {
           [id, staff.id, input.terminal, input.idempotencyKey, input.game, day, round, JSON.stringify(lines), stakeCents, s.version, this.rounds.now()],
         );
         return (await this.find(id))!;
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error;
+        const raced = await this.byIdempotencyKey(staff.id, input.idempotencyKey);
+        if (raced) return raced;
+      }
+    }
+    throw new AppError('TICKET_ID_COLLISION', HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  private newTicketId(): string {
+    return Array.from({ length: ID_LENGTH }, () => ID_ALPHABET[randomInt(ID_ALPHABET.length)]).join('');
+  }
+
+  /** Enregistre une fiche multi-tours : un ticket par tour, tous reliés par bundle_id (= ID du premier, celui qui est imprimé). */
+  private async sellBundle(
+    staff: Seller,
+    input: { game: ShopGame; terminal: string; idempotencyKey: string },
+    settingsVersion: number,
+    roundLines: TicketLine[][],
+    first: { day: string; round: number },
+  ): Promise<TicketView> {
+    const targets = [first];
+    for (let i = 1; i < roundLines.length; i++) targets.push(nextRoundOf(input.game, targets[i - 1].day, targets[i - 1].round));
+    // Les tours à venir sont créés (graine scellée) à l'avance : ils démarrent dans plus d'un cycle.
+    for (let i = 1; i < targets.length; i++) {
+      if (!(await this.rounds.ensure(input.game, targets[i].day, targets[i].round, this.db, i + 1))) throw new AppError('ROUND_CLOSED', HttpStatus.CONFLICT);
+    }
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const ids = new Set<string>();
+      while (ids.size < targets.length) ids.add(this.newTicketId());
+      const list = [...ids];
+      try {
+        await this.db.transaction(async (tx) => {
+          for (let i = 0; i < targets.length; i++) {
+            await tx.query(
+              `INSERT INTO shop_tickets (id, staff_id, terminal, idempotency_key, game, day, round_no, lines, stake_cents, settings_version, bundle_id, created_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12::double precision / 1000))`,
+              [
+                list[i], staff.id, input.terminal, i === 0 ? input.idempotencyKey : `${input.idempotencyKey}~${i}`, input.game,
+                targets[i].day, targets[i].round, JSON.stringify(roundLines[i]), roundLines[i].reduce((sum, l) => sum + l.stakeCents, 0),
+                settingsVersion, list[0], this.rounds.now(),
+              ],
+            );
+          }
+        });
+        return (await this.find(list[0]))!;
       } catch (error) {
         if (!isUniqueViolation(error)) throw error;
         const raced = await this.byIdempotencyKey(staff.id, input.idempotencyKey);
@@ -194,8 +295,55 @@ export class TicketsService {
     };
   }
 
+  /** Fiche multi-tours : la vue du premier ticket, avec l'état de chaque tour (voir BundleView). */
+  private async findBundle(bundleId: string): Promise<TicketView | undefined> {
+    const load = async () => (await this.db.query<TicketRow>(`${SELECT_TICKET} WHERE t.bundle_id = $1 ORDER BY t.day, t.round_no`, [bundleId])).rows;
+    let rows = await load();
+    if (rows.length === 0) return undefined;
+    let settled = 0;
+    for (const r of rows) if (r.winCents === null) settled += await this.rounds.settleRound(r.game, r.day, r.round);
+    if (settled > 0) rows = await load();
+
+    const now = this.rounds.now();
+    const members = rows.map((r) => this.toView(r, now));
+    const live = members.filter((m) => m.status !== 'voided');
+    const head = members.find((m) => m.id === bundleId) ?? members[0];
+    const payable = live.filter((m) => m.status === 'won').reduce((sum, m) => sum + (m.winCents ?? 0), 0);
+    const paid = live.filter((m) => m.status === 'paid').reduce((sum, m) => sum + (m.winCents ?? 0), 0);
+    const pendingRounds = live.filter((m) => m.status === 'pending').length;
+    const status: TicketStatus =
+      live.length === 0 ? 'voided' : payable > 0 ? 'won' : pendingRounds > 0 ? 'pending' : paid > 0 ? 'paid' : 'lost';
+    const paidAts = live.filter((m) => m.paidAt !== undefined).map((m) => m.paidAt!);
+    const { bundle: _unused, ...headOnly } = head;
+    return {
+      ...headOnly,
+      stakeCents: live.reduce((sum, m) => sum + m.stakeCents, 0),
+      status,
+      winCents: status === 'won' ? payable : status === 'paid' ? paid : undefined,
+      ...(status === 'paid' && paidAts.length ? { paidAt: Math.max(...paidAts), paidTerminal: head.paidTerminal } : { paidAt: undefined, paidTerminal: undefined }),
+      bundle: {
+        id: bundleId,
+        count: members.length,
+        payableCents: payable,
+        paidCents: paid,
+        pendingRounds,
+        rounds: members.map((m) => ({
+          id: m.id,
+          day: m.day,
+          round: m.round,
+          stakeCents: m.stakeCents,
+          possibleCents: m.lines.reduce((sum, l) => sum + l.possibleCents, 0),
+          status: m.status,
+          ...(m.winCents !== undefined ? { winCents: m.winCents } : {}),
+          lines: m.lines,
+        })),
+      },
+    };
+  }
+
   private async find(id: string): Promise<TicketView | undefined> {
     let { rows } = await this.db.query<TicketRow>(`${SELECT_TICKET} WHERE t.id = $1`, [id]);
+    if (rows[0]?.bundleId) return this.findBundle(rows[0].bundleId);
     if (rows[0] && rows[0].winCents === null) {
       // Tirage terminé mais gain pas encore écrit : on règle le tour tout de suite.
       if ((await this.rounds.settleRound(rows[0].game, rows[0].day, rows[0].round)) > 0) {
@@ -220,13 +368,16 @@ export class TicketsService {
   }
 
   async list(day: string | undefined, terminal: string | undefined, limit: number): Promise<TicketView[]> {
+    // Une fiche multi-tours n'apparaît qu'une fois : par son premier ticket (celui qui est imprimé).
     const { rows } = await this.db.query<TicketRow>(
       `${SELECT_TICKET}
         WHERE ($1::text IS NULL OR ${DAY_RANGE('t.created_at', '$1')}) AND ($2::text IS NULL OR t.terminal = $2)
+          AND (t.bundle_id IS NULL OR t.bundle_id = t.id)
         ORDER BY t.created_at DESC, t.id LIMIT $3`,
       [day ?? null, terminal ?? null, limit],
     );
-    return rows.map((r) => this.toView(r));
+    const views = await Promise.all(rows.map((r) => (r.bundleId ? this.findBundle(r.bundleId) : Promise.resolve(this.toView(r)))));
+    return views.filter((v): v is TicketView => v !== undefined);
   }
 
   // Annulation ----------------------------------------------------------------
@@ -241,20 +392,29 @@ export class TicketsService {
       'SELECT staff_id AS "staffId", game, day::text AS day, round_no AS round, terminal FROM shop_tickets WHERE id = $1',
       [ticketId],
     );
-    const t = rows[0];
-    if (!t) throw new AppError('TICKET_NOT_FOUND', HttpStatus.NOT_FOUND);
-    if (staff.role === 'cashier' && t.staffId !== staff.id) throw new AppError('NOT_YOUR_TICKET', HttpStatus.FORBIDDEN);
+    const found = rows[0];
+    if (!found) throw new AppError('TICKET_NOT_FOUND', HttpStatus.NOT_FOUND);
+    if (staff.role === 'cashier' && found.staffId !== staff.id) throw new AppError('NOT_YOUR_TICKET', HttpStatus.FORBIDDEN);
     const current = await this.get(ticketId);
     if (current.status === 'voided') return current;
     if (current.status === 'paid') throw new AppError('ALREADY_PAID', HttpStatus.CONFLICT);
+    // Fiche multi-tours : on annule tous les tours, tant que le tirage du premier n'a pas commencé (rien n'est alors payable).
+    const members = current.bundle ? current.bundle.rounds.map((r) => ({ id: r.id, game: found.game, day: r.day, round: r.round })) : [{ id: ticketId, game: found.game, day: found.day, round: found.round }];
+    const t = members[0];
     if (this.rounds.now() >= roundWindow(t.game, t.day, t.round).drawStartMs) throw new AppError('VOID_TOO_LATE', HttpStatus.CONFLICT);
     try {
       await this.db.transaction(async (tx) => {
-        await tx.query(
-          'INSERT INTO shop_ticket_voids (ticket_id, staff_id, terminal, created_at) VALUES ($1, $2, $3, to_timestamp($4::double precision / 1000))',
-          [ticketId, staff.id, t.terminal, this.rounds.now()],
+        for (const m of members) {
+          await tx.query(
+            `INSERT INTO shop_ticket_voids (ticket_id, staff_id, terminal, created_at) VALUES ($1, $2, $3, to_timestamp($4::double precision / 1000))
+             ON CONFLICT DO NOTHING`,
+            [m.id, staff.id, found.terminal, this.rounds.now()],
+          );
+        }
+        await this.audit.log(
+          staff.id, 'shop.void', { type: 'shop_ticket', id: current.id },
+          { stakeCents: current.stakeCents, terminal: found.terminal, ...(current.bundle ? { rounds: members.length } : {}) }, tx,
         );
-        await this.audit.log(staff.id, 'shop.void', { type: 'shop_ticket', id: ticketId }, { stakeCents: current.stakeCents, terminal: t.terminal }, tx);
       });
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
@@ -281,14 +441,21 @@ export class TicketsService {
     if (amount >= s.approvalThresholdCents && staff.role === 'cashier') {
       throw new AppError('APPROVAL_REQUIRED', HttpStatus.FORBIDDEN, { amountCents: amount });
     }
+    // Fiche multi-tours : un seul décaissement pour tous les tours gagnants déjà terminés (un paiement par tour, jamais deux fois).
+    const payables = ticket.bundle ? ticket.bundle.rounds.filter((r) => r.status === 'won') : [{ id: ticket.id, winCents: amount }];
     try {
       await this.db.transaction(async (tx) => {
-        await tx.query(
-          `INSERT INTO shop_payouts (ticket_id, amount_cents, staff_id, terminal, created_at)
-           VALUES ($1, $2, $3, $4, to_timestamp($5::double precision / 1000))`,
-          [ticket.id, amount, staff.id, terminal, this.rounds.now()],
+        for (const p of payables) {
+          await tx.query(
+            `INSERT INTO shop_payouts (ticket_id, amount_cents, staff_id, terminal, created_at)
+             VALUES ($1, $2, $3, $4, to_timestamp($5::double precision / 1000))`,
+            [p.id, p.winCents, staff.id, terminal, this.rounds.now()],
+          );
+        }
+        await this.audit.log(
+          staff.id, 'shop.payout', { type: 'shop_ticket', id: ticket.id },
+          { amountCents: amount, terminal, ...(ticket.bundle ? { rounds: payables.length } : {}) }, tx,
         );
-        await this.audit.log(staff.id, 'shop.payout', { type: 'shop_ticket', id: ticket.id }, { amountCents: amount, terminal }, tx);
       });
     } catch (error) {
       if (isUniqueViolation(error)) throw new AppError('ALREADY_PAID', HttpStatus.CONFLICT);
