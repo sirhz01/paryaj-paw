@@ -151,6 +151,12 @@
     }
   });
 
+  // Écrans tactiles (tablette, téléphone) : un double toucher remplace la touche F pour le plein écran.
+  document.addEventListener('dblclick', () => {
+    if (!document.body.classList.contains('tv') || !document.documentElement.requestFullscreen) return;
+    if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {});
+  });
+
   /* ---------- Tickets (localStorage) ---------- */
   const KEY = 'pp.tickets';
   PP.tickets = {

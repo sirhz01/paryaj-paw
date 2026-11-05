@@ -1,7 +1,8 @@
 /* Caisse : interface de vente (écran du caissier, thème clair). */
 :root { --navy: #14285f; --red: #c8261f; --ink: #1c2433; --muted: #66748b; --line: #dde3ee; --bg: #eef2f8; --gold: #ffd23f; }
 * { box-sizing: border-box; margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 15px/1.4 'Segoe UI', system-ui, Arial, sans-serif; }
+body { background: var(--bg); color: var(--ink); font: .9375rem/1.4 'Segoe UI', system-ui, Arial, sans-serif; -webkit-text-size-adjust: 100%; }
+img { max-width: 100%; }
 .hidden { display: none !important; }
 button { font: inherit; cursor: pointer; }
 
@@ -117,3 +118,63 @@ button { font: inherit; cursor: pointer; }
 .pk button i { color: #c8201d; font-size: .75rem; }
 .slip .ln .pk { grid-column: 1 / -1; }
 .slip .ln .pk button { border: 1px solid var(--line); background: #fff; color: inherit; font-size: .9rem; }
+
+/* ===== Adaptation à tous les écrans (caisse et administration) =====
+   Téléphone, tablette, portable, bureau, grand écran : l'en-tête passe à la ligne, les onglets défilent,
+   les tables larges défilent dans leur carte, et les boutons sont assez grands pour le doigt. */
+.bar { flex-wrap: wrap; row-gap: .5rem; }
+.bar .shop { flex: 1 1 12rem; min-width: 0; }
+.bar .shop b, .bar .shop span { overflow-wrap: anywhere; }
+.bar .cashbox { white-space: normal; }
+.bar .cashbox .cb-sub { flex-wrap: wrap; row-gap: .1rem; }
+.tabs { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { white-space: nowrap; flex: 0 0 auto; }
+.board, .history, .preview { overflow-x: auto; }
+
+/* Grands écrans : tout grossit avec la fenêtre (rem). */
+@media (min-width: 1900px) { html { font-size: 18px; } }
+@media (min-width: 2500px) { html { font-size: 24px; } }
+@media (min-width: 3400px) { html { font-size: 32px; } }
+
+/* Tablette en portrait et petits portables */
+@media (max-width: 900px) {
+  .bar { padding: .5rem .8rem; gap: .6rem; }
+  .bar .logo { height: 44px; }
+  .bar .cashbox { order: 5; flex: 1 1 100%; }
+  .tabs { padding: .6rem .8rem 0; }
+  .grid { padding: 0 .8rem 1rem; }
+}
+
+/* Téléphone */
+@media (max-width: 600px) {
+  .bar .logo { height: 38px; }
+  .bar .shop { flex-basis: 8rem; }
+  .bar .shop b { font-size: .9rem; }
+  .caisse select { margin-left: .2rem; max-width: 7.5rem; }
+  .tabs button { padding: .55rem .9rem; }
+  .card { padding: .8rem; }
+  .rt { min-width: 31rem; grid-template-rows: repeat(6, 1.9rem) 2.5rem 2.5rem; }
+  .history table { font-size: .8rem; }
+  .history th:nth-child(3), .history td:nth-child(3) { display: none; }
+  .actions { flex-wrap: wrap; }
+  .actions .primary, .actions .ghost { flex: 1 1 8rem; }
+}
+@media (max-width: 380px) { .nums { grid-template-columns: repeat(4, 1fr); } .bar .cashbox .cb-sub { font-size: .68rem; gap: .5rem; } }
+
+/* Téléphone en paysage : peu de hauteur, on rapproche tout. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .bar { padding: .3rem .8rem; }
+  .bar .logo { height: 34px; }
+  .tabs { padding-top: .4rem; }
+  .login { align-items: start; overflow-y: auto; }
+}
+
+/* Écrans tactiles : cibles d'au moins 44 px, et 16 px dans les champs pour que iOS ne zoome pas. */
+@media (pointer: coarse) {
+  button, .ghost, .primary, .tabs button, .chips button { min-height: 44px; }
+  input, select, textarea { font-size: 16px; min-height: 44px; }
+  .nums button { min-height: 40px; }
+  .slip .ln > button[data-i] { width: 2.6rem; height: 2.6rem; }
+}
+@media print { .tabs { overflow: visible; } }

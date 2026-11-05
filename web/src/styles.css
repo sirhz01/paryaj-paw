@@ -26,6 +26,8 @@ body {
   color: var(--ink);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-text-size-adjust: 100%;
 }
 a {
   color: inherit;
@@ -76,7 +78,7 @@ a {
 .content {
   flex: 1;
   width: 100%;
-  max-width: 1040px;
+  max-width: 65rem;
   margin: 0 auto;
   padding: 1.2rem 1rem 2.5rem;
 }
@@ -86,7 +88,7 @@ a {
   gap: 1rem;
 }
 .page.narrow {
-  max-width: 460px;
+  max-width: 28.75rem;
   margin: 1.5rem auto 0;
 }
 .center {
@@ -651,4 +653,21 @@ textarea {
 .app,
 .content {
   min-width: 0;
+}
+
+/* Tous les écrans : tout est en rem, donc agrandir la taille de base agrandit la mise en page (grands écrans, TV). */
+@media (min-width: 1900px) { html { font-size: 125%; } }
+@media (min-width: 2500px) { html { font-size: 150%; } }
+@media (min-width: 3400px) { html { font-size: 200%; } }
+
+/* Écrans tactiles : cibles d'au moins 44 px, et 16 px dans les champs pour que iOS ne zoome pas à la saisie. */
+@media (pointer: coarse) {
+  .btn, button, a.btn { min-height: 44px; }
+  input, select, textarea { font-size: 16px; min-height: 44px; }
+}
+
+/* Téléphone en paysage : peu de hauteur, on réduit les marges verticales. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .content { padding-top: .6rem; padding-bottom: 1.2rem; }
+  .page.narrow { margin-top: .6rem; }
 }

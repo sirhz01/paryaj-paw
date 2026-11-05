@@ -15,3 +15,11 @@ th, td { border: 1px solid #d5dcea; padding: .4rem .55rem; text-align: left; ver
 th { background: #eef2fa; }
 nav.legal { text-align: center; padding: 1rem; font-size: .85rem; }
 nav.legal a { color: var(--navy); margin: 0 .6rem; }
+
+/* Tous les écrans : images fluides, tables larges qui défilent, texte qui revient à la ligne. */
+img { max-width: 100%; height: auto; }
+main { overflow-wrap: anywhere; }
+table { display: block; overflow-x: auto; max-width: 100%; }
+@media (max-width: 480px) { main { padding: 1rem .9rem 2rem; } h1 { font-size: 1.4rem; } header img { height: 2.6rem; } }
+@media (min-width: 1800px) { html { font-size: 20px; } }
+@media (min-width: 3000px) { html { font-size: 28px; } }
