@@ -114,10 +114,10 @@
     grad('gHub', { cx: '38%', cy: '32%', r: '80%' }, [['0', '#9a4a22'], ['.5', '#6a2c13'], ['1', '#2e0f06']]);
     grad('gBrass', { cx: '40%', cy: '35%', r: '70%' }, [['0', '#fff1b0'], ['.45', '#d9b44a'], ['1', '#7d5a14']]);
     el('circle', { r: 99.2, fill: 'url(#gBowl)', stroke: '#c9a24a', 'stroke-width': 1.4 });
-    el('circle', { r: 90.8, fill: 'none', stroke: 'rgba(255,255,255,.07)', 'stroke-width': 11 });   // piste de la bille : large, loin des numéros
+    el('circle', { r: 91.3, fill: 'none', stroke: 'rgba(255,255,255,.07)', 'stroke-width': 15 });   // piste de la bille : large, loin des numéros
     el('circle', { r: 83.6, fill: 'none', stroke: '#c9a24a', 'stroke-width': .7 });
     [90, 270].forEach((deg) => {            /* butées en losange : la bille y rebondit */
-      const [cx, cy] = pt(90.8, deg);
+      const [cx, cy] = pt(87.6, deg);
       el('path', { d: 'M0 -5.2L3.4 0L0 5.2L-3.4 0Z', transform: 'translate(' + cx + ' ' + cy + ') rotate(' + (deg - 90) + ')', fill: 'url(#gBrass)', stroke: '#4a3408', 'stroke-width': .4 });
     });
 
@@ -146,7 +146,7 @@
     el('circle', { r: 3.2, fill: '#f6e3a0', stroke: '#7d5a14', 'stroke-width': .4 }, rotor);
 
     const ball = el('g', { id: 'ballRot' });
-    const b = el('circle', { id: 'ball', cx: 0, cy: -90.8, r: 3.1, fill: '#f6f6f2', stroke: '#9a9a90', 'stroke-width': .4 }, ball);
+    const b = el('circle', { id: 'ball', cx: 0, cy: -95.3, r: 3, fill: '#f6f6f2', stroke: '#9a9a90', 'stroke-width': .4 }, ball);
     /* reflet vitré fixe sur le cœur (ne tourne pas avec la roue) */
     el('ellipse', { cx: -17, cy: -26, rx: 30, ry: 13, fill: 'rgba(255,255,255,.17)', transform: 'rotate(-28 -17 -26)', 'pointer-events': 'none' });
     /* Statistiques des derniers tirages (visibles pendant les mises, la roue est alors sur le côté) :
