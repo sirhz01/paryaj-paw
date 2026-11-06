@@ -88,6 +88,8 @@ describe('Boutique (e2e)', () => {
       expect(res.body.grids.luckysix).toMatchObject({ max: 48, min: 6, maxPick: 6, drawn: 35 });
       expect(res.body.stakesCents).toEqual([2500, 5000, 10000, 25000, 50000, 100000]);
       expect(res.body.paytables.keno['9']['9']).toBe(1620); // migration 024 (RTP 15 %)
+      expect(res.body.paytables.luckyx.ladders['1']).toEqual([9, 8, 7, 6, 5, 4, 3, 2, 1]); // migration 027 : gain selon le rang de la dernière boule
+      expect(res.body.paytables.roulette.odds.n).toBe(36); // migration 026
       expect(res.body.wheelOrder).toHaveLength(38);
       expect(res.body.serverTime).toBe(now);
     });

@@ -273,16 +273,25 @@ PP.ready.then(function () {
       Array.from({ length: n + 1 }, (_, h) => rateBox(h + ' trouvé' + (h > 1 ? 's' : ''), `k:${n}:${h}`, p.keno[n] && p.keno[n][h])).join('')}</div></div>`).join('');
     for (let n = 1; n <= 10; n++) showKenoRtp(n);
     $('ls6Rates').innerHTML = p.luckysix.map((v, i) => rateBox('boule ' + (i + 6), 'l:' + i, v)).join('');
-    $('lxRates').innerHTML = rateBox('1 numéro (6 premières boules)', 'x:single', p.luckyx.single)
-      + Array.from({ length: 9 }, (_, i) => i + 2).map((n) => rateBox(n + ' boules', 'x:' + n, p.luckyx.tiers[n])).join('');
+    if (p.luckyx.ladders) {
+      /* Barème par rang de la dernière boule choisie (écran de référence, RTP ≈ 90 %) : affiché ici, modifié par migration. */
+      const lad = p.luckyx.ladders, pay = (n, x) => (lad[n] && lad[n][x - n]) || 0;
+      $('lxRates').innerHTML = '<p class="hint">Les N numéros choisis doivent tous sortir parmi les 36 boules ; le gain dépend du rang de la boule qui complète la sélection (ligne). Tableau en lecture seule.</p><div style="overflow:auto"><table class="tbl"><thead><tr><th>Rang</th>'
+        + Array.from({ length: 10 }, (_, i) => '<th>' + (i + 1) + ' boule' + (i ? 's' : '') + '</th>').join('') + '</tr></thead><tbody>'
+        + Array.from({ length: 36 }, (_, x) => '<tr><td>' + (x + 1) + '</td>' + Array.from({ length: 10 }, (_, i) => { const v = pay(i + 1, x + 1); return '<td>' + (v ? PP.short(v) : '–') + '</td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>';
+    } else {
+      $('lxRates').innerHTML = rateBox('1 numéro (6 premières boules)', 'x:single', p.luckyx.single)
+        + Array.from({ length: 9 }, (_, i) => i + 2).map((n) => rateBox(n + ' boules', 'x:' + n, p.luckyx.tiers[n])).join('');
+    }
   }
   const ratesPatch = () => {
     const val = (name) => { const v = $('rateForm').elements[name].value; return v === '' ? 0 : Number(v); };
     const keno = {};
     for (let n = 1; n <= 10; n++) { keno[n] = {}; for (let h = 0; h <= n; h++) { const v = val(`k:${n}:${h}`); if (v > 0) keno[n][h] = v; } }
-    const tiers = {}; for (let n = 2; n <= 10; n++) tiers[n] = val('x:' + n);
+    const lx = settings.paytables.luckyx.ladders ? settings.paytables.luckyx : null, tiers = {};
+    if (!lx) for (let n = 2; n <= 10; n++) tiers[n] = val('x:' + n);
     const target = Number($('rouletteRtp').value);
-    return { ...(target >= 1 && target <= 100 ? { rouletteTargetRtp: target } : {}), paytables: { keno, luckysix: settings.paytables.luckysix.map((_, i) => val('l:' + i)), luckyx: { single: val('x:single'), tiers } } };
+    return { ...(target >= 1 && target <= 100 ? { rouletteTargetRtp: target } : {}), paytables: { keno, luckysix: settings.paytables.luckysix.map((_, i) => val('l:' + i)), luckyx: lx || { single: val('x:single'), tiers } } };
   };
   const saveRatesLater = autosave($('rateForm'), ratesPatch, $('rateMsg'));
   $('kenoAuto').addEventListener('click', saveRatesLater);

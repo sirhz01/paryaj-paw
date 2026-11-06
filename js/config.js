@@ -26,10 +26,25 @@ PP.COLOR_NAMES = ['Noir', 'Rouge', 'Vert', 'Bleu clair', 'Bleu', 'Marron', 'Jaun
 PP.LUCKY_LADDER = [10000, 7500, 5000, 2500, 1000, 500, 300, 200, 150, 100,
   80, 60, 40, 30, 25, 20, 18, 16, 14, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 
-/* Lucky X : 36 boules sur 50, tirées dans un ordre aléatoire. 1 numéro parmi les 36 tirées = cote LUCKYX_SINGLE_ODDS ;
-   N numéros (2..10) tous tirés = LUCKYX_TIERS[N] × la mise. RTP 15 % par pari (valeur par défaut, le serveur fait foi). */
-PP.LUCKYX_TIERS = { 2: 0.292, 3: 0.412, 4: 0.586, 5: 0.843, 6: 1.22, 7: 1.79, 8: 2.66, 9: 3.99, 10: 6.06 };
-PP.LUCKYX_SINGLE_ODDS = 0.208;
+/* Lucky X : 36 boules sur 50, tirées dans un ordre aléatoire. On choisit N numéros (1 à 10) : ils doivent tous sortir, et le gain
+   dépend du rang de la boule qui complète la sélection. LUCKYX_LADDERS[N][i] = coefficient × la mise quand la dernière boule
+   choisie sort au rang N + i (aucun gain au-delà). Barème de l'écran de référence, RTP ≈ 90 % ; le serveur fournit la table en vigueur. */
+PP.LUCKYX_LADDERS = {
+  1: [9, 8, 7, 6, 5, 4, 3, 2, 1],
+  2: [100, 40, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  3: [200, 100, 80, 70, 50, 40, 30, 20, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  4: [1000, 200, 80, 60, 50, 40, 30, 25, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  5: [5000, 1000, 500, 400, 300, 200, 100, 90, 70, 50, 45, 40, 35, 30, 20, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  6: [10000, 5000, 2500, 1500, 1000, 700, 500, 250, 200, 100, 90, 80, 70, 60, 50, 40, 30, 25, 15, 14, 13, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  7: [20000, 10000, 5000, 2500, 2000, 1000, 700, 500, 400, 300, 200, 100, 90, 80, 70, 60, 50, 45, 40, 35, 25, 20, 15, 12, 10, 8, 6, 4, 3, 2],
+  8: [30000, 10000, 5000, 4000, 3000, 2000, 1000, 900, 800, 700, 600, 500, 100, 90, 80, 70, 60, 50, 45, 40, 35, 30, 25, 20, 15, 10, 9, 8, 3],
+  9: [50000, 20000, 10000, 5000, 3000, 2000, 1000, 900, 800, 700, 600, 400, 300, 250, 200, 150, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 9, 4],
+  10: [100000, 50000, 40000, 20000, 10000, 5000, 3000, 2500, 1500, 1000, 600, 500, 400, 300, 250, 200, 150, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10],
+};
+/** Coefficient du Lucky X pour N numéros dont le dernier sort au rang x (0 si aucun gain). */
+PP.luckyxPay = (n, x) => (PP.LUCKYX_LADDERS[n] && PP.LUCKYX_LADDERS[n][x - n]) || 0;
+/** Dernier rang qui paie encore pour N numéros. */
+PP.luckyxLast = (n) => (PP.LUCKYX_LADDERS[n] ? n + PP.LUCKYX_LADDERS[n].length - 1 : 0);
 
 /* Keno : KENO_PAY[numéros choisis][numéros trouvés] = coefficient × la mise.
    Valeur par défaut, RTP 15 % par ligne ; le serveur fournit la table en vigueur (api.js) et fait foi. */

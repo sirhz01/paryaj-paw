@@ -49,8 +49,7 @@
     PP.LIMITS = { min: cfg.minStakeCents / 100, max: cfg.maxStakeCents / 100, ticket: cfg.maxTicketCents / 100 };
     PP.KENO_PAY = cfg.paytables.keno;
     PP.LUCKY_LADDER = cfg.paytables.luckysix;
-    PP.LUCKYX_TIERS = cfg.paytables.luckyx.tiers;
-    PP.LUCKYX_SINGLE_ODDS = cfg.paytables.luckyx.single;
+    if (cfg.paytables.luckyx.ladders) PP.LUCKYX_LADDERS = cfg.paytables.luckyx.ladders;
     PP.ROULETTE_ODDS = cfg.paytables.roulette ? cfg.paytables.roulette.odds : null;   // cotes réglées dans l'administration (RTP visé)
     PP.R.ORDER = cfg.wheelOrder;
     PP.CLOSE_MARGIN = cfg.closeMarginSeconds;

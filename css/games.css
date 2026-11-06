@@ -115,14 +115,6 @@ body.luckyx .promo .slide { padding: 0 24rem; }
 .cy-side .ball { width: 3rem; height: 3rem; font-size: 1.15rem; }
 .cy-drum { position: absolute; left: 50%; top: 46%; width: 18rem; height: 18rem; transform: translate(-50%, -50%); }
 .cy-drum canvas { width: 100%; height: 100%; }
-.cy-strip { position: absolute; left: 0; right: 0; bottom: 1.2rem; display: flex; justify-content: center; align-items: flex-end; gap: 1.8rem; }
-.cy-strip .t { text-align: center; opacity: .55; transition: opacity .3s, transform .3s; }
-.cy-strip .t small { display: block; font-size: .55rem; letter-spacing: .08em; }
-.cy-strip .t b { font-size: 1.5rem; font-weight: 600; }
-.cy-strip .t.on { opacity: 1; transform: scale(1.12); color: var(--gold); }
-.cy-strip .seq { background: #101524; padding: .5rem 1.6rem; text-align: center; min-width: 6.5rem; }
-.cy-strip .seq b { font-size: 2.4rem; display: block; line-height: 1; }
-.cy-strip .seq small { font-size: .5rem; letter-spacing: .1em; color: #9db0cc; }
 .cy-done { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); font-size: 1.5rem; letter-spacing: .1em; text-align: center; display: none; }
 body.luckyx[data-phase='result'] .cy-done { display: block; }
 body.luckyx[data-phase='result'] .cy-drum { opacity: .15; }
@@ -216,14 +208,66 @@ body.luckysix[data-phase='result'] .ls-colbet { display: grid; grid-row: 2; grid
 .cy-results { display: none; }
 body.luckyx[data-phase='result'] .cy-side, body.luckyx[data-phase='result'] .cy-drum, body.luckyx[data-phase='result'] .cy-done { display: none; }
 body.luckyx[data-phase='result'] .cy-results { display: block; position: absolute; inset: 0; }
-body.luckyx[data-phase='result'] .cy-strip { bottom: 9.6rem; }
-.cy-results .rt { position: absolute; left: 2rem; top: 1.4rem; font-size: 1.6rem; font-weight: 800; letter-spacing: .06em; }
-.cy-results .rall { position: absolute; right: 1.6rem; top: 1.2rem; display: grid; grid-template-columns: repeat(10, auto); gap: .5rem; }
-.cy-results .rall .ball { width: 2.1rem; height: 2.1rem; font-size: .85rem; }
-.cy-results .rall .ball.off { opacity: .22; filter: saturate(.6); box-shadow: none; }
-.cy-results .rall .ball.on { box-shadow: 0 0 0 .12rem rgba(255, 255, 255, .85), 0 .15rem .4rem rgba(0, 0, 0, .55); }
-.cy-results .rfl { position: absolute; left: 2.6rem; top: 5rem; display: grid; gap: .7rem; justify-items: center; }
-.cy-results .rfl small { display: block; font-size: .7rem; letter-spacing: .12em; text-align: center; color: #cfe3f7; margin-bottom: .2rem; }
-.cy-results .rfl .ball { width: 6.4rem; height: 6.4rem; font-size: 2.6rem; }
-.cy-results .rdr { position: absolute; left: 0; right: 0; bottom: 1.2rem; display: grid; grid-template-columns: repeat(18, auto); justify-content: center; gap: .5rem .4rem; }
-.cy-results .rdr .ball { width: 2.6rem; height: 2.6rem; font-size: 1.05rem; }
+
+/* ===== Lucky X : habillage d'après l'écran de référence ===== */
+/* Boules : disque sombre, anneau lumineux de la couleur (1 rouge, 2 bleu, 3 vert, 4 jaune, 5 violet), numéro blanc. */
+.lxb { display: inline-grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #1b2238, #0b0f1c); color: #fff; font-weight: 600; font-size: 1.05rem; line-height: 1;
+  border: .2rem solid var(--c); box-shadow: 0 0 .55rem var(--c), inset 0 0 .35rem rgba(0, 0, 0, .7); }
+.lxb.pop { animation: bigpop .35s ease-out; }
+.lxb.off { opacity: .16; box-shadow: none; filter: saturate(.4); }
+.cy-side .lxb { width: 3rem; height: 3rem; }
+body.luckyx #topbar .title { line-height: 1.1; }
+.lxsubt { display: block; font-size: .55rem; letter-spacing: .14em; font-weight: 700; margin-top: .15rem; }
+/* Grosse boule : sphère de couleur brillante, disque sombre au centre cerclé de blanc, numéro blanc fin. */
+body.luckyx .bigball { background: radial-gradient(circle at 36% 30%, rgba(255, 255, 255, .65) 0, rgba(255, 255, 255, 0) 24%), radial-gradient(circle at 50% 50%, var(--sph) 0, var(--sph) 58%, rgba(0, 0, 0, .6) 100%); box-shadow: 0 0 1.6rem var(--bc), 0 .6rem 1.4rem rgba(0, 0, 0, .55); }
+body.luckyx .bigball::before { inset: 17%; background: radial-gradient(circle at 50% 40%, #1b2238, #0b0f1c); border: .35rem solid rgba(255, 255, 255, .92); box-shadow: inset 0 0 .8rem rgba(0, 0, 0, .7); }
+body.luckyx .bigball span { color: #fff; font-weight: 300; font-size: 5.6rem; }
+
+/* Barre du bas : les 10 modes et leur gain à la boule en cours, le rang de tirage au centre. */
+.cy-strip { position: absolute; left: 3rem; right: 3rem; bottom: .9rem; }
+body.luckyx .fs-hint { bottom: .15rem; right: .5rem; font-size: .5rem; opacity: .4; }
+.cy-strip .lxrow { display: flex; justify-content: center; align-items: flex-end; gap: 1.4rem; padding-bottom: .15rem; }
+.cy-strip .t { width: 4.6rem; text-align: center; transition: opacity .3s; }
+.cy-strip .t small { display: block; font-size: .5rem; letter-spacing: .08em; opacity: .75; }
+.cy-strip .t b { font-size: 1.7rem; font-weight: 600; line-height: 1.15; }
+.cy-strip .t.dead { opacity: .3; }
+.cy-strip .seq { background: #0c1224; padding: .4rem 1.1rem; text-align: center; min-width: 6.5rem; margin: 0 .3rem; box-shadow: 0 0 0 .08rem rgba(120, 170, 255, .25); }
+.cy-strip .seq b { font-size: 2.6rem; display: block; line-height: 1; font-weight: 500; }
+.cy-strip .seq small { display: block; font-size: .42rem; letter-spacing: .08em; color: #9db0cc; white-space: nowrap; line-height: 1.3; }
+.lxline { height: .1rem; background: linear-gradient(90deg, transparent, #4aa3ff 12%, #4aa3ff 88%, transparent); margin: .1rem 0 .3rem; }
+.lxsub { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; font-size: .5rem; letter-spacing: .06em; }
+.lxsub small, .rs-st small { display: block; font-size: .5rem; letter-spacing: .08em; color: #cfe3f7; line-height: 1.2; }
+.lxcols { display: flex; gap: 1.1rem; align-items: flex-end; }
+.lxcols .c { min-width: 4.4rem; }
+.rs-st .lxcols .c { min-width: 3.5rem; }
+.rs-st .lxcols { flex-wrap: nowrap; gap: .5rem; }
+.lxcols .dash { display: block; height: .22rem; width: calc(var(--n, 0) * .5rem); max-width: 100%; margin-top: .15rem; background: repeating-linear-gradient(90deg, var(--c) 0 .36rem, transparent .36rem .5rem); box-shadow: 0 0 .3rem var(--c); }
+.lxpi { display: grid; gap: .25rem; min-width: 12rem; }
+.lxpi > div { display: grid; grid-template-columns: 3rem 1fr 1.6rem; gap: .5rem; align-items: center; }
+.lxpi i { display: block; height: .22rem; background: rgba(255, 255, 255, .15); }
+.lxpi i b { display: block; height: 100%; background: #dfe9f7; }
+.lxpi em { font-style: normal; font-size: .7rem; font-weight: 700; text-align: right; }
+.lxsum { display: flex; align-items: center; gap: .6rem; }
+.lxsum b { font-size: 1.2rem; font-weight: 600; min-width: 2.2rem; text-align: right; }
+
+/* Écran des résultats : panneau sombre (statistiques, 50 boules éteintes / allumées, séquence de tirage avec le rang de chaque boule). */
+.cy-results { display: none; }
+body.luckyx[data-phase='result'] .cy-side, body.luckyx[data-phase='result'] .cy-drum, body.luckyx[data-phase='result'] .cy-done, body.luckyx[data-phase='result'] .cy-strip { display: none; }
+body.luckyx[data-phase='result'] .cy-results { display: block; position: absolute; inset: .8rem 1.4rem 1rem; background: rgba(6, 10, 22, .92); border-radius: .5rem; padding: 1rem 1.4rem; }
+.rs-left { position: absolute; left: 1.4rem; top: 1rem; width: 22rem; }
+.rs-t { font-size: 1.15rem; font-weight: 800; text-align: center; line-height: 1.15; }
+.rs-t span { font-size: .95rem; font-weight: 600; }
+.rs-fl { display: grid; gap: .3rem; margin-top: .7rem; }
+.rs-fl small { display: block; font-size: .6rem; letter-spacing: .08em; color: #cfe3f7; }
+.rs-fl b { font-size: 2.6rem; font-weight: 400; line-height: 1.05; }
+.rs-st { margin-top: .6rem; display: grid; gap: .6rem; }
+.rs-st .lxcols { flex-wrap: nowrap; gap: .5rem; }
+.rs-grid { position: absolute; left: 25rem; right: 1.4rem; top: 1rem; display: grid; grid-template-columns: repeat(10, 1fr); gap: .7rem .4rem; justify-items: center; }
+.rs-grid .lxb { width: 2.7rem; height: 2.7rem; font-size: 1rem; }
+.rs-seq { position: absolute; left: 1.4rem; right: 1.4rem; bottom: .8rem; border-top: .08rem solid rgba(255, 255, 255, .1); padding-top: .4rem; }
+.rs-sqt { text-align: center; font-size: .8rem; font-weight: 700; letter-spacing: .06em; margin-bottom: .1rem; }
+.sq-row { margin-top: .15rem; }
+.sq-g, .sq-o, .sq-b { display: grid; grid-template-columns: repeat(18, 1fr); justify-items: center; align-items: center; }
+.sq-g span { font-size: .55rem; font-weight: 700; letter-spacing: .05em; }
+.sq-o i { font-style: normal; font-size: .5rem; color: #9db0cc; }
+.sq-b .lxb { width: 2.45rem; height: 2.45rem; font-size: .95rem; }

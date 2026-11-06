@@ -16,7 +16,7 @@
       let odds;
       if (game === 'keno') odds = Math.max(...Object.values(PP.KENO_PAY[n]));
       else if (game === 'luckysix') odds = PP.LUCKY_LADDER[0];
-      else odds = n === 1 ? PP.LUCKYX_SINGLE_ODDS : PP.LUCKYX_TIERS[n];
+      else odds = Math.max(...PP.LUCKYX_LADDERS[n]);
       const label = { keno: `Keno ${n} numéros`, luckysix: '6 numéros', luckyx: n === 1 ? 'Pari simple' : `${n} boules` }[game];
       return { label, picks: [...picks].sort((a, b) => a - b), odds, stake, possible: stake * odds };
     },
@@ -39,8 +39,11 @@
             if (found === 6) { if (i + 1 >= 6) win += l.stake * PP.LUCKY_LADDER[i + 1 - 6]; break; }
           }
         } else if (t.game === 'luckyx') {
-          if (l.picks.length === 1) { if (res.draw.includes(l.picks[0])) win += l.stake * PP.LUCKYX_SINGLE_ODDS; }
-          else if (l.picks.every((p) => res.draw.includes(p))) win += l.stake * PP.LUCKYX_TIERS[l.picks.length];
+          let found = 0;
+          for (let i = 0; i < res.draw.length; i++) {
+            if (l.picks.includes(res.draw[i])) found++;
+            if (found === l.picks.length) { win += l.stake * PP.luckyxPay(l.picks.length, i + 1); break; }
+          }
         }
       }
       return win > 0 ? { state: 'won', win } : { state: 'lost', win: 0 };

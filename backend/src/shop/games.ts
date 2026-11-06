@@ -33,7 +33,12 @@ export interface ShopPaytables {
   keno: Record<string, Record<string, number>>;
   /** Coefficient de la boule n° 6 à n° 35 qui complète les 6 numéros du joueur (30 valeurs). */
   luckysix: number[];
-  luckyx: { single: number; tiers: Record<string, number> };
+  /**
+   * Lucky X. Barème actuel : ladders[N][i] = coefficient quand les N numéros choisis sont tous sortis et que le dernier
+   * sort à la boule n° N + i (la boule n° N + i = rang de tirage), 0 ou absent au-delà. Les anciennes versions (single/tiers :
+   * « tous dans les 36 boules ») restent lisibles pour régler les tickets déjà vendus.
+   */
+  luckyx: { ladders?: Record<string, number[]>; single?: number; tiers?: Record<string, number> };
   /**
    * Cotes de la roulette, calculées à partir du RTP visé réglé dans l'administration (voir rouletteOddsForRtp).
    * Absent dans les anciennes versions : DEFAULT_ROULETTE_ODDS s'applique alors.
@@ -189,8 +194,10 @@ export function numbersOdds(game: NumberGame, count: number, paytables: ShopPayt
     return row ? Math.max(...Object.values(row)) : null;
   }
   if (game === 'luckysix') return paytables.luckysix[0];
-  if (count === 1) return paytables.luckyx.single;
-  return paytables.luckyx.tiers[String(count)] ?? null;
+  const ladder = paytables.luckyx.ladders?.[String(count)];
+  if (ladder) return Math.max(0, ...ladder) || null;
+  if (count === 1) return paytables.luckyx.single ?? null;
+  return paytables.luckyx.tiers?.[String(count)] ?? null;
 }
 
 /** Ligne de ticket pour Keno, Lucky Six et Lucky X ; null si le nombre de numéros n'a pas de cote. */
@@ -224,6 +231,16 @@ export function checkPicks(game: NumberGame, picks: readonly number[]): string |
 
 export type ShopResult = { n: string } | { draw: number[] };
 
+/** Lucky X : rang (1 à 36) de la boule qui complète les numéros choisis ; null si l'un d'eux n'est pas sorti. */
+export function luckyxRank(picks: readonly number[], draw: readonly number[]): number | null {
+  let found = 0;
+  for (let i = 0; i < draw.length; i++) {
+    if (picks.includes(draw[i])) found++;
+    if (found === picks.length) return i + 1;
+  }
+  return null;
+}
+
 /** Gain (centimes) d'une ligne pour un résultat donné. */
 export function lineWin(game: ShopGame, line: TicketLine, result: ShopResult, paytables: ShopPaytables): number {
   if (game === 'roulette') {
@@ -247,11 +264,16 @@ export function lineWin(game: ShopGame, line: TicketLine, result: ShopResult, pa
     }
     return 0;
   }
+  const ladders = paytables.luckyx.ladders;
+  if (ladders) {
+    const rank = luckyxRank(picks, draw);
+    return rank === null ? 0 : Math.round(line.stakeCents * (ladders[String(picks.length)]?.[rank - picks.length] ?? 0));
+  }
   if (picks.length === 1) {
-    return draw.includes(picks[0]) ? Math.round(line.stakeCents * paytables.luckyx.single) : 0;
+    return draw.includes(picks[0]) ? Math.round(line.stakeCents * (paytables.luckyx.single ?? 0)) : 0;
   }
   return picks.every((p) => draw.includes(p))
-    ? Math.round(line.stakeCents * (paytables.luckyx.tiers[String(picks.length)] ?? 0))
+    ? Math.round(line.stakeCents * (paytables.luckyx.tiers?.[String(picks.length)] ?? 0))
     : 0;
 }
 
@@ -314,9 +336,19 @@ export function rtpReport(paytables: ShopPaytables, topLineEnabled: boolean): Rt
     six += ((paytables.luckysix[position - 6] ?? 0) * choose(position - 1, 5)) / choose(48, 6);
   }
   add('luckysix', '6 numéros', six);
-  add('luckyx', '1 numéro', (paytables.luckyx.single * NUMBER_GAMES.luckyx.drawn) / NUMBER_GAMES.luckyx.max);
-  for (const [n, coefficient] of Object.entries(paytables.luckyx.tiers)) {
-    add('luckyx', `${n} boules`, (coefficient * choose(NUMBER_GAMES.luckyx.drawn, Number(n))) / choose(NUMBER_GAMES.luckyx.max, Number(n)));
+  if (paytables.luckyx.ladders) {
+    // P(la dernière des N boules choisies sort au rang X) = C(X − 1, N − 1) / C(50, N)
+    for (const [n, ladder] of Object.entries(paytables.luckyx.ladders)) {
+      const picks = Number(n);
+      let rtp = 0;
+      ladder.forEach((coefficient, i) => { rtp += (coefficient * choose(picks + i - 1, picks - 1)) / choose(NUMBER_GAMES.luckyx.max, picks); });
+      add('luckyx', picks === 1 ? '1 numéro' : `${n} boules`, rtp);
+    }
+  } else {
+    add('luckyx', '1 numéro', ((paytables.luckyx.single ?? 0) * NUMBER_GAMES.luckyx.drawn) / NUMBER_GAMES.luckyx.max);
+    for (const [n, coefficient] of Object.entries(paytables.luckyx.tiers ?? {})) {
+      add('luckyx', `${n} boules`, (coefficient * choose(NUMBER_GAMES.luckyx.drawn, Number(n))) / choose(NUMBER_GAMES.luckyx.max, Number(n)));
+    }
   }
   return out;
 }
@@ -339,9 +371,19 @@ export function validatePaytables(paytables: ShopPaytables): string[] {
   if (!Array.isArray(paytables.luckysix) || paytables.luckysix.length !== LUCKYSIX_LADDER_SIZE || !paytables.luckysix.every(coefficient)) {
     errors.push(`luckysix : ${LUCKYSIX_LADDER_SIZE} coefficients positifs attendus`);
   }
-  if (!coefficient(paytables.luckyx?.single)) errors.push('luckyx : coefficient du pari simple invalide');
-  for (let n = 2; n <= NUMBER_GAMES.luckyx.maxPick; n++) {
-    if (!coefficient(paytables.luckyx?.tiers?.[String(n)])) errors.push(`luckyx : palier ${n} boules manquant`);
+  if (paytables.luckyx?.ladders) {
+    for (let n = NUMBER_GAMES.luckyx.min; n <= NUMBER_GAMES.luckyx.maxPick; n++) {
+      const ladder = paytables.luckyx.ladders[String(n)];
+      const longest = NUMBER_GAMES.luckyx.drawn - n + 1;
+      if (!Array.isArray(ladder) || ladder.length === 0 || ladder.length > longest || !ladder.every(coefficient)) {
+        errors.push(`luckyx : barème de ${n} boule(s) invalide (1 à ${longest} coefficients positifs attendus)`);
+      }
+    }
+  } else {
+    if (!coefficient(paytables.luckyx?.single)) errors.push('luckyx : coefficient du pari simple invalide');
+    for (let n = 2; n <= NUMBER_GAMES.luckyx.maxPick; n++) {
+      if (!coefficient(paytables.luckyx?.tiers?.[String(n)])) errors.push(`luckyx : palier ${n} boules manquant`);
+    }
   }
   if (paytables.roulette !== undefined) {
     const r = paytables.roulette;

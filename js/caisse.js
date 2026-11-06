@@ -18,7 +18,7 @@ PP.ready.then(function () {
   const NUM = {   // paramètres des grilles de numéros
     keno:     { max: 80, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 80' },
     luckysix: { max: 48, min: 6, maxPick: 6,  text: 'Choisir exactement 6 numéros sur 48' },
-    luckyx:   { max: 50, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 50 (36 boules tirées au hasard)' },
+    luckyx:   { max: 50, min: 1, maxPick: 10, text: 'Choisir de 1 à 10 numéros sur 50 : ils doivent tous sortir parmi les 36 boules tirées ; plus la dernière sort tôt, plus le gain est grand' },
   };
 
   /* ---------- En-tête ---------- */
@@ -211,7 +211,7 @@ PP.ready.then(function () {
     $('slip').innerHTML = lines.length ? lines.map((l, i) => `
       <div class="ln"><b>${l.label}${game !== 'roulette' && i < saved.length ? ' · mise ' + (i + 1) : ''}</b><span>${PP.money(l.stake)}</span><button data-i="${i}" title="${game === 'roulette' ? 'Retirer' : 'Retirer cette mise'}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
         ${game === 'roulette' ? '' : `<div class="pk">${l.picks.map((n) => `<button data-p="${n}" data-l="${i}" title="Retirer le ${n}">${n} <i class="fa-solid fa-xmark" aria-hidden="true"></i></button>`).join('')}${i < saved.length ? `<button class="ed" data-e="${i}" title="Reprendre cette mise pour ajouter des numéros"><i class="fa-solid fa-pen" aria-hidden="true"></i> Modifier</button>` : ''}</div>`}
-        <small>${l.picks.join(' ')} · cote ${l.odds.toFixed(2)} · gain possible ${PP.money(l.possible)}</small></div>`).join('')
+        <small>${l.picks.join(' ')} · cote ${l.odds.toFixed(2)} · gain possible ${PP.money(l.possible)}${game === 'luckyx' ? `<br>Gain selon le rang de la dernière boule : ×${PP.luckyxPay(l.picks.length, l.picks.length)} (rang ${l.picks.length}) → ×${PP.luckyxPay(l.picks.length, PP.luckyxLast(l.picks.length))} (rang ${PP.luckyxLast(l.picks.length)})` : ''}</small></div>`).join('')
       : '<div class="empty">Aucune mise. Choisir sur le plateau.</div>';
     syncMulti();
     if (game === 'roulette') document.querySelectorAll('#rtable .rc').forEach((c) => {

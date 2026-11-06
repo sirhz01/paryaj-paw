@@ -66,6 +66,7 @@
         <div class="kind">(${l.label})</div>
         ${picksHTML(l.picks)}
         ${row('Cotes:', l.odds.toFixed(2))}
+        ${t.game === 'luckyx' ? row('Rang payé:', l.picks.length + ' à ' + PP.luckyxLast(l.picks.length)) : ''}
         ${t.bundle ? '' : row('Mise:', PP.money(l.stake)) + row('Gain possible:', PP.money(l.possible))}
       </div>`).join('<hr class="thin">');
     const total = t.totalStake != null ? t.totalStake : t.lines.reduce((a, l) => a + l.stake, 0);
