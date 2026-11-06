@@ -75,7 +75,7 @@ body.roulette {
 /* ---- Phases ---- */
 /* bet : table à gauche, roue sur le côté. */
 /* draw : la roue passe au centre de l'écran, la table s'efface. */
-[data-phase='draw'] .wheel-wrap { left: 50%; top: 54%; width: 56rem; }
+[data-phase='draw'] .wheel-wrap { left: 50%; top: 50%; width: 41rem; }   /* tous les numéros restent visibles ; seul le bord du bol dépasse un peu */
 [data-phase='draw'] .table-wrap { opacity: 0; transform: scale(.97); pointer-events: none; }
 [data-phase='draw'] .hub { font-size: 0; }
 [data-phase='draw'] .latest { opacity: .0; }
