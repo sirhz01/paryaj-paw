@@ -40,6 +40,8 @@ export interface AppConfig {
   smtpPort: number;
   smtpUser: string;
   smtpPass: string;
+  /** Compte de l'éditeur de la plateforme (une instance par exploitant) : invisible et intouchable depuis le back-office. Vide = aucun. */
+  platformAdminEmail: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -99,5 +101,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     smtpPort: integer('SMTP_PORT', 465),
     smtpUser: env.SMTP_USER ?? '',
     smtpPass: env.SMTP_PASS ?? '',
+    platformAdminEmail: (env.PLATFORM_ADMIN_EMAIL ?? '').trim().toLowerCase(),
   };
 }
