@@ -230,7 +230,7 @@ PP.ready.then(function () {
   /** Premier nombre de numéros trouvés qui gagne, selon le nombre de numéros choisis (usage des tables internationales). */
   const KENO_FROM = { 1: 1, 2: 2, 3: 2, 4: 2, 5: 3, 6: 3, 7: 3, 8: 4, 9: 4, 10: 5 };
   const KENO_DECAY = 0.55;
-  const floorTo = (c) => { const step = c < 10 ? 0.1 : c < 100 ? 0.5 : c < 1000 ? 1 : 5; return Math.round(Math.floor(c / step) * step * 100) / 100; };
+  const floorTo = (c) => { const step = c < 1 ? 0.01 : c < 10 ? 0.1 : c < 100 ? 0.5 : c < 1000 ? 1 : 5; return Math.round(Math.floor(c / step) * step * 100) / 100; };
 
   /** Coefficients d'une ligne : le retour visé est réparti sur les niveaux gagnants (les plus fréquents en reçoivent le plus), arrondis vers le bas. */
   function kenoRow(n, rtp) {
@@ -250,7 +250,7 @@ PP.ready.then(function () {
   }
   $('kenoAuto').addEventListener('click', () => {
     const rtp = Number($('kenoRtp').value) / 100;
-    if (!(rtp > 0.5 && rtp < 1)) return flash($('rateMsg'), 'RTP visé : entre 50 et 99 %.', false);
+    if (!(rtp >= 0.01 && rtp < 1)) return flash($('rateMsg'), 'RTP visé : entre 1 et 99 %.', false);
     for (let n = 1; n <= 10; n++) {
       const row = kenoRow(n, rtp);
       for (let h = 0; h <= n; h++) $('rateForm').elements[`k:${n}:${h}`].value = row[h] === undefined ? '' : row[h];
