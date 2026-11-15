@@ -126,7 +126,7 @@
     STAKE_TOO_HIGH: 'Mise trop élevée.',
     TICKET_TOO_HIGH: 'Total du ticket trop élevé.',
     PAYOUT_LIMIT: 'Gain possible au-dessus du plafond.',
-    UNKNOWN_TERMINAL: 'Caisse inconnue.',
+    UNKNOWN_TERMINAL: 'Caisse inconnue : rechargez la page (les caisses ont changé) puis choisissez votre caisse.',
     TERMINAL_NOT_ALLOWED: 'Ce compte est lié à une autre caisse.',
     ACCOUNT_LOCKED: 'Trop d’échecs : compte bloqué quelques minutes.',
     ACCOUNT_NOT_AUTHORIZED: 'Accès non autorisé : demandez au responsable de vous autoriser.',

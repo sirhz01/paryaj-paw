@@ -21,6 +21,14 @@ class CreateCashierDto {
   terminal?: string;
 }
 
+class TerminalDto {
+  /** Caisse attribuée ; null ou absent : aucune (le caissier choisit). */
+  @IsOptional()
+  @IsString()
+  @Matches(TERMINAL)
+  terminal?: string | null;
+}
+
 class AccessDto {
   @IsBoolean()
   active!: boolean;
@@ -52,6 +60,11 @@ export class AdminCashiersController {
   @Patch(':id/access')
   setAccess(@CurrentStaff() staff: StaffPrincipal, @Param('id', ParseIntPipe) id: number, @Body() dto: AccessDto) {
     return this.cashiers.setAccess(staff.id, id, dto.active);
+  }
+
+  @Patch(':id/terminal')
+  setTerminal(@CurrentStaff() staff: StaffPrincipal, @Param('id', ParseIntPipe) id: number, @Body() dto: TerminalDto) {
+    return this.cashiers.setTerminal(staff.id, id, dto.terminal ?? null);
   }
 
   @Patch(':id/password')

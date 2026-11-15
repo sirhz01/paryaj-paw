@@ -130,6 +130,20 @@ export class ShopSettingsService implements OnModuleInit, OnApplicationShutdown 
     if (errors.length > 0) throw new AppError('INVALID_SETTINGS', 400, { errors });
 
     const saved = await this.db.transaction(async (tx) => {
+      // Les comptes caissiers suivent leur caisse : renommée (même position) → le lien est renommé ;
+      // supprimée → le lien est retiré. Sans cela, le caissier resterait bloqué sur une caisse inconnue.
+      const before = current.terminals, after = input.terminals;
+      if (before.length === after.length) {
+        for (let i = 0; i < before.length; i++) {
+          if (before[i] !== after[i] && !after.includes(before[i]) && !before.includes(after[i])) {
+            await tx.query('UPDATE staff SET terminal = $2 WHERE terminal = $1', [before[i], after[i]]);
+          }
+        }
+      }
+      await tx.query(
+        'UPDATE staff SET terminal = NULL WHERE terminal IS NOT NULL AND terminal NOT IN (SELECT jsonb_array_elements_text($1::jsonb))',
+        [JSON.stringify(after)],
+      );
       const { rows } = await tx.query<ShopSettings>(
         `INSERT INTO shop_settings (point_of_sale, issuer, terminals, stakes_cents, min_stake_cents, max_stake_cents,
                                     max_ticket_cents, max_payout_cents, approval_threshold_cents, top_line_enabled,

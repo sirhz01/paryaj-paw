@@ -28,7 +28,8 @@ PP.ready.then(function () {
     $('stake').min = PP.LIMITS.min; $('stake').step = PP.LIMITS.min;
   } else $('demoBanner').classList.remove('hidden');
   const savedCaisse = localStorage.getItem('pp.caisse');
-  if (savedCaisse) $('caisseSel').value = savedCaisse;
+  // Une caisse renommée ou retirée depuis ne doit pas vider la liste (la vente partirait sans caisse).
+  if (savedCaisse && [...$('caisseSel').options].some((o) => o.value === savedCaisse)) $('caisseSel').value = savedCaisse;
   $('caisseSel').addEventListener('change', (e) => localStorage.setItem('pp.caisse', e.target.value));
 
   /* ---------- Connexion du caissier (compte du back-office, rôle cashier) ---------- */
@@ -45,7 +46,21 @@ PP.ready.then(function () {
     if (![...$('caisseSel').options].some((o) => o.value === name)) $('caisseSel').add(new Option(name, name));
     $('caisseSel').value = name; $('caisseSel').disabled = true;
   }
-  try { lockTerminal(online && PP.api.token ? sessionStorage.getItem('pp.terminal') : null); } catch (e) { /* stockage bloqué */ }
+  // Au rechargement, on ne reprend que le nom d'une caisse qui existe encore (elle a pu être renommée entre-temps).
+  try {
+    const kept = online && PP.api.token ? sessionStorage.getItem('pp.terminal') : null;
+    lockTerminal(kept && PP.SHOP.terminals.includes(kept) ? kept : null);
+  } catch (e) { /* stockage bloqué */ }
+  /* Caisse renommée ou réattribuée pendant le service : le serveur indique celle du compte, on reprend une fois avec elle. */
+  async function withTerminal(call) {
+    try { return await call($('caisseSel').value); }
+    catch (e) {
+      const mine = e && e.code === 'TERMINAL_NOT_ALLOWED' && e.body && e.body.terminal;
+      if (!mine || mine === $('caisseSel').value) throw e;
+      lockTerminal(mine);
+      return call(mine);
+    }
+  }
   /* ---------- Argent en caisse : déclaré au début et à la fin du service ---------- */
   const shiftOpened = () => { try { return sessionStorage.getItem('pp.shiftOpen') === PP.api.token; } catch (e) { return true; } };
   const askOpeningCash = () => { $('coAmount').value = ''; $('coMsg').textContent = ''; $('cashOpen').classList.remove('hidden'); $('coAmount').focus(); };
@@ -307,7 +322,8 @@ PP.ready.then(function () {
     const later = laterRounds(body.map((b) => b.stakeCents));
     const terminal = $('caisseSel').value, sig = game + '|' + terminal + '|' + JSON.stringify(body) + '|' + JSON.stringify(later);
     if (!pending || pending.sig !== sig) pending = { sig, key: 'v' + PP.newId() + Date.now().toString(36) };
-    const t = PP.fromServerTicket(await PP.api.sell(game, terminal, body, pending.key, later));
+    const key = pending.key;
+    const t = PP.fromServerTicket(await withTerminal((caisse) => PP.api.sell(game, caisse, body, key, later)));
     pending = null;
     return t;
   }
@@ -440,7 +456,7 @@ PP.ready.then(function () {
     const { t, win } = payTicket, btn = $('payBtn');
     btn.disabled = true;
     try {
-      if (online) await PP.api.pay(t.id, $('caisseSel').value);
+      if (online) await withTerminal((caisse) => PP.api.pay(t.id, caisse));
       else { t.status = 'paid'; t.paidAt = PP.now(); PP.tickets.update(t); }
     } catch (e) { return setPay(errText(e), 'err'); }
     finally { btn.disabled = false; }

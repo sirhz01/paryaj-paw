@@ -36,15 +36,37 @@ export class CashiersService {
     adminId: number,
     input: { email: string; password: string; terminal?: string },
   ): Promise<{ id: number; totpSecret: string }> {
+    const terminal = input.terminal ? await this.knownTerminal(input.terminal) : undefined;
     let created: { id: number; totpSecret: string };
     try {
-      created = await createStaff(this.db, { ...input, role: 'cashier', active: false });
+      created = await createStaff(this.db, { ...input, terminal, role: 'cashier', active: false });
     } catch (error) {
       if ((error as { code?: string }).code === '23505') throw new AppError('EMAIL_TAKEN', 409);
       throw error;
     }
-    await this.audit.log(adminId, 'cashier.create', { type: 'staff', id: created.id }, { email: input.email, terminal: input.terminal ?? null });
+    await this.audit.log(adminId, 'cashier.create', { type: 'staff', id: created.id }, { email: input.email, terminal: terminal ?? null });
     return created;
+  }
+
+  /** Nom exact d'une caisse des réglages (sans tenir compte des majuscules) ; refuse une caisse qui n'existe pas. */
+  private async knownTerminal(name: string): Promise<string> {
+    const { rows } = await this.db.query<{ terminals: string[] }>('SELECT terminals FROM shop_settings ORDER BY version DESC LIMIT 1');
+    const wanted = name.trim().toUpperCase();
+    const found = (rows[0]?.terminals ?? []).find((t) => t.toUpperCase() === wanted);
+    if (!found) throw new AppError('UNKNOWN_TERMINAL', 400);
+    return found;
+  }
+
+  /** Attribue une caisse au caissier, ou retire le lien (null) : il choisit alors sa caisse à la connexion. */
+  async setTerminal(adminId: number, id: number, name: string | null): Promise<CashierView> {
+    const terminal = name ? await this.knownTerminal(name) : null;
+    const { rows } = await this.db.query<CashierView>(
+      `UPDATE staff SET terminal = $2 WHERE id = $1 AND role = 'cashier' AND deleted_at IS NULL RETURNING ${VIEW}`,
+      [id, terminal],
+    );
+    if (!rows[0]) throw new AppError('CASHIER_NOT_FOUND', 404);
+    await this.audit.log(adminId, 'cashier.terminal', { type: 'staff', id }, { terminal });
+    return rows[0];
   }
 
   /** Autorise (active) ou bloque un caissier ; un blocage coupe ses sessions en cours (token_version). */

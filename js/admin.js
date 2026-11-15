@@ -321,8 +321,10 @@ PP.ready.then(function () {
   $('shiftGo').addEventListener('click', loadShifts);
 
   /* ---------- Caissiers ---------- */
-  function cashTermOptions() {
-    return ['<option value="">— aucune —</option>'].concat(terminals.map((t) => `<option>${esc(t)}</option>`)).join('');
+  /* Noms enregistrés sur le serveur (et non ceux en cours de saisie) : un compte lié à un nom non enregistré serait refusé à la vente. */
+  function cashTermOptions(selected) {
+    const names = settings ? settings.terminals : terminals;
+    return [`<option value="">— aucune —</option>`].concat(names.map((t) => `<option${t === selected ? ' selected' : ''}>${esc(t)}</option>`)).join('');
   }
   async function loadCashiers() {
     $('cTerm').innerHTML = cashTermOptions();
@@ -332,7 +334,7 @@ PP.ready.then(function () {
         + (list.length ? list.map((c) => {
           const badge = c.active ? '<span class="tag ok">Autorisé</span>' : '<span class="tag off">Bloqué</span>';
           const lock = c.locked ? ' <span class="tag off">verrouillé</span>' : '';
-          return `<tr data-id="${c.id}" data-email="${esc(c.email)}"><td>${esc(c.email)}</td><td>${esc(c.terminal || '—')}</td>`
+          return `<tr data-id="${c.id}" data-email="${esc(c.email)}"><td>${esc(c.email)}</td><td><select data-term aria-label="Caisse attribuée à ${esc(c.email)}">${cashTermOptions(c.terminal)}</select></td>`
             + `<td>${badge}${lock}</td><td class="acts"><button class="ghost" data-act="${c.active ? 'block' : 'allow'}">${c.active ? 'Bloquer' : 'Autoriser'}</button>`
             + `<button class="ghost" data-act="pass">Mot de passe</button><button class="ghost danger" data-act="del">Supprimer</button></td></tr>`;
         }).join('') : '<tr><td colspan="4">Aucun caissier. Créez-en un ci-dessus.</td></tr>') + '</tbody>';
@@ -421,6 +423,15 @@ PP.ready.then(function () {
         : err.code === 'EMAIL_TAKEN' ? 'Cet e-mail est déjà utilisé.'
         : err.code === 'VALIDATION_ERROR' ? 'Adresse e-mail invalide.' : errorText(err), false);
     }
+  });
+  // Changer la caisse attribuée à un caissier (ou « aucune » : il choisit sa caisse à la connexion).
+  $('cashTbl').addEventListener('change', async (e) => {
+    const sel = e.target.closest('[data-term]'); if (!sel) return;
+    const tr = sel.closest('tr');
+    try {
+      await A.call('PATCH', `/admin/cashiers/${tr.dataset.id}/terminal`, { terminal: sel.value || null });
+      flash($('cashMsg'), sel.value ? `${tr.dataset.email} : caisse ${sel.value}.` : `${tr.dataset.email} : aucune caisse attribuée, il choisit à la connexion.`, true);
+    } catch (err) { flash($('cashMsg'), errorText(err), false); loadCashiers(); }
   });
   $('cashTbl').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;

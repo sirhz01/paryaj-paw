@@ -182,8 +182,8 @@ export class TicketsService {
     if (replay) return replay;
 
     const s = await this.settings.current();
+    checkTerminal(staff, input.terminal);   // d'abord : la réponse donne à la caisse le nom à utiliser (caisse renommée)
     if (!s.terminals.includes(input.terminal)) throw new AppError('UNKNOWN_TERMINAL', HttpStatus.BAD_REQUEST);
-    checkTerminal(staff, input.terminal);
     const lines = this.buildLines(input.game, input.lines, s);
 
     const later = input.later ?? [];
@@ -426,8 +426,8 @@ export class TicketsService {
 
   async pay(staff: Seller, id: string, terminal: string): Promise<TicketView & { payoutCents: number }> {
     const s = await this.settings.current();
-    if (!s.terminals.includes(terminal)) throw new AppError('UNKNOWN_TERMINAL', HttpStatus.BAD_REQUEST);
     checkTerminal(staff, terminal);
+    if (!s.terminals.includes(terminal)) throw new AppError('UNKNOWN_TERMINAL', HttpStatus.BAD_REQUEST);
 
     const ticket = await this.get(id);
     if (ticket.status === 'voided') throw new AppError('TICKET_VOIDED', HttpStatus.CONFLICT);

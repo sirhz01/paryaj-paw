@@ -98,6 +98,39 @@ describe('Caissiers (e2e)', () => {
     await api().post('/api/v1/admin/cashiers').set(auth(admin)).send({ email: 'dup@paryajpaw.test', password: PASSWORD }).expect(409);
   });
 
+  it('la caisse attribuée existe toujours : nom exact, renommage suivi, suppression déliée', async () => {
+    const terminalOf = async (id: number) =>
+      (await api().get('/api/v1/admin/cashiers').set(auth(admin)).expect(200)).body.find((c: { id: number }) => c.id === id).terminal;
+    const create = (email: string, terminal: string) =>
+      api().post('/api/v1/admin/cashiers').set(auth(admin)).send({ email, password: PASSWORD, terminal });
+
+    // Caisse inconnue refusée ; minuscules ramenées au nom enregistré.
+    expect((await create('fantome@paryajpaw.test', 'CAISSE #99').expect(400)).body.code).toBe('UNKNOWN_TERMINAL');
+    const a = (await create('suivi-a@paryajpaw.test', 'caisse #1').expect(201)).body.id as number;
+    const b = (await create('suivi-b@paryajpaw.test', 'CAISSE #2').expect(201)).body.id as number;
+    expect(await terminalOf(a)).toBe('CAISSE #1');
+
+    const current = (await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200)).body.settings;
+    const { version: _v, createdAt: _c, ...input } = current;
+    const setTerminals = (terminals: string[]) =>
+      api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, terminals }).expect(200);
+
+    // Renommée : le compte suit ; l'autre caisse ne bouge pas.
+    await setTerminals(['CARLINE#1', ...current.terminals.slice(1)]);
+    expect(await terminalOf(a)).toBe('CARLINE#1');
+    expect(await terminalOf(b)).toBe('CAISSE #2');
+
+    // Supprimée : le lien est retiré (le caissier choisit sa caisse) ; le propriétaire peut en attribuer une autre.
+    await setTerminals(['CARLINE#1']);
+    expect(await terminalOf(a)).toBe('CARLINE#1');
+    expect(await terminalOf(b)).toBeNull();
+    const patch = (terminal: string | null) => api().patch(`/api/v1/admin/cashiers/${b}/terminal`).set(auth(admin)).send({ terminal });
+    expect((await patch('CAISSE #2').expect(400)).body.code).toBe('UNKNOWN_TERMINAL');
+    expect((await patch('carline#1').expect(200)).body.terminal).toBe('CARLINE#1');
+    expect((await patch(null).expect(200)).body.terminal).toBeNull();
+    await setTerminals(current.terminals);
+  });
+
   it('seul le propriétaire gère les caissiers', async () => {
     const finance = await login('finance');
     await api().get('/api/v1/admin/cashiers').set(auth(finance)).expect(403);
