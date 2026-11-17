@@ -302,23 +302,67 @@ PP.ready.then(function () {
       + list.map((r) => `<tr><td>${GAMES[r.game] || esc(r.game)}</td><td>${esc(r.line)}</td><td class="${cls(r.rtpPercent)}">${r.rtpPercent.toFixed(2)} %</td></tr>`).join('') + '</tbody>';
   }
 
-  /* ---------- Rapport caissier (un par déconnexion) ---------- */
-  async function loadShifts() {
+  /* ---------- Rapport caissier (un par déconnexion) : un caissier ou tous, sur une période ---------- */
+  let shiftRows = [];
+  async function loadShiftCashiers() {
     try {
-      const list = await A.call('GET', '/admin/shop/cashier-reports');
-      $('shiftTbl').innerHTML = '<thead><tr><th>Caissier</th><th>Caisse</th><th>Connexion</th><th>Déconnexion</th><th>Tickets vendus</th><th>Ventes</th><th>Gains payés (nb)</th><th>Gains payés</th><th>Net en caisse</th><th>Début</th><th>Attendu</th><th>Fin déclarée</th><th>Écart</th></tr></thead><tbody>'
-        + (list.length ? list.map((r) => {
-          const net = r.stakesCents - r.payoutsCents;
-          const known = r.openingCents !== null && r.closingCents !== null;
-          const expected = known ? r.openingCents + net : null, gap = known ? r.closingCents - expected : null;
-          return `<tr><td>${esc(r.email)}</td><td>${esc(r.terminal || '—')}</td><td>${PP.dateTime(Date.parse(r.startedAt), false)}</td><td>${PP.dateTime(Date.parse(r.endedAt), false)}</td>`
-            + `<td>${r.tickets}</td><td>${cents(r.stakesCents)}</td><td>${r.payouts}</td><td>${cents(r.payoutsCents)}</td><td class="${net < 0 ? 'neg' : ''}">${cents(net)}</td>`
-            + `<td>${r.openingCents === null ? '—' : cents(r.openingCents)}</td><td>${known ? cents(expected) : '—'}</td><td>${r.closingCents === null ? '—' : cents(r.closingCents)}</td>`
-            + `<td class="${gap === null ? '' : gap < 0 ? 'neg' : gap > 0 ? 'pos' : ''}">${gap === null ? '—' : (gap > 0 ? '+' : '') + cents(gap)}</td></tr>`;
-        }).join('') : '<tr><td colspan="13">Aucun rapport : il apparaît quand un caissier se déconnecte.</td></tr>') + '</tbody>';
-    } catch (e) { $('shiftTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
+      const keep = $('shiftWho').value;
+      const list = await A.call('GET', '/admin/shop/cashiers');
+      $('shiftWho').innerHTML = '<option value="">Tous les caissiers</option>'
+        + list.map((c) => `<option value="${esc(c.id)}">${esc(c.email)}${c.deleted ? ' (supprimé)' : ''}</option>`).join('');
+      $('shiftWho').value = keep;
+    } catch (e) { /* la liste reste celle du dernier chargement : le rapport s'affiche quand même */ }
   }
-  $('shiftGo').addEventListener('click', loadShifts);
+  async function loadShifts() {
+    let from = $('shiftFrom').value, to = $('shiftTo').value;
+    if (from && to && from > to) { [from, to] = [to, from]; $('shiftFrom').value = from; $('shiftTo').value = to; }
+    const qs = new URLSearchParams();
+    if ($('shiftWho').value) qs.set('staffId', $('shiftWho').value);
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    try {
+      const list = shiftRows = await A.call('GET', '/admin/shop/cashier-reports' + (qs.toString() ? '?' + qs : ''));
+      const who = $('shiftWho').value ? $('shiftWho').selectedOptions[0].textContent : 'tous les caissiers';
+      const sum = { tickets: 0, stakesCents: 0, payouts: 0, payoutsCents: 0, gap: 0, gapCount: 0 };
+      const row = (r) => {
+        const net = r.stakesCents - r.payoutsCents;
+        const known = r.openingCents !== null && r.closingCents !== null;
+        const expected = known ? r.openingCents + net : null, gap = known ? r.closingCents - expected : null;
+        sum.tickets += r.tickets; sum.stakesCents += Number(r.stakesCents); sum.payouts += r.payouts; sum.payoutsCents += Number(r.payoutsCents);
+        if (known) { sum.gap += gap; sum.gapCount++; }
+        return `<tr><td>${esc(r.email)}</td><td>${esc(r.terminal || '—')}</td><td>${PP.dateTime(Date.parse(r.startedAt), false)}</td><td>${PP.dateTime(Date.parse(r.endedAt), false)}</td>`
+          + `<td>${r.tickets}</td><td>${cents(r.stakesCents)}</td><td>${r.payouts}</td><td>${cents(r.payoutsCents)}</td><td class="${net < 0 ? 'neg' : ''}">${cents(net)}</td>`
+          + `<td>${r.openingCents === null ? '—' : cents(r.openingCents)}</td><td>${known ? cents(expected) : '—'}</td><td>${r.closingCents === null ? '—' : cents(r.closingCents)}</td>`
+          + `<td class="${gap === null ? '' : gap < 0 ? 'neg' : gap > 0 ? 'pos' : ''}">${gap === null ? '—' : (gap > 0 ? '+' : '') + cents(gap)}</td></tr>`;
+      };
+      const body = list.map(row).join('');
+      const net = sum.stakesCents - sum.payoutsCents;
+      $('shiftTbl').innerHTML = '<thead><tr><th>Caissier</th><th>Caisse</th><th>Connexion</th><th>Déconnexion</th><th>Tickets vendus</th><th>Ventes</th><th>Gains payés (nb)</th><th>Gains payés</th><th>Net en caisse</th><th>Début</th><th>Attendu</th><th>Fin déclarée</th><th>Écart</th></tr></thead><tbody>'
+        + (list.length ? body + `<tr class="sum"><td colspan="4">Total (${list.length} session${list.length > 1 ? 's' : ''})</td><td>${sum.tickets}</td><td>${cents(sum.stakesCents)}</td><td>${sum.payouts}</td><td>${cents(sum.payoutsCents)}</td><td class="${net < 0 ? 'neg' : ''}">${cents(net)}</td><td colspan="3"></td><td class="${sum.gap < 0 ? 'neg' : sum.gap > 0 ? 'pos' : ''}">${sum.gapCount ? (sum.gap > 0 ? '+' : '') + cents(sum.gap) : '—'}</td></tr>`
+          : '<tr><td colspan="13">Aucun rapport pour ce choix : il apparaît quand un caissier se déconnecte.</td></tr>') + '</tbody>';
+      const kpi = (label, value, cls) => `<div class="kpi"><span>${label}</span><b class="${cls || ''}">${value}</b></div>`;
+      $('shiftKpis').innerHTML = list.length ? kpi('Sessions', list.length) + kpi('Tickets vendus', sum.tickets) + kpi('Ventes', cents(sum.stakesCents))
+        + kpi('Gains payés', cents(sum.payoutsCents)) + kpi('Net en caisse', cents(net), net < 0 ? 'neg' : 'pos')
+        + kpi('Écart de caisse', sum.gapCount ? (sum.gap > 0 ? '+' : '') + cents(sum.gap) : '—', sum.gap < 0 ? 'neg' : sum.gap > 0 ? 'pos' : '') : '';
+      $('shiftInfo').textContent = `${who}, ${from ? 'du ' + from : 'depuis le début'}${to ? ' au ' + to : ''} (sessions terminées dans cette période).`
+        + (list.length >= 1000 ? ' Seules les 1 000 plus récentes sont affichées : réduisez la période.' : '');
+    } catch (e) { shiftRows = []; $('shiftKpis').innerHTML = ''; $('shiftTbl').innerHTML = `<tr><td class="neg">${esc(A.message(e))}</td></tr>`; }
+  }
+  $('shiftGo').addEventListener('click', () => { loadShiftCashiers(); loadShifts(); });
+  $('shiftWho').addEventListener('change', loadShifts);
+  $('shiftFrom').addEventListener('change', loadShifts);
+  $('shiftTo').addEventListener('change', loadShifts);
+  $('shiftCsv').addEventListener('click', () => {
+    const csvText = (v) => { const s = String(v ?? ''); return /^[=+\-@]/.test(s) ? "'" + s : s; };   // pas de formule dans un tableur
+    const head = 'caissier;caisse;connexion;deconnexion;tickets;ventes_htg;gains_payes_nb;gains_payes_htg;net_htg;debut_htg;fin_declaree_htg';
+    const htg = (c) => (c === null ? '' : Number(c) / 100);
+    const csv = [head].concat(shiftRows.map((r) => [csvText(r.email), csvText(r.terminal), r.startedAt, r.endedAt, r.tickets, htg(r.stakesCents), r.payouts, htg(r.payoutsCents),
+      (r.stakesCents - r.payoutsCents) / 100, htg(r.openingCents), htg(r.closingCents)].join(';'))).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `rapport-caissier_${$('shiftFrom').value || 'debut'}_${$('shiftTo').value || 'fin'}.csv`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
 
   /* ---------- Caissiers ---------- */
   /* Noms enregistrés sur le serveur (et non ceux en cours de saisie) : un compte lié à un nom non enregistré serait refusé à la vente. */
@@ -467,7 +511,7 @@ PP.ready.then(function () {
       fillSettings(settings); fillRates(settings); renderRtp(r.rtp);
       $('login').classList.add('hidden'); // l'écran de connexion reste affiché tant que la session n'est pas validée
       if (canEdit()) { loadCashiers(); loadAdmins(); }
-      loadShifts();
+      loadShiftCashiers(); loadShifts();
     } catch (e) {
       if (e.status !== 401) { A.logout(); showLogin(e.status === 403 ? 'Ce compte n’a pas accès à l’administration (compte propriétaire requis).' : A.message(e)); }
       return;

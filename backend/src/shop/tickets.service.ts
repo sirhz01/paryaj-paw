@@ -560,15 +560,33 @@ export class TicketsService {
     };
   }
 
-  /** Derniers rapports de caissier, du plus récent au plus ancien. */
-  async cashierReports(limit: number) {
+  /**
+   * Rapports de caissier, du plus récent au plus ancien. Filtres facultatifs : un caissier, et une période
+   * (jours d'Haïti, bornes comprises) appliquée à l'heure de déconnexion, comme le rapport du jour.
+   */
+  async cashierReports(limit: number, filter: { staffId?: number; from?: string; to?: string } = {}) {
     const { rows } = await this.db.query(
-      `SELECT r.id, regexp_replace(s.email, '#supprime-[0-9]+$', '') AS email, r.terminal, r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
+      `SELECT r.id, r.staff_id::text AS "staffId", regexp_replace(s.email, '#supprime-[0-9]+$', '') AS email, r.terminal,
+              r.started_at AS "startedAt", r.ended_at AS "endedAt", r.tickets,
               r.stakes_cents::bigint AS "stakesCents", r.payouts, r.payouts_cents::bigint AS "payoutsCents",
               r.opening_cents::bigint AS "openingCents", r.closing_cents::bigint AS "closingCents"
          FROM cashier_reports r JOIN staff s ON s.id = r.staff_id
+        WHERE ($2::bigint IS NULL OR r.staff_id = $2::bigint)
+          AND ($3::text IS NULL OR r.ended_at >= ($3::date::timestamp AT TIME ZONE '${HAITI_TIME_ZONE}'))
+          AND ($4::text IS NULL OR r.ended_at < (($4::date + 1)::timestamp AT TIME ZONE '${HAITI_TIME_ZONE}'))
         ORDER BY r.ended_at DESC LIMIT $1`,
-      [limit],
+      [limit, filter.staffId ?? null, filter.from ?? null, filter.to ?? null],
+    );
+    return rows;
+  }
+
+  /** Comptes caissiers à proposer dans le rapport : actifs ou non, supprimés compris tant qu'ils ont des rapports. */
+  async cashierAccounts() {
+    const { rows } = await this.db.query(
+      `SELECT s.id::text AS id, regexp_replace(s.email, '#supprime-[0-9]+$', '') AS email, (s.deleted_at IS NOT NULL) AS deleted
+         FROM staff s
+        WHERE s.role = 'cashier' AND (s.deleted_at IS NULL OR EXISTS (SELECT 1 FROM cashier_reports r WHERE r.staff_id = s.id))
+        ORDER BY lower(regexp_replace(s.email, '#supprime-[0-9]+$', '')), s.id`,
     );
     return rows;
   }

@@ -162,6 +162,24 @@ class RangeQuery {
   to!: string;
 }
 
+const CASHIER_REPORTS_LIMIT = 1000;
+
+class CashierReportsQuery {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  staffId?: number;
+
+  @IsOptional()
+  @Matches(DAY_FORMAT)
+  from?: string;
+
+  @IsOptional()
+  @Matches(DAY_FORMAT)
+  to?: string;
+}
+
 class ShopSettingsDto {
   @IsString()
   @MaxLength(120)
@@ -388,10 +406,17 @@ export class ShopAdminController {
     return this.tickets.breakdown(q.from, q.to);
   }
 
-  /** Rapports de session des caissiers (un par déconnexion). */
+  /** Rapports de session des caissiers (un par déconnexion), filtrables par caissier et par période (jours d'Haïti, selon la déconnexion). */
   @Get('cashier-reports')
   @Roles('super_admin', 'finance', 'auditor')
-  cashierReports() {
-    return this.tickets.cashierReports(200);
+  cashierReports(@Query() q: CashierReportsQuery) {
+    return this.tickets.cashierReports(CASHIER_REPORTS_LIMIT, { staffId: q.staffId, from: q.from, to: q.to });
+  }
+
+  /** Comptes caissiers (y compris supprimés, qui ont des rapports) pour choisir un caissier dans le rapport. */
+  @Get('cashiers')
+  @Roles('super_admin', 'finance', 'auditor')
+  cashiers() {
+    return this.tickets.cashierAccounts();
   }
 }

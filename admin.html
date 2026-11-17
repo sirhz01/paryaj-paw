@@ -159,7 +159,15 @@
       <div class="card">
         <h2>Rapport caissier</h2>
         <p class="hint">Un rapport est ajouté chaque fois qu’un caissier se déconnecte : tickets vendus et gains payés pendant sa session.</p>
-        <div class="filters"><button class="ghost" id="shiftGo">Actualiser</button></div>
+        <div class="filters">
+          <label>Caissier <select id="shiftWho"><option value="">Tous les caissiers</option></select></label>
+          <label>Du <input type="date" id="shiftFrom"></label>
+          <label>Au <input type="date" id="shiftTo"></label>
+          <button class="ghost" id="shiftGo">Actualiser</button>
+          <button class="ghost" id="shiftCsv">Exporter CSV</button>
+        </div>
+        <p class="hint" id="shiftInfo"></p>
+        <div class="kpis" id="shiftKpis"></div>
         <table class="tbl" id="shiftTbl"></table>
       </div>
     </section>

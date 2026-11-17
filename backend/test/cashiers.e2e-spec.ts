@@ -131,6 +131,49 @@ describe('Caissiers (e2e)', () => {
     await setTerminals(current.terminals);
   });
 
+  it('le rapport caissier se filtre par caissier et par période (jours d’Haïti)', async () => {
+    const a = (await createStaff(db, { email: 'rapport-a@paryajpaw.test', role: 'cashier', password: PASSWORD })).id;
+    const b = (await createStaff(db, { email: 'rapport-b@paryajpaw.test', role: 'cashier', password: PASSWORD })).id;
+    const report = (staff: number, start: string, end: string, tickets: number) =>
+      db.query(
+        `INSERT INTO cashier_reports (staff_id, terminal, started_at, ended_at, tickets, stakes_cents, payouts, payouts_cents)
+         VALUES ($1, 'CAISSE #1', $2, $3, $4, $4 * 1000, 0, 0)`,
+        [staff, start, end, tickets],
+      );
+    // Janvier : heure d'Haïti = UTC−5. La 2e session finit à 23 h 30 le 10 (04:30Z le 11), la 3e à 00 h 30 le 11.
+    await report(a, '2026-01-10T13:00:00Z', '2026-01-10T15:00:00Z', 1);
+    await report(a, '2026-01-11T02:00:00Z', '2026-01-11T04:30:00Z', 2);
+    await report(a, '2026-01-11T05:00:00Z', '2026-01-11T05:30:00Z', 4);
+    await report(b, '2026-01-10T14:00:00Z', '2026-01-10T16:00:00Z', 8);
+    const get = (qs: string, token = admin) => api().get(`/api/v1/admin/shop/cashier-reports${qs}`).set(auth(token));
+    const tickets = (rows: { tickets: number }[]) => rows.map((r) => r.tickets).sort((x, y) => x - y);
+
+    expect(tickets((await get(`?staffId=${a}&from=2026-01-10&to=2026-01-10`).expect(200)).body)).toEqual([1, 2]);
+    expect(tickets((await get(`?staffId=${a}&from=2026-01-11&to=2026-01-11`).expect(200)).body)).toEqual([4]);
+    expect(tickets((await get(`?staffId=${a}&from=2026-01-10&to=2026-01-11`).expect(200)).body)).toEqual([1, 2, 4]);
+    expect(tickets((await get('?from=2026-01-10&to=2026-01-10').expect(200)).body)).toEqual([1, 2, 8]);
+    expect(tickets((await get(`?staffId=${b}`).expect(200)).body)).toEqual([8]);
+    expect(tickets((await get(`?staffId=${a}&from=2026-01-12`).expect(200)).body)).toEqual([]);
+    expect((await get(`?staffId=${a}`).expect(200)).body[0]).toMatchObject({ staffId: String(a), email: 'rapport-a@paryajpaw.test', tickets: 4 });
+
+    await get('?from=pas-une-date').expect(400);
+    await get('?staffId=abc').expect(400);
+    const finance = await login('finance');
+    await get(`?staffId=${a}`, finance).expect(200);
+    const cashierToken = await login('cashier');
+    await get('', cashierToken).expect(403);
+
+    const list = (await api().get('/api/v1/admin/shop/cashiers').set(auth(finance)).expect(200)).body as { id: string; email: string; deleted: boolean }[];
+    expect(list.find((c) => c.id === String(a))).toMatchObject({ email: 'rapport-a@paryajpaw.test', deleted: false });
+    expect(list.find((c) => c.id === String(b))).toBeDefined();
+    await api().get('/api/v1/admin/shop/cashiers').set(auth(cashierToken)).expect(403);
+
+    // Un caissier supprimé reste sélectionnable : ses rapports existent encore.
+    await api().delete(`/api/v1/admin/cashiers/${b}`).set(auth(admin)).expect(200);
+    const after = (await api().get('/api/v1/admin/shop/cashiers').set(auth(admin)).expect(200)).body as { id: string; email: string; deleted: boolean }[];
+    expect(after.find((c) => c.id === String(b))).toMatchObject({ email: 'rapport-b@paryajpaw.test', deleted: true });
+  });
+
   it('seul le propriétaire gère les caissiers', async () => {
     const finance = await login('finance');
     await api().get('/api/v1/admin/cashiers').set(auth(finance)).expect(403);
