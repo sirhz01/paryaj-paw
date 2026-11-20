@@ -38,6 +38,7 @@
         <span class="cb-out">Sorties (décaiss.) <b id="cashOut">—</b></span>
       </div>
     </div>
+    <button class="ghost" id="resultsBtn" title="Boules sorties à chaque tirage">Résultats</button>
     <button class="ghost hidden" id="logoutBtn" title="Fermer la session">Déconnexion</button>
     <label class="caisse">Caisse
       <select id="caisseSel"><option>CAISSE #1</option><option>CAISSE #2</option><option>CAISSE #3</option></select>
@@ -123,6 +124,13 @@
     </section>
   </main>
 
+  <div class="rpanel hidden" id="resultsPanel">
+    <section class="card">
+      <div class="rhead"><h2>Résultats des tirages</h2><button class="ghost" type="button" id="resultsClose">Fermer</button></div>
+      <div id="resultsBox"></div>
+    </section>
+  </div>
+
   <div class="login" id="login">
     <form class="card" id="loginForm">
       <img class="logo" src="assets/logo.jpg" alt="La Référence Paryaj Paw">
@@ -162,6 +170,7 @@
   <script src="js/api.js"></script>
   <script src="js/bets.js"></script>
   <script src="js/ticket.js"></script>
+  <script src="js/results.js"></script>
   <script src="js/caisse.js"></script>
 </body>
 </html>

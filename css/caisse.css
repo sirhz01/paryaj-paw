@@ -195,3 +195,17 @@ button { font: inherit; cursor: pointer; }
   .login { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
   .admin .wrap { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
 }
+
+/* Résultats des tirages (caisse : fenêtre ; administration : onglet) */
+.rfilters { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: end; margin-bottom: .6rem; }
+.rfilters label { display: grid; gap: .2rem; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.rfilters select, .rfilters input { padding: .45rem .5rem; border: 1px solid var(--line); border-radius: 6px; font: inherit; color: var(--ink); background: #fff; }
+.rfilters .ghost { padding: .45rem .8rem; }
+.rtbl td.rballs { text-align: left; display: flex; flex-wrap: wrap; gap: .25rem; }
+.rtbl th:last-child { text-align: left; }
+.rb { display: inline-grid; place-items: center; min-width: 2rem; height: 2rem; border-radius: 50%; font-weight: 700; font-size: .85rem; background: var(--c, #1a2a44); color: var(--txt, #fff); border: 2px solid rgba(0, 0, 0, .15); }
+.rb-red { background: #b3201c; color: #fff; } .rb-black { background: #15181b; color: #fff; } .rb-green { background: #12803f; color: #fff; }
+.rpanel { position: fixed; inset: 0; z-index: 9; display: grid; justify-items: center; align-items: start; overflow-y: auto; padding: 1rem; background: rgba(20, 40, 95, .92); }
+.rpanel .card { width: min(48rem, 100%); }
+.rpanel .rhead { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.rpanel .rhead h2 { margin: 0; }

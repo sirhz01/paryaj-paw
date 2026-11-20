@@ -135,6 +135,18 @@ export class RoundsService {
       .slice(0, limit);
   }
 
+  /** Tours déjà tirés d'un jour d'Haïti (boules sorties), du plus récent au plus ancien. */
+  async byDay(game: ShopGame, day: string): Promise<RoundView[]> {
+    if (!DAY_FORMAT.test(day)) throw new AppError('ROUND_NOT_FOUND', HttpStatus.NOT_FOUND);
+    const now = this.now();
+    const { rows } = await this.db.query<RoundRow>(
+      `SELECT ${ROUND_COLUMNS} FROM shop_rounds WHERE game = $1 AND day = $2::date
+          AND draw_starts_at <= to_timestamp($3::double precision / 1000) ORDER BY round_no DESC`,
+      [game, day, now],
+    );
+    return rows.map((r) => this.view(r, now)).filter((v) => v.serverSeed !== undefined);
+  }
+
   /** Recalcule un tirage à partir de la graine publiée. */
   verify(game: ShopGame, serverSeed: string, day: string, round: number) {
     return { serverSeedHash: hashServerSeed(serverSeed), result: drawRound(game, serverSeed, day, round) };

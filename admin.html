@@ -29,6 +29,7 @@
     <button data-tab="rates">Taux de gain</button>
     <button data-tab="cashiers" id="tabCashiers">Caissiers</button>
     <button data-tab="shifts">Rapport caissier</button>
+    <button data-tab="results">Résultats</button>
   </nav>
 
   <main class="wrap">
@@ -172,6 +173,14 @@
       </div>
     </section>
 
+    <section id="tab-results" class="pane hidden">
+      <div class="card">
+        <h2>Résultats des tirages</h2>
+        <p class="hint">Choisissez un jeu et un jour pour voir les boules sorties à chaque tour.</p>
+        <div id="resultsBox"></div>
+      </div>
+    </section>
+
     <section id="tab-cashiers" class="pane hidden">
       <div class="card">
         <h2>Mon mot de passe</h2>
@@ -243,6 +252,7 @@
   <script src="js/roulette-core.js"></script>
   <script src="js/common.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/results.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/stats.js"></script>
   <script>if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw-admin.js').catch(() => {});</script>

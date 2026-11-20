@@ -139,6 +139,14 @@ class ListQuery {
   limit?: number;
 }
 
+class ResultsQuery {
+  @IsIn(SHOP_GAMES)
+  game!: ShopGame;
+
+  @Matches(DAY_FORMAT)
+  day!: string;
+}
+
 class LatestQuery {
   @IsOptional()
   @Type(() => Number)
@@ -279,6 +287,12 @@ export class ShopController {
   @Get('state')
   state() {
     return this.rounds.states();
+  }
+
+  /** Résultats d'un jeu pour un jour d'Haïti : les tours dont le tirage est terminé (caisse et administration). */
+  @Get('results')
+  async results(@Query() q: ResultsQuery) {
+    return { serverTime: this.rounds.now(), game: q.game, day: q.day, rounds: await this.rounds.byDay(q.game, q.day) };
   }
 
   @Get('rounds/:game/latest')

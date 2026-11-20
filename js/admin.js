@@ -44,12 +44,14 @@ PP.ready.then(function () {
   $('logoutBtn').addEventListener('click', () => { A.logout(); location.reload(); });
 
   /* ---------- Onglets ---------- */
+  let resultsView = null;   // onglet Résultats : monté à la première ouverture
   $('tabs').addEventListener('click', (e) => {
     const t = e.target.closest('button'); if (!t) return;
     [...$('tabs').children].forEach((b) => b.classList.toggle('on', b === t));
     document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('hidden', p.id !== 'tab-' + t.dataset.tab));
     // Rafraîchit la liste et les caisses attribuables à l'ouverture de l'onglet Caissiers.
     if (t.dataset.tab === 'cashiers' && canEdit()) { loadCashiers(); loadAdmins(); }
+    if (t.dataset.tab === 'results') { if (!resultsView) resultsView = PP.mountResults($('resultsBox')); else resultsView.reload(); }
   });
 
   /* ---------- Rapport ---------- */

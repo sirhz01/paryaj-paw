@@ -141,6 +141,22 @@ describe('Boutique (e2e)', () => {
       expect(during.body.rounds.map((r: { round: number }) => r.round)).not.toContain(11);
     });
 
+    it('results : les boules d\'un jeu pour un jour, tirages terminés seulement', async () => {
+      at(11, 36.5);
+      const res = await api().get(`/api/v1/shop/results?game=roulette&day=${DAY}`).expect(200);
+      const nos = res.body.rounds.map((r: { round: number }) => r.round);
+      expect(nos).toContain(11);
+      expect(nos).toEqual([...nos].sort((a: number, b: number) => b - a));
+      expect(res.body.rounds.every((r: { day: string; result: { n: string } }) => r.day === DAY && WHEEL_ORDER.includes(r.result.n))).toBe(true);
+      at(11, 26);
+      const during = await api().get(`/api/v1/shop/results?game=roulette&day=${DAY}`).expect(200);
+      expect(during.body.rounds.map((r: { round: number }) => r.round)).not.toContain(11);
+      const none = await api().get('/api/v1/shop/results?game=keno&day=2020-01-01').expect(200);
+      expect(none.body.rounds).toEqual([]);
+      await api().get(`/api/v1/shop/results?game=poker&day=${DAY}`).expect(400);
+      await api().get('/api/v1/shop/results?game=keno&day=hier').expect(400);
+    });
+
     it('refuse les tours inexistants ou manqués', async () => {
       await api().get(`/api/v1/shop/rounds/roulette/${DAY}/999999`).expect(404);
       await api().get(`/api/v1/shop/rounds/roulette/${DAY}/5`).expect(404);

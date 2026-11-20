@@ -178,6 +178,8 @@
     pay: (id, terminal) => A.call('POST', `/shop/tickets/${encodeURIComponent(id)}/pay`, { terminal }),
     void: (id) => A.call('POST', `/shop/tickets/${encodeURIComponent(id)}/void`),
     list: (limit) => A.call('GET', '/shop/tickets?limit=' + limit),
+    /** Boules sorties d'un jeu pour un jour d'Haïti (tirages terminés). */
+    results: (game, day) => http('GET', `/shop/results?game=${encodeURIComponent(game)}&day=${encodeURIComponent(day)}`),
     report: (day) => A.call('GET', '/shop/report' + (day ? '?day=' + day : '')),
   };
 

@@ -117,6 +117,12 @@ PP.ready.then(function () {
     } catch (err) { $('lgMsg').textContent = PP.api.message(err); $('lgMsg').className = 'msg err'; }
   });
   $('logoutBtn').classList.toggle('hidden', !online);
+  /* Résultats : jeu et jour au choix ; la fenêtre se ferme avec le bouton ou Échap. */
+  let resultsView = null;
+  const showResults = (on) => $('resultsPanel').classList.toggle('hidden', !on);
+  $('resultsBtn').addEventListener('click', () => { showResults(true); if (!resultsView) resultsView = PP.mountResults($('resultsBox')); else resultsView.reload(); });
+  $('resultsClose').addEventListener('click', () => showResults(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') showResults(false); });
   $('logoutBtn').addEventListener('click', () => { $('ccAmount').value = ''; $('ccMsg').textContent = ''; $('cashClose').classList.remove('hidden'); $('ccAmount').focus(); });
 
   /* ---------- Onglets ---------- */
