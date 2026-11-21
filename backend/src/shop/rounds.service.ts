@@ -4,6 +4,7 @@ import { DATABASE, Database, Queryable } from '../database/db';
 import { hashServerSeed, newServerSeed } from '../fairness/provably-fair';
 import { SHOP_CLOCK, ShopClock, RoundState, dayKeyOf, roundWindow, roundsInDay, stateAt } from './clock';
 import { drawRound } from './draw';
+import { CashierPresence } from './presence.service';
 import { CLOSE_MARGIN_SECONDS, SHOP_GAMES, ShopGame, ShopResult, TicketLine, ticketWin } from './games';
 import { ShopSettings, ShopSettingsService } from './settings.service';
 
@@ -44,6 +45,7 @@ export class RoundsService {
     @Inject(DATABASE) private readonly db: Database,
     @Inject(SHOP_CLOCK) private readonly clock: ShopClock,
     private readonly settings: ShopSettingsService,
+    private readonly presence: CashierPresence,
   ) {}
 
   now(): number {
@@ -101,15 +103,17 @@ export class RoundsService {
   }
 
   /** État de chaque jeu à l'instant présent, avec le hash du tour en cours. */
-  async states(): Promise<{ serverTime: number; games: Record<string, RoundState & { serverSeedHash: string | null }> }> {
+  async states(): Promise<{ serverTime: number; paused: boolean; games: Record<string, RoundState & { serverSeedHash: string | null }> }> {
     const now = this.now();
+    // Sans caissier connecté, rien n'est créé : le tour existe seulement s'il a déjà été scellé.
+    const paused = !(await this.presence.anyActive());
     const games: Record<string, RoundState & { serverSeedHash: string | null }> = {};
     for (const game of SHOP_GAMES) {
       const s = stateAt(game, now);
-      const row = await this.ensure(game, s.day, s.round);
+      const row = paused ? await this.find(game, s.day, s.round) : await this.ensure(game, s.day, s.round);
       games[game] = { ...s, serverSeedHash: row?.serverSeedHash ?? null };
     }
-    return { serverTime: now, games };
+    return { serverTime: now, paused, games };
   }
 
   async get(game: ShopGame, day: string, round: number): Promise<RoundView> {
@@ -154,6 +158,8 @@ export class RoundsService {
 
   /** Crée les tours en cours et le suivant de chaque jeu : leur hash est publié avant la fermeture des mises. */
   async sealUpcoming(): Promise<void> {
+    // Aucun caissier connecté : on ne crée aucun tour, les tirages reprennent à la prochaine connexion.
+    if (!(await this.presence.anyActive())) return;
     const now = this.now();
     for (const game of SHOP_GAMES) {
       const s = stateAt(game, now);

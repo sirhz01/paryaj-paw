@@ -56,12 +56,30 @@
     PP.STAFF_TOTP = cfg.staffTotpRequired !== false;
   }
 
+  /* Écrans TV : sans caissier connecté, le serveur ne crée aucun tour. Un bandeau l'explique ; l'interrogation
+     du serveur sert aussi à relancer les tours dès qu'un caissier se connecte. */
+  function watchPause() {
+    if (!document.getElementById('topbar')) return;   // seulement les écrans de jeu
+    const bar = document.createElement('div');
+    bar.id = 'pausebar';
+    bar.hidden = true;
+    bar.textContent = 'Tirages en pause : en attente de la connexion d\u2019un caissier. Ils reprennent au tour suivant.';
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:50;padding:.6rem 1rem;text-align:center;font-weight:700;background:#b45f06;color:#fff';
+    document.body.appendChild(bar);
+    const poll = async () => {
+      try { bar.hidden = !(await http('GET', '/shop/state')).paused; } catch (e) { /* serveur injoignable : on garde l'état affiché */ }
+    };
+    poll();
+    setInterval(poll, 10000);
+  }
+
   /* Les scripts des pages démarrent après PP.ready : réglages et horloge du serveur déjà en place. */
   PP.ready = (OFF ? Promise.reject(new Error('démo forcée')) : (async () => {
     const t0 = Date.now(), cfg = await http('GET', '/shop/config'), t1 = Date.now();
     PP.offset = cfg.serverTime - (t0 + t1) / 2;
     apply(cfg);
     PP.online = true;
+    watchPause();
     // Les durées des jeux changent à minuit (jour suivant) : la page se recharge alors pour les prendre.
     setTimeout(() => location.reload(), Math.max(1000, PP.dayEnd(PP.dayStartOfKey(PP.dayKey(PP.now()))) - PP.now() + 3000));
   })()).catch((e) => { console.info('Mode démo (tirages simulés, tickets locaux) :', e.message); });

@@ -16,6 +16,7 @@ import {
   numbersLine,
   rouletteLine,
 } from './games';
+import { CashierPresence } from './presence.service';
 import { RoundsService } from './rounds.service';
 import { ShopSettings, ShopSettingsService } from './settings.service';
 
@@ -127,6 +128,7 @@ export class TicketsService {
     private readonly rounds: RoundsService,
     private readonly settings: ShopSettingsService,
     private readonly audit: AuditService,
+    private readonly presence: CashierPresence,
   ) {}
 
   // Vente ---------------------------------------------------------------------
@@ -178,6 +180,7 @@ export class TicketsService {
     staff: Seller,
     input: { game: ShopGame; terminal: string; idempotencyKey: string; lines: LineSelection[]; later?: { stakesCents: number[] }[] },
   ): Promise<TicketView> {
+    await this.presence.touch(staff); // une vente compte comme présence : les tours doivent exister pour la vente
     const replay = await this.byIdempotencyKey(staff.id, input.idempotencyKey);
     if (replay) return replay;
 
@@ -425,6 +428,7 @@ export class TicketsService {
   // Décaissement --------------------------------------------------------------
 
   async pay(staff: Seller, id: string, terminal: string): Promise<TicketView & { payoutCents: number }> {
+    await this.presence.touch(staff);
     const s = await this.settings.current();
     checkTerminal(staff, terminal);
     if (!s.terminals.includes(terminal)) throw new AppError('UNKNOWN_TERMINAL', HttpStatus.BAD_REQUEST);
@@ -470,12 +474,14 @@ export class TicketsService {
    */
   /** Début de service : le caissier déclare l'argent qu'il a en caisse. Gardé dans le journal d'audit. */
   async openShift(staff: Seller, openingCents: number): Promise<{ openingCents: number }> {
+    await this.presence.touch(staff);
     await this.audit.log(staff.id, 'shift.open', { type: 'staff', id: staff.id }, { openingCents });
     return { openingCents };
   }
 
   async closeShift(staff: Seller, closingCents?: number): Promise<{ closed: boolean }> {
     if (staff.role !== 'cashier') return { closed: false };
+    await this.presence.clear(staff.id); // déconnecté : ses signaux ne comptent plus
     return this.db.transaction(async (tx) => {
       const login = await tx.query<{ at: Date }>(
         "SELECT max(created_at) AS at FROM audit_log WHERE staff_id = $1 AND action = 'staff.login'",
@@ -520,6 +526,7 @@ export class TicketsService {
   }> {
     const empty = { openingCents: 0, stakesCents: 0, payoutsCents: 0, tickets: 0, payouts: 0, cashCents: 0, open: false };
     if (staff.role !== 'cashier') return empty;
+    await this.presence.touch(staff); // signal régulier de la caisse : tant qu'il arrive, les tours continuent
     const login = await this.db.query<{ at: Date }>(
       "SELECT max(created_at) AS at FROM audit_log WHERE staff_id = $1 AND action = 'staff.login'",
       [staff.id],

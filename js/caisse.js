@@ -508,6 +508,8 @@ PP.ready.then(function () {
     $('multi').classList.toggle('hidden', !online);
   }, 500);
   setInterval(renderHistory, 5000);
+  /* Présence : tant que ce signal arrive, les tirages tournent ; après déconnexion (ou 3 min sans signal), ils s'arrêtent. */
+  setInterval(() => { if (online && PP.api.token) refreshCash(); }, 60000);
 
   renderBoard(); renderSlip(); renderHistory();
 });

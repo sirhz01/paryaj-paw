@@ -96,6 +96,7 @@ describe('Boutique (e2e)', () => {
 
     it('state : un tour par jeu avec son hash scellé, jamais la graine ni le résultat', async () => {
       at(11, 3);
+      await api().get('/api/v1/shop/shift/current').set(auth(cashier)).expect(200); // un caissier connecté : les tours sont créés
       const res = await api().get('/api/v1/shop/state').expect(200);
       expect(res.body.serverTime).toBe(now);
       expect(res.body.games.roulette).toMatchObject({ day: DAY, round: 11, phase: 'bet', left: 22 });
@@ -106,6 +107,37 @@ describe('Boutique (e2e)', () => {
       }
       expect(res.body.games.roulette.serverSeedHash).toMatch(/^[0-9a-f]{64}$/);
       expect(JSON.stringify(res.body)).not.toMatch(/"serverSeed"|"result":/);
+    });
+
+    it('sans caissier connecté, aucun tour n\'est créé ; il reprend à la connexion et s\'arrête à la déconnexion', async () => {
+      const roundRows = async () =>
+        (await db.query<{ n: number }>("SELECT count(*)::int AS n FROM shop_rounds WHERE game = 'roulette' AND day = $1 AND round_no = 80", [DAY])).rows[0].n;
+      const other = await login('cashier');
+
+      // Le signal du caissier date de plus de 3 minutes : plus personne n'est connecté.
+      at(80, 3);
+      let res = await api().get('/api/v1/shop/state').expect(200);
+      expect(res.body.paused).toBe(true);
+      expect(res.body.games.roulette.serverSeedHash).toBeNull();
+      await rounds.sealUpcoming();
+      expect(await roundRows()).toBe(0);
+      expect((await api().get(`/api/v1/shop/rounds/roulette/${DAY}/80`)).status).toBe(404);
+
+      // Un caissier se connecte (signal de la caisse) : le tour en cours est scellé.
+      await api().get('/api/v1/shop/shift/current').set(auth(other)).expect(200);
+      res = await api().get('/api/v1/shop/state').expect(200);
+      expect(res.body.paused).toBe(false);
+      expect(res.body.games.roulette.serverSeedHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(await roundRows()).toBe(1);
+
+      // Il se déconnecte : les tours suivants ne sont plus créés (le tour déjà scellé reste).
+      await api().post('/api/v1/shop/logout').set(auth(other)).send({}).expect(200);
+      at(81, 3);
+      res = await api().get('/api/v1/shop/state').expect(200);
+      expect(res.body.paused).toBe(true);
+      expect(res.body.games.roulette.serverSeedHash).toBeNull();
+      await rounds.sealUpcoming();
+      expect(await roundRows()).toBe(1);
     });
 
     it('le résultat apparaît au début du tirage, la graine à la fin', async () => {
