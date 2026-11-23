@@ -175,6 +175,7 @@ PP.ready.then(function () {
     $('fStakes').value = s.stakesCents.map(htg).join(', ');
     $('fMin').value = htg(s.minStakeCents); $('fMax').value = htg(s.maxStakeCents); $('fTicket').value = htg(s.maxTicketCents);
     $('fPayout').value = htg(s.maxPayoutCents); $('fApproval').value = htg(s.approvalThresholdCents);
+    $('fNumberStake').value = htg(s.maxNumberStakeCents); $('fRoundPayout').value = htg(s.maxRoundPayoutCents);
     $('fTop').checked = s.topLineEnabled;
     renderTimings(s.timings);
     document.querySelectorAll('#setForm input').forEach((el) => { if (!el.closest('.terms')) el.disabled = !canEdit(); });
@@ -216,7 +217,8 @@ PP.ready.then(function () {
     return {
       pointOfSale: $('fPos').value.trim(), issuer: $('fIssuer').value.trim(), terminals: names, stakesCents: $('fStakes').value.split(/[,;s]+/).filter(Boolean).map(toCents),
       minStakeCents: toCents($('fMin').value), maxStakeCents: toCents($('fMax').value), maxTicketCents: toCents($('fTicket').value),
-      maxPayoutCents: toCents($('fPayout').value), approvalThresholdCents: toCents($('fApproval').value), topLineEnabled: $('fTop').checked, timings: readTimings(),
+      maxPayoutCents: toCents($('fPayout').value), approvalThresholdCents: toCents($('fApproval').value),
+      maxNumberStakeCents: toCents($('fNumberStake').value), maxRoundPayoutCents: toCents($('fRoundPayout').value), topLineEnabled: $('fTop').checked, timings: readTimings(),
     };
   };
   const saveSettingsLater = autosave($('setForm'), settingsPatch, $('setMsg'));

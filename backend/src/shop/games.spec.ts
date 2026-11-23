@@ -10,10 +10,34 @@ import {
   rouletteKeyNumbers,
   rouletteLine,
   rouletteOddsForRtp,
+  roundExposure,
   rtpReport,
+  stakesByNumber,
   ticketWin,
   validatePaytables,
 } from './games';
+
+describe('limites par tour', () => {
+  const odds = { n: 36, sp: 18, red: 2 };
+  const r = (key: string, stakeCents: number) => rouletteLine(key, stakeCents, false, odds as never)!;
+
+  it('mise par numéro : roulette = pari simple seulement, jeux de numéros = chaque numéro choisi', () => {
+    const roulette = stakesByNumber('roulette', [[r('n:7', 1000), r('red', 5000)], [r('n:7', 500), r('sp:7-8', 300)]]);
+    expect([...roulette]).toEqual([['7', 1500]]);
+    const keno = stakesByNumber('keno', [[{ label: '', picks: [1, 2], odds: 1, stakeCents: 100, possibleCents: 100 }], [{ label: '', picks: [2], odds: 1, stakeCents: 50, possibleCents: 50 }]]);
+    expect(keno.get('1')).toBe(100);
+    expect(keno.get('2')).toBe(150);
+  });
+
+  it('pire cas roulette : la case la plus chargée, chaque ticket plafonné au gain maximum', () => {
+    // Case 7 : 36 000 + 2 000 (rouge) + 18 000 (cheval) = 56 000 ; case 8 : 18 000.
+    const tickets = [[r('n:7', 1000), r('red', 1000)], [r('sp:7-8', 1000)]];
+    expect(roundExposure('roulette', tickets, 1_000_000)).toBe(56_000);
+    expect(roundExposure('roulette', tickets, 20_000)).toBe(20_000 + 18_000);
+    const keno = [[{ label: '', picks: [1], odds: 3, stakeCents: 100, possibleCents: 300 }], [{ label: '', picks: [2], odds: 3, stakeCents: 100, possibleCents: 300 }]];
+    expect(roundExposure('keno', keno, 1_000_000)).toBeNull();   // jeux de numéros : limite par numéro seulement
+  });
+});
 
 /** Valeurs de l'écran de la boutique (migration 003). */
 const PAYTABLES: ShopPaytables = {

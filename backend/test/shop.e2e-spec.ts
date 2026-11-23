@@ -474,6 +474,39 @@ describe('Boutique (e2e)', () => {
       expect(old.rows[0].n).toBeGreaterThan(3); // le test « gros gain » ouvre deux versions de paramètres avant celle-ci
     });
 
+    it('limites par tirage : mise totale par numéro et gain maximum à payer, refus clairs', async () => {
+      const res = await api().get('/api/v1/admin/shop/settings').set(auth(admin)).expect(200);
+      const { version: _v, createdAt: _c, ...input } = res.body.settings;
+      expect(input).toMatchObject({ maxNumberStakeCents: 250_000, maxRoundPayoutCents: 10_000_000 }); // valeurs de la migration 031
+      const put = (patch: Record<string, unknown>) => api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, ...patch }).expect(200);
+      await put({ maxNumberStakeCents: 20_000, maxRoundPayoutCents: 100_000_000 });
+
+      at(80, 2);
+      const first = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:7', stakeCents: 15_000 }] }).expect(201);
+      const over = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:7', stakeCents: 10_000 }] }).expect(409);
+      expect(over.body).toMatchObject({ code: 'NUMBER_LIMIT', number: '7', maxCents: 20_000, remainingCents: 5_000 });
+      const second = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:7', stakeCents: 5_000 }] }).expect(201);
+      // Les autres numéros et les chances simples ne sont pas touchés par la limite du 7.
+      const third = await sell(cashier, { game: 'roulette', lines: [{ key: 'n:8', stakeCents: 2_500 }, { key: 'red', stakeCents: 2_500 }] }).expect(201);
+
+      // Plafond du tirage = ce que la case 7 coûterait déjà (pari simple + rouge, le 7 est rouge).
+      const red = third.body.lines.find((l: { key: string }) => l.key === 'red').possibleCents;
+      const pocket7 = first.body.lines[0].possibleCents + second.body.lines[0].possibleCents + red;
+      await put({ maxNumberStakeCents: 20_000, maxRoundPayoutCents: pocket7 });
+      // Une mise sur une case peu chargée n'aggrave pas le pire cas : acceptée.
+      await sell(cashier, { game: 'roulette', lines: [{ key: 'n:10', stakeCents: 2_500 }] }).expect(201);
+      // Une mise qui couvre le 7 l'aggrave : refusée.
+      const full = await sell(cashier, { game: 'roulette', lines: [{ key: 'sp:7-8', stakeCents: 2_500 }] }).expect(409);
+      expect(full.body).toMatchObject({ code: 'ROUND_LIMIT', maxCents: pocket7 });
+      // Le tour suivant repart de zéro.
+      at(81, 2);
+      await sell(cashier, { game: 'roulette', lines: [{ key: 'sp:7-8', stakeCents: 2_500 }] }).expect(201);
+
+      const bad = await api().put('/api/v1/admin/shop/settings').set(auth(admin)).send({ ...input, maxNumberStakeCents: 0 }).expect(400);
+      expect(bad.body.code).toBe('VALIDATION_ERROR');
+      await put({});   // valeurs d'origine
+    });
+
     it('exports CSV des tickets et des tours, sans graine', async () => {
       const tickets = await api().get(`/api/v1/admin/exports/shop_tickets?from=${DAY}&to=${DAY}`).set(auth(admin)).expect(200);
       expect(tickets.text.split('\n')[0]).toContain('win_cents');

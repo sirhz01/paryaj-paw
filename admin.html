@@ -113,7 +113,10 @@
           <label>Total maximum d’un ticket <input id="fTicket" type="number" min="1" step="any" required></label>
           <label>Gain maximum par ticket <input id="fPayout" type="number" min="1" step="any" required></label>
           <label>Gain à faire valider par un responsable (seuil) <input id="fApproval" type="number" min="1" step="any" required></label>
+          <label>Mise totale maximum sur un même numéro, par tirage <input id="fNumberStake" type="number" min="1" step="any" required></label>
+          <label>Roulette : gain maximum à payer sur un tirage <input id="fRoundPayout" type="number" min="1" step="any" required></label>
         </div>
+        <p class="hint">Limites par tirage, toutes caisses confondues : quand un numéro a reçu trop de mises, ou quand le gain à payer sur un tirage de roulette dépasserait le plafond, la caisse refuse la nouvelle mise (elle peut jouer le tirage suivant). Roulette : la limite par numéro porte sur le pari simple, et le plafond compte la case la plus chargée. Keno et Lucky : seule la limite par numéro s’applique (chaque numéro choisi compte la mise de sa ligne).</p>
         <label class="chk"><input type="checkbox" id="fTop"> Roulette : activer le pari « Top line » (0, 00, 1, 2, 3)</label>
         <h2>Temps de chaque jeu</h2>
         <p class="hint"><b>Durée du tour (minutes)</b> : temps entre deux tirages du même jeu (ex. Roulette 5 → un tirage toutes les 5 minutes). Les secondes de « Mises » s’ajustent toutes seules ; tirage et résultat restent en secondes.<br>Mises ouvertes · tirage · résultat. Un changement s’applique à partir de <b>demain 00:00</b> (heure d’Haïti) : les tours et les tickets d’aujourd’hui ne sont pas touchés.

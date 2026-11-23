@@ -289,6 +289,47 @@ export function ticketWin(
   return Math.min(total, maxPayoutCents);
 }
 
+// Limites par tour ------------------------------------------------------------
+// Elles ne dépendent que des mises (jamais du résultat, déjà scellé au moment de la vente) : un tour trop chargé
+// refuse simplement les nouvelles mises, le tirage reste le même pour tout le monde.
+
+/**
+ * Mise totale par numéro dans un ensemble de tickets. Roulette : pari simple (n:X) uniquement ; jeux de numéros :
+ * chaque numéro choisi compte la mise de sa ligne.
+ */
+export function stakesByNumber(game: ShopGame, tickets: readonly (readonly TicketLine[])[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const lines of tickets) {
+    for (const line of lines) {
+      const numbers = game === 'roulette'
+        ? (line.key?.startsWith('n:') ? [line.key.slice(2)] : [])
+        : (line.picks as number[]).map(String);
+      for (const n of numbers) out.set(n, (out.get(n) ?? 0) + line.stakeCents);
+    }
+  }
+  return out;
+}
+
+/**
+ * Pire somme à payer sur un tour de roulette, case par case (38 cases), chaque ticket plafonné au gain maximum.
+ * null pour les jeux de numéros : leurs gros lots (Keno 10 numéros, etc.) rendent tout majorant inutilisable,
+ * seule la limite par numéro s'y applique.
+ */
+export function roundExposure(game: ShopGame, tickets: readonly (readonly TicketLine[])[], maxPayoutCents: number): number | null {
+  if (game !== 'roulette') return null;
+  const covered = tickets.map((lines) => lines.map((l) => ({ numbers: rouletteKeyNumbers(l.key ?? '') ?? [], win: l.possibleCents })));
+  let worst = 0;
+  for (const pocket of WHEEL_ORDER) {
+    let total = 0;
+    for (const lines of covered) {
+      const win = lines.reduce((s, l) => s + (l.numbers.includes(pocket) ? l.win : 0), 0);
+      total += Math.min(win, maxPayoutCents);
+    }
+    worst = Math.max(worst, total);
+  }
+  return worst;
+}
+
 // RTP -------------------------------------------------------------------------
 
 function choose(n: number, k: number): number {

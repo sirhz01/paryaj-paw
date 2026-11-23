@@ -223,6 +223,18 @@ class ShopSettingsDto {
   @Min(1)
   approvalThresholdCents!: number;
 
+  /** Mise totale acceptée sur un même numéro dans un tour ; absente, la valeur actuelle est conservée. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxNumberStakeCents?: number;
+
+  /** Pire somme à payer sur un tour ; absente, la valeur actuelle est conservée. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxRoundPayoutCents?: number;
+
   @IsBoolean()
   topLineEnabled!: boolean;
 

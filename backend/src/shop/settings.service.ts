@@ -16,6 +16,10 @@ export interface ShopSettings {
   maxTicketCents: number;
   maxPayoutCents: number;
   approvalThresholdCents: number;
+  /** Mise totale acceptée sur un même numéro dans un tour, toutes caisses confondues. */
+  maxNumberStakeCents: number;
+  /** Pire somme à payer sur un tour : une vente qui la dépasserait est refusée. */
+  maxRoundPayoutCents: number;
   topLineEnabled: boolean;
   paytables: ShopPaytables;
   /** Durées des tours : elles s'appliquent à partir du jour suivant la création de cette version. */
@@ -26,8 +30,11 @@ export interface ShopSettings {
 /** Nom d'une caisse : imprimé sur les tickets et affiché dans la caisse, donc sans balisage. */
 const TERMINAL_NAME = /^[\p{L}\p{N} #._-]{1,32}$/u;
 
-export type ShopSettingsInput = Omit<ShopSettings, 'version' | 'createdAt' | 'timings'> & {
+export type ShopSettingsInput = Omit<ShopSettings, 'version' | 'createdAt' | 'timings' | 'maxNumberStakeCents' | 'maxRoundPayoutCents'> & {
   timings?: Timings;
+  /** Absentes : les limites par tour de la version actuelle sont conservées. */
+  maxNumberStakeCents?: number;
+  maxRoundPayoutCents?: number;
   /** RTP visé de la roulette (en %) : les cotes sont calculées par le serveur. Absent : la table de la version actuelle est conservée. */
   rouletteTargetRtp?: number;
 };
@@ -35,6 +42,7 @@ export type ShopSettingsInput = Omit<ShopSettings, 'version' | 'createdAt' | 'ti
 const COLUMNS = `version, point_of_sale AS "pointOfSale", issuer, terminals, stakes_cents AS "stakesCents",
   min_stake_cents AS "minStakeCents", max_stake_cents AS "maxStakeCents", max_ticket_cents AS "maxTicketCents",
   max_payout_cents AS "maxPayoutCents", approval_threshold_cents AS "approvalThresholdCents",
+  max_number_stake_cents AS "maxNumberStakeCents", max_round_payout_cents AS "maxRoundPayoutCents",
   top_line_enabled AS "topLineEnabled", paytables, timings, created_at AS "createdAt"`;
 
 /** Une version créée avant l'ajout des durées (colonne NULL) garde les valeurs par défaut. */
@@ -127,6 +135,11 @@ export class ShopSettingsService implements OnModuleInit, OnApplicationShutdown 
     }
     if (input.maxStakeCents < input.minStakeCents) errors.push('mise maximum inférieure à la mise minimum');
     if (input.maxTicketCents < input.maxStakeCents) errors.push('total du ticket inférieur à la mise maximum');
+    const maxNumberStakeCents = input.maxNumberStakeCents ?? current.maxNumberStakeCents;
+    const maxRoundPayoutCents = input.maxRoundPayoutCents ?? current.maxRoundPayoutCents;
+    if (!ints([maxNumberStakeCents])) errors.push('mise maximum par numéro et par tour invalide');
+    else if (maxNumberStakeCents < input.minStakeCents) errors.push('mise maximum par numéro et par tour inférieure à la mise minimum');
+    if (!ints([maxRoundPayoutCents])) errors.push('gain maximum par tirage invalide');
     if (errors.length > 0) throw new AppError('INVALID_SETTINGS', 400, { errors });
 
     const saved = await this.db.transaction(async (tx) => {
@@ -147,8 +160,8 @@ export class ShopSettingsService implements OnModuleInit, OnApplicationShutdown 
       const { rows } = await tx.query<ShopSettings>(
         `INSERT INTO shop_settings (point_of_sale, issuer, terminals, stakes_cents, min_stake_cents, max_stake_cents,
                                     max_ticket_cents, max_payout_cents, approval_threshold_cents, top_line_enabled,
-                                    paytables, created_by, timings)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING ${COLUMNS}`,
+                                    paytables, created_by, timings, max_number_stake_cents, max_round_payout_cents)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING ${COLUMNS}`,
         [
           input.pointOfSale,
           input.issuer,
@@ -163,6 +176,8 @@ export class ShopSettingsService implements OnModuleInit, OnApplicationShutdown 
           JSON.stringify(paytables),
           staffId,
           JSON.stringify(timings),
+          maxNumberStakeCents,
+          maxRoundPayoutCents,
         ],
       );
       await this.audit.log(staffId, 'shop_settings.update', { type: 'shop_settings', id: rows[0].version }, {}, tx);

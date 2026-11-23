@@ -4,7 +4,7 @@ import { AuditService } from '../common/audit.service';
 import { StaffRole } from '../common/auth';
 import { AppError } from '../common/errors';
 import { HAITI_TIME_ZONE } from '../common/haiti';
-import { DATABASE, Database, isUniqueViolation } from '../database/db';
+import { DATABASE, Database, Queryable, isUniqueViolation } from '../database/db';
 import { nextRoundOf, roundWindow } from './clock';
 import {
   LineSelection,
@@ -15,6 +15,8 @@ import {
   checkPicks,
   numbersLine,
   rouletteLine,
+  roundExposure,
+  stakesByNumber,
 } from './games';
 import { CashierPresence } from './presence.service';
 import { RoundsService } from './rounds.service';
@@ -202,17 +204,20 @@ export class TicketsService {
     const { day, round } = this.rounds.targetRound(input.game);
     const row = await this.rounds.ensure(input.game, day, round);
     if (!row) throw new AppError('ROUND_CLOSED', HttpStatus.CONFLICT);
-    if (later.length > 0) return this.sellBundle(staff, input, s.version, roundLines, { day, round });
+    if (later.length > 0) return this.sellBundle(staff, input, s, roundLines, { day, round });
 
     const stakeCents = lines.reduce((sum, l) => sum + l.stakeCents, 0);
     for (let attempt = 0; attempt < 5; attempt++) {
       const id = Array.from({ length: ID_LENGTH }, () => ID_ALPHABET[randomInt(ID_ALPHABET.length)]).join('');
       try {
-        await this.db.query(
-          `INSERT INTO shop_tickets (id, staff_id, terminal, idempotency_key, game, day, round_no, lines, stake_cents, settings_version, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11::double precision / 1000))`,
-          [id, staff.id, input.terminal, input.idempotencyKey, input.game, day, round, JSON.stringify(lines), stakeCents, s.version, this.rounds.now()],
-        );
+        await this.db.transaction(async (tx) => {
+          await this.checkRoundLimits(tx, input.game, { day, round }, lines, s, 1);
+          await tx.query(
+            `INSERT INTO shop_tickets (id, staff_id, terminal, idempotency_key, game, day, round_no, lines, stake_cents, settings_version, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11::double precision / 1000))`,
+            [id, staff.id, input.terminal, input.idempotencyKey, input.game, day, round, JSON.stringify(lines), stakeCents, s.version, this.rounds.now()],
+          );
+        });
         return (await this.find(id))!;
       } catch (error) {
         if (!isUniqueViolation(error)) throw error;
@@ -223,6 +228,46 @@ export class TicketsService {
     throw new AppError('TICKET_ID_COLLISION', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
+  /**
+   * Limites par tour (réglages) : mise totale par numéro (tous les jeux) et pire somme à payer sur le tour (roulette),
+   * toutes caisses confondues.
+   * Le tour est verrouillé jusqu'à la fin de la transaction : deux caisses ne peuvent pas dépasser la limite ensemble.
+   * Seules les mises comptent, jamais le résultat du tour. Une vente qui n'aggrave pas le pire cas (mise sur une case
+   * peu chargée) reste acceptée même si le tour est au plafond.
+   */
+  private async checkRoundLimits(
+    tx: Queryable,
+    game: ShopGame,
+    target: { day: string; round: number },
+    lines: TicketLine[],
+    s: ShopSettings,
+    roundIndex: number,
+  ): Promise<void> {
+    await tx.query('SELECT 1 FROM shop_rounds WHERE game = $1 AND day = $2 AND round_no = $3 FOR UPDATE', [game, target.day, target.round]);
+    const { rows } = await tx.query<{ lines: TicketLine[] }>(
+      `SELECT t.lines FROM shop_tickets t WHERE t.game = $1 AND t.day = $2 AND t.round_no = $3 AND ${LIVE('t')}`,
+      [game, target.day, target.round],
+    );
+    const existing = rows.map((r) => r.lines);
+    const round = roundIndex > 1 ? { round: roundIndex } : {};
+
+    const before = stakesByNumber(game, existing);
+    const after = stakesByNumber(game, [...existing, lines]);
+    for (const number of stakesByNumber(game, [lines]).keys()) {
+      if (after.get(number)! > s.maxNumberStakeCents) {
+        throw new AppError('NUMBER_LIMIT', HttpStatus.CONFLICT, {
+          number, maxCents: s.maxNumberStakeCents, remainingCents: Math.max(0, s.maxNumberStakeCents - (before.get(number) ?? 0)), ...round,
+        });
+      }
+    }
+
+    const exposureBefore = roundExposure(game, existing, s.maxPayoutCents);
+    const exposureAfter = roundExposure(game, [...existing, lines], s.maxPayoutCents);
+    if (exposureAfter !== null && exposureAfter > s.maxRoundPayoutCents && exposureAfter > exposureBefore!) {
+      throw new AppError('ROUND_LIMIT', HttpStatus.CONFLICT, { maxCents: s.maxRoundPayoutCents, ...round });
+    }
+  }
+
   private newTicketId(): string {
     return Array.from({ length: ID_LENGTH }, () => ID_ALPHABET[randomInt(ID_ALPHABET.length)]).join('');
   }
@@ -231,7 +276,7 @@ export class TicketsService {
   private async sellBundle(
     staff: Seller,
     input: { game: ShopGame; terminal: string; idempotencyKey: string },
-    settingsVersion: number,
+    settings: ShopSettings,
     roundLines: TicketLine[][],
     first: { day: string; round: number },
   ): Promise<TicketView> {
@@ -249,13 +294,14 @@ export class TicketsService {
       try {
         await this.db.transaction(async (tx) => {
           for (let i = 0; i < targets.length; i++) {
+            await this.checkRoundLimits(tx, input.game, targets[i], roundLines[i], settings, i + 1);
             await tx.query(
               `INSERT INTO shop_tickets (id, staff_id, terminal, idempotency_key, game, day, round_no, lines, stake_cents, settings_version, bundle_id, created_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12::double precision / 1000))`,
               [
                 list[i], staff.id, input.terminal, i === 0 ? input.idempotencyKey : `${input.idempotencyKey}~${i}`, input.game,
                 targets[i].day, targets[i].round, JSON.stringify(roundLines[i]), roundLines[i].reduce((sum, l) => sum + l.stakeCents, 0),
-                settingsVersion, list[0], this.rounds.now(),
+                settings.version, list[0], this.rounds.now(),
               ],
             );
           }

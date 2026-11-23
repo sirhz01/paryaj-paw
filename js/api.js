@@ -169,6 +169,13 @@
       if (e.code === 'STAKE_TOO_LOW') return `Mise trop basse (minimum ${money(e.body.minCents)}).`;
       if (e.code === 'STAKE_TOO_HIGH') return `Mise trop élevée (maximum ${money(e.body.maxCents)}).`;
       if (e.code === 'TICKET_TOO_HIGH') return `Total du ticket au-dessus de ${money(e.body.maxCents)}.`;
+      if (e.code === 'NUMBER_LIMIT') {
+        const where = e.body.round ? ` (tour ${e.body.round} de la fiche)` : '';
+        return e.body.remainingCents > 0
+          ? `Numéro ${e.body.number} : trop de mises sur ce tirage${where}. Encore ${money(e.body.remainingCents)} au plus sur ce numéro.`
+          : `Numéro ${e.body.number} complet pour ce tirage${where} : choisissez un autre numéro ou le tirage suivant.`;
+      }
+      if (e.code === 'ROUND_LIMIT') return `Tirage complet${e.body.round ? ` (tour ${e.body.round} de la fiche)` : ''} : le gain à payer dépasserait ${money(e.body.maxCents)}. Choisissez une autre mise ou le tirage suivant.`;
       if (e.code === 'INVALID_BET' && e.body.reason) return 'Mise invalide : ' + e.body.reason + '.';
       if (e.code === 'ALREADY_PAID' && e.body.paidAt) return 'Ticket déjà payé le ' + PP.dateTime(e.body.paidAt, false) + '.';
       return MESSAGES[e.code] || 'Erreur ' + (e.code || e.message);
